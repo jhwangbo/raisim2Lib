@@ -1,11 +1,11 @@
 # Build and Release Folders
-build-debug/
-build-release/
-build-*/
-build/*
-_build/*
-docs/_build/*
-cmake-build*/*
+/build-debug/
+/build-release/
+/build-*/
+/build/*
+/_build/*
+/docs/_build/*
+/cmake-build*/*
 .idea/*
 examples/.idea/*
 examples/build/*
@@ -31,8 +31,8 @@ uv.lock
 .codex
 
 # Downloaded raisim2Lib release payloads
-raisim/
-rayrai/
+/raisim/
+/rayrai/
 windows-x86-*/
 linux-x86-*/
 linux-arm64-*/
