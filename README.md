@@ -82,4 +82,4 @@ Use `rayrai_raisim_tcp_viewer` for applications that publish through `raisim::Ra
 
 ## Documentation
 
-Open the installed documentation from the package, or visit the hosted RaiSim documentation for installation, activation, API, examples, and visualization workflows.
+Available at raisim.com
