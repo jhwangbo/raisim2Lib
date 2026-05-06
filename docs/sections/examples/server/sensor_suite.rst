@@ -12,16 +12,15 @@ Screenshot
 
 Binary
 ======
-CMake target and executable name: ``sensor_suite``.
+Installed executable: ``sensor_suite``.
 
 Run
 ====
-Build and run from your build directory:
+Run the installed executable:
 
 .. code-block:: bash
 
-   cmake --build . --target sensor_suite
-   ./sensor_suite
+   <raisim-install>/bin/sensor_suite
 
 On Windows, run ``sensor_suite.exe`` instead.
 This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
@@ -33,7 +32,3 @@ Details
 - Uses VISUALIZER measurement source for cameras and converts depth to point clouds.
 - Visualizes LiDAR scans via a point cloud (Unreal-only).
 
-Source
-======
-.. literalinclude:: ../../../../examples/src/server/sensor_suite.cpp
-   :language: cpp

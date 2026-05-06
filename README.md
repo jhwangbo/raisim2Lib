@@ -1,201 +1,85 @@
 # RaiSim2
 
-RaiSim is a physics engine for robotics and artificial intelligence research that provides efficient and accurate simulations for robotic systems. We specialize in running rigid-body simulations while having an accessible, easy to use C++ library.
+<img src="docs/image/rayrai_complete_showcase.gif" alt="rayrai_complete_showcase" width="100%">
 
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/CN0ah5-OWik/0.jpg)](https://www.youtube.com/watch?v=CN0ah5-OWik)
+<img src="docs/image/granular_media.gif" alt="granular_media" width="100%">
 
-## News
-Closed-loop system simulation is now available! Check out the [minitaur example](https://github.com/raisimTech/raisim2Lib/tree/master/examples/src/server/minitaur_pd.cpp)
+<img src="docs/image/deformable_objects.gif" alt="deformable_objects" width="100%">
 
-## Install (Generate + Build)
+<img src="docs/image/procedural_heightmap.gif" alt="procedural_heightmap" width="100%">
 
-RaiSim/RayRai binaries are downloaded automatically during CMake configure on Linux and Windows from GitHub Releases (`raisimTech/raisim2Lib`, version = `RAISIM_VERSION` in `CMakeLists.txt`) when `raisim/` is missing.
-If `raisim/` already exists, CMake uses the local copy and reports when a newer release is available.
+RaiSim is a physics engine for robotics and artificial intelligence research. The public distribution is provided as binary packages with headers, libraries, examples, rayrai tools, and documentation.
 
-### 1) Prerequisites
+[![RaiSim video](https://img.youtube.com/vi/CN0ah5-OWik/0.jpg)](https://www.youtube.com/watch?v=CN0ah5-OWik)
 
-- CMake >= 3.18
-- C++ compiler:
-  - Linux: GCC/Clang
-  - Windows: Visual Studio 2022 with C++ workload
-- Linux packages:
-```bash
-sudo apt update
-sudo apt install -y build-essential libeigen3-dev libsdl2-dev
-```
-- Windows dependencies (optional): you can use the bundled `thirdParty/Eigen3` and skip vcpkg.
-- Windows dependencies via vcpkg (recommended):
-```powershell
-# install vcpkg first if needed
-git clone https://github.com/microsoft/vcpkg C:\vcpkg
-C:\vcpkg\bootstrap-vcpkg.bat
-$env:VCPKG_ROOT="C:\vcpkg"
+## Install
 
-# install packages
-vcpkg install eigen3:x64-windows sdl2:x64-windows
-```
+Download the binary package for your platform and unpack it to an install location such as `$HOME/raisim2Lib` on Linux/macOS or `C:\raisim` on Windows. Keep the package directories together; examples and rayrai tools expect the bundled assets to remain next to the installed binaries.
 
-### 2) Configure + build + install (Linux)
+Set the runtime library path before running examples or applications:
 
 ```bash
-cd /path/to/raisim2Lib
-cmake -S . -B build \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_INSTALL_PREFIX=$HOME/.local
-cmake --build build -j
-cmake --install build
+export RAISIM_LOCAL_INSTALL_ROOT=$HOME/raisim2Lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RAISIM_LOCAL_INSTALL_ROOT/raisim/lib
 ```
 
-### 3) Configure + build + install (Windows, PowerShell)
+On macOS, use `DYLD_LIBRARY_PATH`. On Windows, add the installed RaiSim `bin` directory to `Path`.
 
-Without vcpkg toolchain:
-```powershell
-cd C:\path\to\raisim2Lib
-cmake --fresh -S . -B build -G "Visual Studio 17 2022" -A x64
-cmake --build build --config Release
-cmake --install build --config Release
+## Activation
+
+Rename the activation key received by email to `activation.raisim` and place it in the default location:
+
+```text
+Linux/macOS: $HOME/.raisim/activation.raisim
+Windows:     C:\Users\<YOUR-USERNAME>\.raisim\activation.raisim
 ```
 
-With vcpkg toolchain:
-```powershell
-cd C:\path\to\raisim2Lib
-cmake --fresh -S . -B build -G "Visual Studio 17 2022" -A x64 `
-  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\\scripts\\buildsystems\\vcpkg.cmake"
-cmake --build build --config Release
-cmake --install build --config Release
-```
+You can also set the activation key explicitly in your application with `raisim::World::setActivationKey()`.
 
-### 4) Optional CMake flags
+## Run Examples
 
-- `-DRAISIM_EXAMPLE=ON` (default ON): build C++ examples
-- `-DRAISIM_PY=ON`: build Python bindings (install Python dev headers first)
-- `-DRAISIM_MATLAB=ON`: build Matlab wrapper
-- `-DRAISIM_DOC=ON`: build docs (install Sphinx requirements first)
+Server-based examples publish a `raisim::World` through `RaisimServer`. Start the rayrai TCP viewer first, then run an example:
 
-### 5) Build and install RaisimPy
-
-RaisimPy is built by the top-level CMake project when `RAISIM_PY=ON`.
-The Python module is installed into the site-packages directory of the Python interpreter used by CMake, not under `CMAKE_INSTALL_PREFIX`.
-
-Linux prerequisites:
 ```bash
-sudo apt update
-sudo apt install -y python3-dev
+$RAISIM_LOCAL_INSTALL_ROOT/bin/rayrai_raisim_tcp_viewer
+$RAISIM_LOCAL_INSTALL_ROOT/bin/example_anymal_contacts
 ```
 
-Create a project-local Python environment with `uv`, then point CMake at that environment's Python executable:
+In-process rayrai examples open their own renderer window and do not need the TCP viewer:
+
 ```bash
-cd /path/to/raisim2Lib
-uv venv .venv --python 3.12
-uv pip install --python .venv/bin/python numpy
-
-cmake -S . -B build-py \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_INSTALL_PREFIX=$HOME/.local \
-  -DRAISIM_EXAMPLE=ON \
-  -DRAISIM_PY=ON \
-  -DPython_EXECUTABLE=$PWD/.venv/bin/python
-cmake --build build-py -j
-cmake --install build-py
+$RAISIM_LOCAL_INSTALL_ROOT/bin/example_rayrai_pbr_asset_inspector
+$RAISIM_LOCAL_INSTALL_ROOT/bin/example_polyhaven_blue_wall --fast-load
 ```
 
-Before importing `raisimpy`, make sure the RaiSim shared libraries are on the runtime library path:
+## Use RaiSim From C++
+
+RaiSim is installed as a CMake package. Point `CMAKE_PREFIX_PATH` at the installed package prefix from your downstream project:
+
 ```bash
-source /path/to/raisim2Lib/raisim_env.sh
-.venv/bin/python -c "import raisimpy as raisim; print(raisim.__doc__)"
+cmake -S . -B build -DCMAKE_PREFIX_PATH=$RAISIM_LOCAL_INSTALL_ROOT/raisim
 ```
 
-CMake installs `raisimpy` into the site-packages directory of `.venv/bin/python`.
-Run RaisimPy scripts with the same interpreter:
-```bash
-source /path/to/raisim2Lib/raisim_env.sh
-.venv/bin/python raisimPy/examples/robots.py
+Minimal downstream `CMakeLists.txt`:
+
+```cmake
+cmake_minimum_required(VERSION 3.16)
+project(my_raisim_app LANGUAGES CXX)
+
+find_package(raisim CONFIG REQUIRED)
+find_package(Eigen3 REQUIRED)
+
+add_executable(app main.cpp)
+target_link_libraries(app PRIVATE raisim::raisim)
+if (UNIX)
+  target_link_libraries(app PRIVATE pthread)
+endif()
 ```
 
-If you install with `sudo`, CMake may install `raisimpy` into a different Python site-packages directory. Prefer the project-local `uv` environment so the module and interpreter match.
+## Visualization
 
-### 6) Upgrade RaiSim/RayRai binaries
-
-Linux:
-```bash
-./raisim_upgrade.sh
-```
-
-Windows PowerShell:
-```powershell
-.\raisim_upgrade.ps1
-```
-
-Without a version, the upgrade script asks whether to install the latest release.
-If you decline, it lists available releases and asks for the version to install.
-
-Pass a version to install a specific release:
-```bash
-./raisim_upgrade.sh 2.0.0
-```
-
-Optional docs setup:
-```bash
-python3 -m venv docs/.venv
-. docs/.venv/bin/activate
-python -m pip install -r docs/requirements.txt
-```
+Use `rayrai_raisim_tcp_viewer` for applications that publish through `raisim::RaisimServer`. Use in-process rayrai APIs when your application needs its own renderer window, offscreen rendering, RGB/depth sensors, or screenshots. RaisimUnity and RaisimUnreal are legacy integrations and are no longer the supported visualization path.
 
 ## Documentation
 
-Further documentation available on the [RaiSim Tech website](http://raisim.com).
-
-
-## Examples
-Before running examples, build with `RAISIM_EXAMPLE=ON` and load the environment setup script for your shell:
-- Linux/macOS: `source /path/to/raisim2Lib/raisim_env.sh`
-- Windows (PowerShell): `.\raisim_env.ps1`
-- Windows (cmd.exe): `raisim_env.bat`
-
-Run C++ examples from the build directory:
-```bash
-cd /path/to/raisim2Lib
-source ./raisim_env.sh
-./build/examples/minitaur_pd
-./build/examples/primitive_grid
-./build/examples/ray_casting
-```
-
-Server examples can be viewed with RaiSimUnity/RaiSimUnreal when applicable. Start the example first, then launch the visualizer from this repository.
-
-Run Python examples after building and installing RaisimPy:
-```bash
-cd /path/to/raisim2Lib
-source ./raisim_env.sh
-.venv/bin/python raisimPy/examples/robots.py
-.venv/bin/python raisimPy/examples/heightMap.py
-.venv/bin/python raisimPy/examples/rayDemo2.py
-```
-
-Most examples expect a valid `rsc/activation.raisim` license file.
-
-## Features
-- Supports free camera movement
-- Allows the recording of screenshots and recordings
-- Contact and collision masks
-- Materials system to simulate different textures
-- Height maps to create different sytles of terrain
-- Ray Test to create collision checkers 
-
-## Troubleshooting
-- Ensure that all versions of dependencies fit the documentation. etc.(Visual Studio 2019, CMake verson > 3.10)
-- If run into problem with executing into the raisimUnity.x86_64 file, ensure that your graphics card driver is compatible with current graphics card. (Cannot use the default open-source graphics card driver nouveau)
-- Make sure to use raisimUnity natively and not on a docker.
-- If using Linux, install minizip, ffmpeg, and vulkan.
-- If drivers don't support vulkan, use raisimUnityOpengl instead of raisimUnisty. Found in raisimUnityOpengl directory.
-- Make sure to set environment variable to $LOCAL_INSTALL when installing raisim.
-
-## License
-
-You should get a valid license and an activation key from the [RaiSim Tech website](http://raisim.com) to use RaiSim.
-Post issues to this github repo for questions. 
-Send an email to info.raisim@gmail.com for any special inquiry.
-
-## Supported OS
-
-MAC (including m1), Linux, Windows.
+Open the installed documentation from the package, or visit the hosted RaiSim documentation for installation, activation, API, examples, and visualization workflows.

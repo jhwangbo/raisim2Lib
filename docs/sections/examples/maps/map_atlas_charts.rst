@@ -12,16 +12,15 @@ Screenshot
 
 Binary
 ======
-CMake target and executable name: ``map_atlas_charts``.
+Installed executable: ``map_atlas_charts``.
 
 Run
 ====
-Build and run from your build directory:
+Run the installed executable:
 
 .. code-block:: bash
 
-   cmake --build . --target map_atlas_charts
-   ./map_atlas_charts
+   <raisim-install>/bin/map_atlas_charts
 
 On Windows, run ``map_atlas_charts.exe`` instead.
 This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
@@ -33,7 +32,3 @@ Details
 - Applies external force/torque each frame to perturb the robot.
 - Demonstrates time-series and bar chart overlays (Unreal visualization).
 
-Source
-======
-.. literalinclude:: ../../../../examples/src/maps/map_atlas_charts.cpp
-   :language: cpp

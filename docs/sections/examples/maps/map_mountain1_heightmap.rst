@@ -12,16 +12,15 @@ Screenshot
 
 Binary
 ======
-CMake target and executable name: ``map_mountain1_heightmap``.
+Installed executable: ``map_mountain1_heightmap``.
 
 Run
 ====
-Build and run from your build directory:
+Run the installed executable:
 
 .. code-block:: bash
 
-   cmake --build . --target map_mountain1_heightmap
-   ./map_mountain1_heightmap
+   <raisim-install>/bin/map_mountain1_heightmap
 
 On Windows, run ``map_mountain1_heightmap.exe`` instead.
 This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
@@ -33,7 +32,3 @@ Details
 - Spawns Aliengo with PD posture control.
 - Sets the Unreal map to ``mountain1`` and focuses on the robot.
 
-Source
-======
-.. literalinclude:: ../../../../examples/src/maps/map_mountain1_heightmap.cpp
-   :language: cpp

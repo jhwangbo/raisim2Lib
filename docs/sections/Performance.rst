@@ -2,84 +2,186 @@
 Performance
 #############################
 
-RaiSim Custom Algorithm for Articulated Systems
-===============================================
+This page is a practical tuning guide for the current source tree. For commands
+that build and run benchmarks, see :doc:`BuildAndTest`.
 
-RaiSim v2.0.0 introduces a novel simulation scheme.
-Previous versions of RaiSim (as well as other simulators such as MuJoCo, according to their documentation) utilize the following computation scheme for the forward dynamics of articulated systems:
+Fast scenes usually come from three choices:
 
-+ Composite Rigid Body Algorithm (CRBA)
-+ Recursive Newton-Euler (RNE)
-+ Mass matrix inversion using Cholesky factorization
+* keep collision geometry simple and intentional;
+* avoid creating more contacts than the task needs;
+* measure with the benchmark runner on one thread before changing solver or
+  modeling choices.
 
-These algorithms are highly efficient for computing forward dynamics.
-However, a more efficient alternative exists: the Articulated Body Algorithm (ABA).
-ABA bypasses the explicit computation of the mass matrix, directly calculating the generalized acceleration.
-Consequently, it significantly outperforms the CRBA+RNE+Cholesky (CRC) combination.
+What Usually Costs Time
+=======================
 
-The computational complexity of the CRC method is O(n^3), where n represents the number of degrees of freedom.
-This implies that the computational cost scales cubically with the degrees of freedom.
-In contrast, the computational complexity of the ABA is O(n).
-Thus, the ABA offers superior efficiency compared to the CRC for high-degree-of-freedom systems.
+.. list-table::
+   :header-rows: 1
+   :widths: 24 38 38
 
-Nevertheless, the mass matrix and its inverse are critical for computing numerous contact-related properties required by contact solvers.
-This necessitates the use of the CRC combination in older versions of RaiSim and other simulators.
-Since standard ABA does not yield these properties, it was historically less applicable to rigid-body simulation with contacts.
+   * - Cost center
+     - What increases it
+     - What to do first
+   * - Broadphase collision detection
+     - Many active collision bodies, large worlds, or dense moving object sets.
+     - Use collision groups/masks and choose a broadphase that matches the scene.
+       See :doc:`WorldSystem` and :doc:`CollisionDetection`.
+   * - Narrowphase collision detection
+     - Expensive shape pairs, dense mesh contact, or geometry that creates many
+       candidate contacts.
+     - Use primitives, height maps, simplified convex collision assets, or cached
+       mesh preprocessing where possible. See :doc:`SingleBodyObjects`.
+   * - Contact properties
+     - Many articulated bodies touching many other bodies.
+     - Remove unnecessary collision shapes and split non-interacting objects with
+       collision masks.
+   * - Contact solver
+     - Stacks, pinched contacts, highly coupled contacts, or excessive contact
+       manifolds.
+     - Reduce redundant contacts before tuning solver iterations.
+   * - Sensors
+     - Large CPU depth images, many lidar rays, or high sensor update rates.
+     - Use in-process rayrai for RGB/depth sensor images when rayrai is
+       available. Lower CPU ray-query resolution/update rate only for headless
+       fallback or deterministic physics-ray workloads. See :doc:`Sensors`.
+   * - Visualization
+     - Rendering in the simulation process, high-quality PBR settings, or
+       synchronous screen capture.
+     - Use ``RaisimServer`` + ``rayrai_raisim_tcp_viewer`` for debugging, and
+       in-process rayrai only when the application needs rendered images. See
+       :doc:`Visualization`.
 
-RaiSim v2.0.0 is equipped with a family of novel algorithms that compute contact-related properties with O(n) complexity.
-These algorithms do not explicitly compute the mass matrix or its inverse (which contain n^2 elements and cannot be computed in O(n)).
-Instead, they calculate only the specific properties required by the RaiSim contact solver.
-Consequently, **RaiSim (>v1.1) computes the entire forward dynamics of an articulated system, including contact-related properties, with O(n) complexity.**
-The specifics of these algorithms and their computations are proprietary.
-No materials related to these algorithms have been published.
+Collision Modeling
+==================
 
+Collision geometry is often the largest performance lever. Visual meshes should
+not automatically become collision meshes. Prefer this order:
 
-Performance Factors
-==============================
+1. primitive shapes for robot links and simple objects;
+2. height maps for terrain;
+3. preprocessed convex collision assets for irregular objects;
+4. mesh collision only when the task really needs mesh-level contact.
 
-Rigid-body simulators typically comprise four major computational units:
+Use ``World::addMesh`` preprocessing and cache reuse when a mesh collision asset
+is needed repeatedly. For broadphase-heavy scenes, configure
+``contact::BroadphaseType::MultiBoxPrune`` with bounds and cell sizes that match
+the active world volume. For very small scenes or debugging, brute-force
+broadphase can be useful, but it should not be the default assumption for large
+worlds.
 
-1. Collision detection: O(n^2)
-2. Forward dynamics computation: O(n)
-3. Contact properties computation: O(nm)
-4. Contact solver: O(???)
+Contacts and Solver Work
+========================
 
-Here, n represents the degrees of freedom, and m represents the number of contact points.
+The contact solver cost depends on how coupled the contacts are. Ten isolated
+contacts are very different from ten contacts in a compressed stack. Before
+tuning solver parameters, check whether the model is generating contacts that do
+not matter for the task:
 
-In many robotic simulations, collision detection (**1**) consumes the majority of computational resources.
-It is recommended to model only essential collision bodies.
-Failure to do so negates the benefits of the optimized rigid-body simulation pipeline in **2**, **3**, and **4**.
+* remove decorative collision bodies;
+* simplify foot, gripper, and terrain collision geometry;
+* avoid overlapping collision shapes in one body unless they are intentional;
+* use collision groups and masks to skip pairs that should never interact;
+* keep timesteps and material parameters within the stability range required by
+  the task.
 
-In the absence of collisions, simulation time should scale roughly linearly with the degrees of freedom of the system.
-The following plot illustrates this scaling.
+``World::setContactSolverParam`` exposes solver parameters for advanced users,
+but it is usually a later step. Reducing redundant contacts tends to be more
+robust than asking the solver to process a harder problem faster.
 
-.. image:: ../image/chainSpeed.png
-  :alt: Chain simulation speed
-  :width: 400
+Sleeping Islands
+================
 
-As demonstrated above, a 60-DoF system can be simulated at 114 kHz.
+Sleeping is enabled by default. RaiSim can skip simulation work for dynamic
+islands whose velocities remain below the configured thresholds for a few steps.
+This helps scenes with piles, props, or objects that settle and then stay quiet.
 
-The model utilized in the aforementioned benchmark lacks collision bodies.
-For a large system such as the 60-DoF chain, collision detection would dominate the computation time.
-Therefore, minimizing the number of collision bodies is crucial.
+.. code-block:: cpp
 
-The new simulation scheme demonstrates superior average performance compared to the legacy scheme.
-However, unit **3** (contact properties computation) was faster in the legacy scheme because the pre-computed inverse mass matrix facilitated this step.
-Although our O(n) algorithm performs comparably to the legacy scheme even without the inverse mass matrix, a marginal difference remains.
-Consequently, the legacy scheme may exhibit higher performance in scenarios involving a large number of contact points.
+  world.setSleepingEnabled(true);
+  world.setSleepingParameters(/*linear*/ 0.002, /*angular*/ 0.01, /*quietSteps*/ 2);
+  world.wakeAll();
 
-For the ANYmal robot without collision, the new scheme executes at 318 kHz.
-This represents an improvement over the legacy version, which ran at 272 kHz.
+Disable sleeping when every object must remain numerically active every step, or
+when a benchmark is intended to measure the awake dynamics path. Use the
+``island_sleep`` benchmark to quantify the effect for stack-like scenes.
 
-All simulation benchmarks were conducted on a single core of an AMD Ryzen 3950X, which offers respectable but not industry-leading single-thread performance.
-Currently, the Apple M2 processor demonstrates the highest single-thread performance for RaiSim.
-The ANYmal simulation without contacts achieves 380 kHz on the M1 chip.
+Benchmark Workflow
+==================
 
-Linux and macOS are the preferred platforms for high-speed simulation applications.
-Performance on Windows may be reduced due to compilation with MSVC, which generally applies less aggressive optimization to mathematical operations compared to other compilers.
+Build benchmarks with ``RAISIM_BENCHMARK=ON`` and run timing on one thread:
 
-The computational cost of unit **4** (contact solver) becomes significant when there are more than 10 coupled contact points.
-Therefore, identifying and eliminating unnecessary contact points is important.
-The computational cost of **4** depends on the nature of the coupling.
-If contact points are uncoupled, the cost is O(n).
-However, if they are highly coupled, the problem becomes NP-hard, implying that the computational cost no longer follows a polynomial relationship.
+.. code-block:: bash
+
+  cmake -S . -B build-benchmark \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DRAISIM_BENCHMARK=ON \
+    -DRAISIM_TEST=OFF
+  cmake --build build-benchmark --target benchmarks -j12
+  ./build-benchmark/bin/benchmarks --repeat 3
+
+Representative benchmark IDs include:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Benchmark
+     - Use it for
+   * - ``world_integration``
+     - End-to-end stepping cost for a mixed world.
+   * - ``anymal_standing`` and ``anymal_falling``
+     - Articulated robot contact scenarios.
+   * - ``chain10_speed`` and ``chain20_speed``
+     - Articulated dynamics scaling with little collision work.
+   * - ``primitives`` and ``narrowphase``
+     - Primitive collision and narrowphase contact generation.
+   * - ``mesh_collider_speed`` and ``mesh_stack_plane``
+     - Mesh collision and mesh stack behavior.
+   * - ``heightmap_lidar`` and ``depth_camera``
+     - CPU fallback sensor workloads; prefer rayrai sensor rendering for
+       RGB/depth observations when renderer output is available.
+   * - ``granular_dense_contact`` and ``granular_heightmap``
+     - Granular contact workloads.
+   * - ``deformable_cloth`` and ``deformable_cube_stack``
+     - Deformable solver and contact workloads.
+   * - ``island_sleep``
+     - Sleeping-island speedup and wake behavior.
+
+Use benchmark-specific help to inspect options:
+
+.. code-block:: bash
+
+  ./build-benchmark/bin/benchmarks --bench world_integration -- --help
+
+For stable comparisons, run the same executable, compiler, build type, CPU
+governor, and benchmark arguments. Avoid comparing a visualized run against a
+headless run unless visualization is the measured workload.
+
+Threading and Determinism
+=========================
+
+RaiSim simulation performance should be measured on one simulation thread unless
+the experiment explicitly studies external parallelism. Running many worlds in
+parallel is an application-level design choice; it is different from changing the
+deterministic stepping behavior of one ``raisim::World``.
+
+For deterministic contact-solver iteration order, use
+``World::setContactSolverIterationOrder``. For reproducible benchmark numbers,
+also control random seeds in the benchmark or application, keep visualization
+disabled unless measured, and pin the same benchmark arguments.
+
+Algorithm Background
+====================
+
+RaiSim uses an articulated-system dynamics path designed to avoid forming and
+inverting a full mass matrix for ordinary forward dynamics. The practical effect
+is that articulated dynamics without heavy contact work scales much better with
+degrees of freedom than a pipeline that explicitly forms and factorizes the mass
+matrix every step.
+
+That does not make every simulation linear in model size. Collision detection,
+contact generation, solver coupling, deformable bodies, granular media, sensors,
+and rendering can dominate the wall time. Treat old headline kHz numbers as
+historical context, not as a guarantee for a current scene. The benchmark runner
+is the source of truth for the model, compiler, hardware, and build options in
+front of you.

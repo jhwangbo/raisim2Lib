@@ -12,16 +12,15 @@ Screenshot
 
 Binary
 ======
-CMake target and executable name: ``map_anymal_graphs``.
+Installed executable: ``map_anymal_graphs``.
 
 Run
 ====
-Build and run from your build directory:
+Run the installed executable:
 
 .. code-block:: bash
 
-   cmake --build . --target map_anymal_graphs
-   ./map_anymal_graphs
+   <raisim-install>/bin/map_anymal_graphs
 
 On Windows, run ``map_anymal_graphs.exe`` instead.
 This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
@@ -33,7 +32,3 @@ Details
 - Sets the Unreal map to ``wheat`` and hides the ground; focuses on anymalC.
 - Streams joint position/velocity/torque into three time-series graphs.
 
-Source
-======
-.. literalinclude:: ../../../../examples/src/maps/map_anymal_graphs.cpp
-   :language: cpp

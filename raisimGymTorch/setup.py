@@ -3,6 +3,7 @@ import sys
 import subprocess
 import platform
 import sysconfig
+import re
 
 from setuptools import Extension, find_packages
 from setuptools.command.build_ext import build_ext
@@ -12,6 +13,27 @@ __CMAKE_PREFIX_PATH__ = None
 __DEBUG__ = False
 __WITH_LIBTORCH__ = False
 __LIBTORCH_ROOT__ = None
+
+
+def read_raisim_version():
+    env_version = os.environ.get("RAISIM_VERSION")
+    if env_version:
+        return env_version
+
+    root_cmake = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "CMakeLists.txt"))
+    with open(root_cmake, "r", encoding="utf-8") as f:
+        contents = f.read()
+
+    for pattern in (
+        r"project\(\s*raisim\s+VERSION\s+([0-9]+\.[0-9]+\.[0-9]+)",
+        r"set\(\s*RAISIM_VERSION\s+([0-9]+\.[0-9]+\.[0-9]+)",
+    ):
+        match = re.search(pattern, contents)
+        if match:
+            return match.group(1)
+
+    raise RuntimeError(f"Could not parse RAISIM_VERSION from {root_cmake}")
+
 
 if "--CMAKE_PREFIX_PATH" in sys.argv:
     index = sys.argv.index('--CMAKE_PREFIX_PATH')
@@ -111,7 +133,7 @@ class CMakeBuild(build_ext):
 
 setup(
     name='raisim_gym_torch',
-    version='2.0.0',
+    version=read_raisim_version(),
     author='Jemin Hwangbo',
     license="proprietary",
     packages=find_packages(),

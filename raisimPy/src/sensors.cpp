@@ -58,7 +58,6 @@ void init_sensors(py::module_ &m) {
 
     py::enum_<raisim::Sensor::MeasurementSource>(m, "SensorMeasurementSource", py::is_arithmetic())
         .value("RAISIM", raisim::Sensor::MeasurementSource::RAISIM)
-        .value("VISUALIZER", raisim::Sensor::MeasurementSource::VISUALIZER)
         .value("MANUAL", raisim::Sensor::MeasurementSource::MANUAL);
 
     py::class_<raisim::Sensor>(m, "Sensor")

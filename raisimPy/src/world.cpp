@@ -328,7 +328,6 @@ void init_world(py::module_ &m) {
 
   py::class_<raisim::RaisimServer>(m, "RaisimServer")
       .def(py::init<raisim::World *>())
-      .def("setMap", &raisim::RaisimServer::setMap, py::arg("map"))
       .def("setupSocket", &raisim::RaisimServer::setupSocket, py::arg("port") = 8080)
       .def("acceptConnection", &raisim::RaisimServer::acceptConnection, py::arg("microseconds"))
       .def("closeConnection", &raisim::RaisimServer::closeConnection)

@@ -8,16 +8,15 @@ Loads the Kinova arm, applies joint PD gains and targets, and runs it on the sim
 
 Binary
 ======
-CMake target and executable name: ``map_kinova_arm``.
+Installed executable: ``map_kinova_arm``.
 
 Run
 ====
-Build and run from your build directory:
+Run the installed executable:
 
 .. code-block:: bash
 
-   cmake --build . --target map_kinova_arm
-   ./map_kinova_arm
+   <raisim-install>/bin/map_kinova_arm
 
 On Windows, run ``map_kinova_arm.exe`` instead.
 This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
@@ -29,7 +28,3 @@ Details
 - Uses the ``simple`` Unreal map for fast rendering.
 - Focuses the camera on the arm for a fixed-base articulation demo.
 
-Source
-======
-.. literalinclude:: ../../../../examples/src/maps/map_kinova_arm.cpp
-   :language: cpp

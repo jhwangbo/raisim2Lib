@@ -44,7 +44,8 @@ inline void warnIfNoClientConnected(const raisim::RaisimServer& server,
     std::cerr
       << "\n"
       << "[raisim] No visualizer is connected yet (127.0.0.1:" << port << ").\n"
-      << "        Start RaisimUnity / RaisimUnreal / rayrai_tcp_viewer and connect to the server.\n";
+      << "        Start RaisimUnity / RaisimUnreal / rayrai_tcp_viewer and connect to the server.\n"
+      << "        In rayrai_tcp_viewer, the left and selected-object panels can be minimized.\n";
 
     // Also show a concrete way to start a local viewer.
     printRayraiTcpViewerHint(port);

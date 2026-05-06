@@ -29,6 +29,7 @@ docs/.venv/*
 uv.lock
 .python-version
 .codex
+./agents/*
 
 # Downloaded raisim2Lib release payloads
 /raisim/
@@ -37,3 +38,4 @@ windows-x86-*/
 linux-x86-*/
 linux-arm64-*/
 raisim_coacd_*
+imgui.ini

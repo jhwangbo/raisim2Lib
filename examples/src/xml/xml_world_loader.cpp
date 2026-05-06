@@ -3,28 +3,29 @@
 
 #include "raisim/World.hpp"
 #include "raisim/RaisimServer.hpp"
+#include <iostream>
 #if WIN32
 #include <timeapi.h>
 #endif
 
-int main(int argc, char* argv[]) {
+int main(int, char* argv[]) {
   auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  raisim::World::setActivationKey(binaryPath.getDirectory() + "\\rsc\\activation.raisim");
+  raisim::World::setActivationKey(binaryPath.getDirectory() + "/rsc/activation.raisim");
 
-  RSFATAL_IF(argc != 2 || !strcmp("--help", argv[1]) || !strcmp("-h", argv[1]),
-      "Requires the full path to the XML file as the first argument.")
+  const std::string xmlScript = "";
 
-  std::string xmlPath = argv[1];
-  raisim::World world(xmlPath);
+  if (xmlScript.empty()) {
+    std::cout << "drop in the script in rsc/xmlScripts to simulate" << std::endl;
+    return 0;
+  }
+
+  raisim::World world(binaryPath.getDirectory() + "/rsc/xmlScripts/" + xmlScript);
   raisim::RaisimServer server(&world);
-  server.startRecordingVideo("heightMapUsingPng.mp4");
-
   server.launchServer();
   for (int i=0; i<10000000; i++) {
     RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
     server.integrateWorldThreadSafe();
   }
 
-  server.stopRecordingVideo();
   server.killServer();
 }

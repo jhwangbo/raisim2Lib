@@ -12,16 +12,15 @@ Screenshot
 
 Binary
 ======
-CMake target and executable name: ``map_office1_scene``.
+Installed executable: ``map_office1_scene``.
 
 Run
 ====
-Build and run from your build directory:
+Run the installed executable:
 
 .. code-block:: bash
 
-   cmake --build . --target map_office1_scene
-   ./map_office1_scene
+   <raisim-install>/bin/map_office1_scene
 
 On Windows, run ``map_office1_scene.exe`` instead.
 This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
@@ -33,7 +32,3 @@ Details
 - Spawns Aliengo with PD posture control on top of the scene.
 - Uses the ``office1`` map and focuses the camera on the robot.
 
-Source
-======
-.. literalinclude:: ../../../../examples/src/maps/map_office1_scene.cpp
-   :language: cpp

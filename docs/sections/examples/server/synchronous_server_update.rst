@@ -8,16 +8,15 @@ Runs the RaisimServer in a manual socket loop and updates sensors only when the 
 
 Binary
 ======
-CMake target and executable name: ``synchronous_server_update``.
+Installed executable: ``synchronous_server_update``.
 
 Run
 ====
-Build and run from your build directory:
+Run the installed executable:
 
 .. code-block:: bash
 
-   cmake --build . --target synchronous_server_update
-   ./synchronous_server_update
+   <raisim-install>/bin/synchronous_server_update
 
 On Windows, run ``synchronous_server_update.exe`` instead.
 This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
@@ -29,7 +28,3 @@ Details
 - Manually accepts a TCP connection and processes sensor update requests.
 - Uses VISUALIZER RGB/depth sensors with ``needsSensorUpdate()``.
 
-Source
-======
-.. literalinclude:: ../../../../examples/src/server/synchronous_server_update.cpp
-   :language: cpp

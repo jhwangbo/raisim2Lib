@@ -12,16 +12,15 @@ Screenshot
 
 Binary
 ======
-CMake target and executable name: ``map_hill1_heightmap``.
+Installed executable: ``map_hill1_heightmap``.
 
 Run
 ====
-Build and run from your build directory:
+Run the installed executable:
 
 .. code-block:: bash
 
-   cmake --build . --target map_hill1_heightmap
-   ./map_hill1_heightmap
+   <raisim-install>/bin/map_hill1_heightmap
 
 On Windows, run ``map_hill1_heightmap.exe`` instead.
 This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
@@ -33,7 +32,3 @@ Details
 - Drops Aliengo from height and holds posture with PD gains.
 - Sets the Unreal map to ``hill1`` and focuses the camera on the robot.
 
-Source
-======
-.. literalinclude:: ../../../../examples/src/maps/map_hill1_heightmap.cpp
-   :language: cpp
