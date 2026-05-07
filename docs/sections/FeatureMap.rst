@@ -105,15 +105,15 @@ Visualization and tools
      - Main API or target
      - Documentation
    * - View a ``RaisimServer`` application
-     - ``raisim::RaisimServer``, ``rayrai_raisim_tcp_viewer``
+     - ``raisim::RaisimServer``, ``rayrai_tcp_viewer``
      - :doc:`Visualization`, :doc:`RaisimServer`
    * - Render in process
      - ``raisin::RayraiWindow``
      - :doc:`Rayrai`, :doc:`Visualization`
    * - Inspect PBR, glTF, HDR, and OpenUSD assets
-     - ``example_polyhaven_blue_wall``,
-       ``example_rayrai_pbr_asset_inspector``,
-       ``example_rayrai_usd_importer``
+     - ``rayrai_pbr_material_grid``,
+       ``rayrai_pbr_texture_maps``,
+       ``rayrai_visual_asset_support``
      - :doc:`Examples`, :doc:`Rayrai`
    * - Generate offscreen renderer checks
      - ``rayrai_feature_showcase``

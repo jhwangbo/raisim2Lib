@@ -4,7 +4,7 @@ Project Layout
 
 The current RaiSim source tree is organized around one top-level CMake project.
 This page maps the directories users most often need while building examples,
-tests, benchmarks, and rayrai tools.
+``raisimPy``, documentation, and rayrai tools.
 
 Source Directories
 ==================
@@ -15,29 +15,23 @@ Source Directories
 
    * - Path
      - Purpose
-   * - ``include/raisim``
-     - Public RaiSim headers installed with the ``raisim`` CMake package.
-   * - ``src``
-     - RaiSim implementation sources.
-   * - ``test``
-     - CTest targets for core physics, objects, sensors, import/export, and
-       feature-specific behavior.
-   * - ``benchmark``
-     - Unified benchmark runner and individual benchmark implementations.
    * - ``examples``
-     - Current top-level example targets named ``example_*``.
-   * - ``visualizer/rayrai``
-     - rayrai renderer library, TCP viewer, rendering examples, benchmarks, and
-       renderer-focused tests.
-   * - ``res`` and ``rsc``
+     - Current C++ examples, including server examples and rayrai examples.
+   * - ``raisim``
+     - Installed RaiSim package prefix with headers, libraries, and CMake
+       package files.
+   * - ``rayrai``
+     - Installed rayrai package prefix with headers, libraries, tools, and
+       CMake package files.
+   * - ``raisimPy``
+     - Python wrapper sources built when ``RAISIM_PY=ON``.
+   * - ``rsc``
      - Runtime resources such as robot models, meshes, textures, USD/glTF
        assets, and example data.
-   * - ``prebuilt/openusd``
-     - OpenUSD runtime used by USD import support on supported platforms.
-   * - ``third_party``
+   * - ``thirdParty``
      - Bundled third-party libraries built as part of the source tree.
    * - ``cmake``
-     - CMake helpers and package config templates.
+     - CMake helper modules.
 
 Build Directories
 =================
@@ -51,26 +45,23 @@ clarity:
 
    * - Build directory
      - Typical use
-   * - ``build-release``
-     - Release examples and tests.
-   * - ``build-benchmark``
-     - Release benchmarks with ``RAISIM_BENCHMARK=ON``.
-   * - ``build-debug``
-     - Debug build for local debugging.
+   * - ``build``
+     - Default examples and optional ``raisimPy`` build.
+   * - ``build-examples``
+     - Examples-only build used in some docs.
    * - ``build-docs``
      - CMake-driven docs build that also generates Doxygen XML for Breathe.
 
-Source-tree executables are placed under ``<build-dir>/bin``. For example:
+Source-tree examples are placed under ``<build-dir>/examples``. For example:
 
 .. code-block:: bash
 
-    ./build-release/bin/example_anymal_contacts
-    ./build-release/bin/rayrai_raisim_tcp_viewer
-    ./build-benchmark/bin/benchmarks
+    source ./raisim_env.sh
+    ./build/examples/primitive_grid
+    ./build/examples/rayrai_tcp_viewer
 
-Some older generated docs and package layouts used paths such as
-``build/examples`` or ``build-examples/examples``. For the current source tree,
-prefer ``<build-dir>/bin`` unless a specific installed package says otherwise.
+Source ``raisim_env.sh`` before running built examples so both RaiSim and rayrai
+shared libraries are on the platform loader path.
 
 Installed Package Layout
 ========================

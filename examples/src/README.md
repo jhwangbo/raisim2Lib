@@ -5,18 +5,36 @@ Executable target names are intentionally stable even when source files move.
 
 ## Running examples
 
-Build from the `raisim2Lib` root:
+Build from the `raisim2Lib` root. Source `raisim_env.sh` first so the build and
+runtime environment can find both RaiSim and rayrai libraries:
 
 ```bash
+source ./raisim_env.sh
 cmake -S . -B build-examples \
   -DRAISIM_EXAMPLE=ON \
+  -DRAISIM_PY=ON \
   -DRAISIM_CHECK_FOR_UPDATES=OFF
 cmake --build build-examples -j
-cd build-examples/examples
 ```
 
-Most `server/*` examples publish to `raisim::RaisimServer`. Start
-`rayrai/bin/rayrai_raisim_tcp_viewer` in another terminal to visualize them.
+`RAISIM_EXAMPLE` is enabled by default. `RAISIM_PY` is disabled by default, so
+enable it when you also want to build `raisimPy`.
+
+Most `server/*` examples publish to `raisim::RaisimServer`. Start the built
+`rayrai_tcp_viewer` in one sourced terminal:
+
+```bash
+source ./raisim_env.sh
+./build-examples/examples/rayrai_tcp_viewer
+```
+
+Run the server example in another sourced terminal:
+
+```bash
+source ./raisim_env.sh
+./build-examples/examples/primitive_grid
+```
+
 Most `rayrai/*` examples create an in-process rayrai window and do not need the
 TCP viewer.
 

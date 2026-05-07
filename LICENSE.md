@@ -1,4 +1,4 @@
-You should obtain a valid license from raisim.com to use files in 'rasim' and 'doc' folder.
+You should obtain a valid license from raisim.com to use files in 'rasim', 'rayrai' and 'doc' folder.
 
 Along with the license, we send an activation key, which is a plain text file.
 Before using any raisim functionality, save the file in <$HOME>/.raisim.

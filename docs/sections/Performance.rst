@@ -47,7 +47,7 @@ What Usually Costs Time
    * - Visualization
      - Rendering in the simulation process, high-quality PBR settings, or
        synchronous screen capture.
-     - Use ``RaisimServer`` + ``rayrai_raisim_tcp_viewer`` for debugging, and
+     - Use ``RaisimServer`` + ``rayrai_tcp_viewer`` for debugging, and
        in-process rayrai only when the application needs rendered images. See
        :doc:`Visualization`.
 
