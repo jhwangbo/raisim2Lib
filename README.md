@@ -58,6 +58,7 @@ RaiSim is installed as a CMake package. Point `CMAKE_PREFIX_PATH` at the install
 
 ```bash
 cmake -S . -B build -DCMAKE_PREFIX_PATH=$RAISIM_LOCAL_INSTALL_ROOT/raisim
+cmake --build build -j
 ```
 
 Minimal downstream `CMakeLists.txt`:
