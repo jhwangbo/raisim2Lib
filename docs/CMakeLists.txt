@@ -141,8 +141,26 @@ add_custom_target(doxygen_output ALL
         MAIN_DEPENDENCY ${DOXYFILE_OUT} ${DOXYFILE_IN}
         COMMENT "Generating docs")
 
+# Optional: build and run small C++ programs that produce the rayrai
+# documentation images. Controlled by RAISIM_DOCS_BUILD_RAYRAI_IMAGES (ON by
+# default when rayrai and SDL2 are available). The image generators write
+# PNGs into docs/image/rayrai/ and the Sphinx target depends on them so a
+# `make Sphinx` rebuild refreshes the images first.
+option(RAISIM_DOCS_BUILD_RAYRAI_IMAGES
+    "Build and run the rayrai documentation image generators before Sphinx"
+    ON)
+
+set(_RAYRAI_DOC_IMAGE_DEPS "")
+if(RAISIM_DOCS_BUILD_RAYRAI_IMAGES AND
+   EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/image_generators/CMakeLists.txt")
+  add_subdirectory(image_generators)
+  if(DEFINED RAYRAI_DOC_IMAGE_TARGET AND TARGET ${RAYRAI_DOC_IMAGE_TARGET})
+    set(_RAYRAI_DOC_IMAGE_DEPS ${RAYRAI_DOC_IMAGE_TARGET})
+  endif()
+endif()
+
 add_custom_target(Sphinx ALL
-        DEPENDS ${RAISIM_PUBLIC_HEADERS} doxygen_output
+        DEPENDS ${RAISIM_PUBLIC_HEADERS} doxygen_output ${_RAYRAI_DOC_IMAGE_DEPS}
         COMMAND ${SPHINX_EXECUTABLE} -b html -E -a
         # Tell Breathe where to find the Doxygen output
         -Dbreathe_projects.raisim=${DOXYGEN_OUTPUT_DIR}/xml

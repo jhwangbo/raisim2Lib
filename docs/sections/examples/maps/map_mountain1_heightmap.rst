@@ -4,31 +4,26 @@ Map Example: Mountain1 Heightmap
 
 Overview
 ========
-Loads the mountain1 heightmap from the RaisimUnreal map assets and drops an Aliengo robot on it with PD control. It sets the RaisimServer map to "mountain1" so the visualizer matches the terrain.
+Loads the bundled mountain1 heightmap assets and drops an Aliengo robot on it with PD control. It sets the RaisimServer map name to ``mountain1`` so ``rayrai_raisim_tcp_viewer`` matches the terrain.
 
 Screenshot
 ==========
 .. image:: ../../../image/map_mountain1.png
 
-Binary
-======
-Installed executable: ``map_mountain1_heightmap``.
+Source Status
+=============
+Source file: ``examples/src/maps/map_mountain1_heightmap.cpp``.
 
-Run
-====
-Run the installed executable:
+This page is excluded from the published docs, and the current examples CMake
+file does not register this source as an installed executable. Treat it as a
+source reference unless you register it in a local examples build.
 
-.. code-block:: bash
-
-   <raisim-install>/bin/map_mountain1_heightmap
-
-On Windows, run ``map_mountain1_heightmap.exe`` instead.
-This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
-
+For visualization, use ``rayrai_raisim_tcp_viewer`` with RaisimServer-based
+applications.
 
 Details
 =======
 - Loads the mountain1 heightmap PNG with scale/offset and hidden mesh.
 - Spawns Aliengo with PD posture control.
-- Sets the Unreal map to ``mountain1`` and focuses on the robot.
+- Sets the server map name to ``mountain1`` and focuses on the robot.
 

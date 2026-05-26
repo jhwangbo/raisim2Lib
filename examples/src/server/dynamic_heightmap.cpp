@@ -34,12 +34,11 @@ int main(int argc, char *argv[]) {
                            uint8_t((std::sin(0.02f * float(i) + 0.09 * float(2*k+j)) * 0.5f + 0.5f)*255.f)};
       }
     }
-    server.lockVisualizationServerMutex();
-    hm->update(0., 0., 10., 10., height);
-    hm->setColor(colorMap);
-
-    world.integrate();
-    server.unlockVisualizationServerMutex();
+    // Update the heightmap inside the mutex; the viewer can still pause/step this loop.
+    server.integrateWorldThreadSafe([&]() {
+      hm->update(0., 0., 10., 10., height);
+      hm->setColor(colorMap);
+    });
   }
 
   server.killServer();

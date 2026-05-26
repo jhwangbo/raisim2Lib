@@ -164,6 +164,7 @@ endfunction()
 # server examples
 # Basics and object lifecycle.
 create_executable(primitive_grid src/server/basics/primitive_grid.cpp)
+create_executable(sphere_drop src/server/basics/sphere_drop.cpp)
 create_executable(mesh_stack src/server/basics/mesh_stack.cpp)
 create_executable(compound_object src/server/basics/compound_object.cpp)
 create_executable(dynamic_object_addition src/server/basics/dynamic_object_addition.cpp)
@@ -193,6 +194,7 @@ create_executable(dynamic_heightmap src/server/terrain/dynamic_heightmap.cpp)
 # Sensors.
 create_executable(ray_casting src/server/sensors/ray_casting.cpp)
 create_executable(ray_scan_lidar src/server/sensors/ray_scan_lidar.cpp)
+create_executable(sensor_suite src/server/sensor_suite.cpp)
 
 # Robots and control.
 create_executable(wheeled_robot_force_control src/server/robots/wheeled_robot_force_control.cpp)
@@ -209,6 +211,8 @@ create_executable(dzhanibekov_effect src/server/dynamics/dzhanibekov_effect.cpp)
 
 # Visualization.
 create_executable(visual_objects_showcase src/server/visualization/visual_objects_showcase.cpp)
+create_executable(synchronous_server_update src/server/synchronous_server_update.cpp)
+create_executable(sim_control_demo src/server/sim_control_demo.cpp)
 
 # Performance and optional deformables.
 create_executable(object_lifecycle_stress src/server/performance/object_lifecycle_stress.cpp)
@@ -244,6 +248,15 @@ create_executable_if_exists(anymal_pair src/worlds/anymal_pair.cpp)
 create_executable_if_exists(hill1_heightmap src/worlds/hill1_heightmap.cpp)
 create_executable_if_exists(kinova_arm src/worlds/kinova_arm.cpp)
 
+# RaisimUnreal map examples.
+create_executable_if_exists(map_mountain1_heightmap src/maps/map_mountain1_heightmap.cpp)
+create_executable_if_exists(map_office1_scene src/maps/map_office1_scene.cpp)
+create_executable_if_exists(map_lake1_heightmap src/maps/map_lake1_heightmap.cpp)
+create_executable_if_exists(map_atlas_charts src/maps/map_atlas_charts.cpp)
+create_executable_if_exists(map_anymal_graphs src/maps/map_anymal_graphs.cpp)
+create_executable_if_exists(map_hill1_heightmap src/maps/map_hill1_heightmap.cpp)
+create_executable_if_exists(map_kinova_arm src/maps/map_kinova_arm.cpp)
+
 # rayrai examples
 # Entry points.
 create_rayrai_executable(rayrai_basic_scene src/rayrai/getting_started/rayrai_basic_scene.cpp)
@@ -260,12 +273,20 @@ create_rayrai_executable(rayrai_custom_visuals src/rayrai/visuals/rayrai_custom_
 create_rayrai_executable(rayrai_instancing_grid src/rayrai/visuals/rayrai_instancing_grid.cpp)
 create_rayrai_executable(rayrai_pointcloud_animation src/rayrai/visuals/rayrai_pointcloud_animation.cpp)
 
+# Dynamics.
+raisim_header_has("raisim/World.hpp" "spinningFriction" _raisim_has_rolling_spinning_friction)
+if(_raisim_has_rolling_spinning_friction)
+    create_rayrai_executable(rayrai_rolling_spinning_friction src/rayrai/dynamics/rayrai_rolling_spinning_friction.cpp)
+else()
+    message(STATUS "Skipping rayrai_rolling_spinning_friction example: installed raisim package does not expose rolling/spinning friction material APIs")
+endif()
+
 # Materials and assets.
 create_rayrai_executable(rayrai_pbr_material_grid src/rayrai/materials/rayrai_pbr_material_grid.cpp)
 create_rayrai_executable(rayrai_pbr_texture_maps src/rayrai/materials/rayrai_pbr_texture_maps.cpp)
 rayrai_header_has("rayrai/Light.hpp" "SPOT" _rayrai_has_spot_lights)
-rayrai_header_has("rayrai/RayraiWindow.hpp" "fxaaEnabled" _rayrai_has_fxaa_quality)
-rayrai_header_has("rayrai/RayraiWindow.hpp" "depthOfFieldEnabled" _rayrai_has_quality_dof)
+rayrai_header_has("rayrai/RenderQuality.hpp" "fxaaEnabled" _rayrai_has_fxaa_quality)
+rayrai_header_has("rayrai/RenderQuality.hpp" "depthOfFieldEnabled" _rayrai_has_quality_dof)
 if(_rayrai_has_spot_lights AND _rayrai_has_fxaa_quality AND _rayrai_has_quality_dof)
     create_rayrai_executable(rayrai_quality_lighting src/rayrai/materials/rayrai_quality_lighting.cpp)
 else()

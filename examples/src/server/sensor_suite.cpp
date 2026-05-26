@@ -42,16 +42,16 @@ int main(int argc, char **argv) {
   anymal->setName("Anymal");
 
   auto depthSensor1 = anymal->getSensorSet("depth_camera_front_camera_parent")->getSensor<raisim::DepthCamera>("depth");
-  depthSensor1->setMeasurementSource(raisim::Sensor::MeasurementSource::VISUALIZER);
+  depthSensor1->setMeasurementSource(raisim::Sensor::MeasurementSource::MANUAL);
 //  depthSensor1->setMeasurementSource(raisim::Sensor::MeasurementSource::RAISIM); // uncomment this line if you want to update the sensor using Raisim (CPU)
 
   auto rgbCamera1 = anymal->getSensorSet("depth_camera_front_camera_parent")->getSensor<raisim::RGBCamera>("color");
-  rgbCamera1->setMeasurementSource(raisim::Sensor::MeasurementSource::VISUALIZER);
+  rgbCamera1->setMeasurementSource(raisim::Sensor::MeasurementSource::MANUAL);
 
   auto depthSensor2 = anymal->getSensorSet("depth_camera_rear_camera_parent")->getSensor<raisim::DepthCamera>("depth");
-  depthSensor2->setMeasurementSource(raisim::Sensor::MeasurementSource::VISUALIZER);
+  depthSensor2->setMeasurementSource(raisim::Sensor::MeasurementSource::MANUAL);
   auto rgbCamera2 = anymal->getSensorSet("depth_camera_rear_camera_parent")->getSensor<raisim::RGBCamera>("color");
-  rgbCamera2->setMeasurementSource(raisim::Sensor::MeasurementSource::VISUALIZER);
+  rgbCamera2->setMeasurementSource(raisim::Sensor::MeasurementSource::MANUAL);
   auto imu = anymal->getSensorSet("depth_camera_front_camera_parent")->getSensor<raisim::InertialMeasurementUnit>("imu");
   auto lidar = anymal->getSensorSet("lidar_link")->getSensor<raisim::SpinningLidar>("lidar");
 
@@ -62,7 +62,6 @@ int main(int argc, char **argv) {
 
   /// this method should be called before server launch
   auto scans = server.addPointCloud("spinning lidar");
-  RSWARN("Point cloud visualization is only available in RaisimUnreal");
   scans->pointSize = 0.003f;
   scans->resize(512*64);
   int scanCounter = 0;

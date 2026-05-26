@@ -5,13 +5,12 @@ Server Example: Dynamic Heightmap
 Overview
 ========
 Updates a heightmap height field and color map every frame to animate terrain.
-Use the rayrai TCP viewer for supported visualization. RaisimUnity and
-RaisimUnreal are no longer supported.
+Use ``rayrai_raisim_tcp_viewer`` for supported visualization.
 
 Screenshot
 ==========
-.. image:: ../../../image/dynamic_heightmap_unreal.png
-   :alt: dynamic_heightmap_unreal example
+.. image:: ../../../image/dynamic_heightmap.png
+   :alt: dynamic_heightmap example
    :width: 100%
 
 Binary
@@ -27,12 +26,12 @@ Run the installed executable:
    <raisim-install>/bin/dynamic_heightmap
 
 On Windows, run ``dynamic_heightmap.exe`` instead.
-This example uses RaisimServer. Start the rayrai TCP viewer and connect to port 8080. RaisimUnity and RaisimUnreal are no longer supported.
+This example uses RaisimServer. Start ``rayrai_raisim_tcp_viewer`` and connect to port 8080.
 
 
 Details
 =======
 - Creates a heightmap grid and updates heights and colors every frame.
 - Uses visualization mutex locking while updating the heightmap.
-- Intended for dynamic heightmap rendering in visualizers.
+- Intended for dynamic heightmap rendering in the supported rayrai TCP viewer.
 

@@ -10,25 +10,20 @@ Screenshot
 ==========
 .. image:: ../../../image/sensors_cpp.png
 
-Binary
-======
-Installed executable: ``sensor_suite``.
+Source Status
+=============
+Source file: ``examples/src/server/sensor_suite.cpp``.
 
-Run
-====
-Run the installed executable:
+This page is excluded from the published docs, and the current examples CMake
+file does not register this source as an installed executable. Treat it as a
+source reference unless you register it in a local examples build.
 
-.. code-block:: bash
-
-   <raisim-install>/bin/sensor_suite
-
-On Windows, run ``sensor_suite.exe`` instead.
-This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
-
+For visualization, use ``rayrai_raisim_tcp_viewer`` with RaisimServer-based
+applications.
 
 Details
 =======
 - Loads ANYmal with RGB, depth, IMU, and LiDAR sensors.
 - Uses VISUALIZER measurement source for cameras and converts depth to point clouds.
-- Visualizes LiDAR scans via a point cloud (Unreal-only).
+- Visualizes LiDAR scans through point-cloud data sent to the viewer.
 

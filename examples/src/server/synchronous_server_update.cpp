@@ -40,16 +40,16 @@ int main(int argc, char **argv) {
   anymal->setName("Anymal");
 
   auto front_depthSensor = anymal->getSensorSet("depth_camera_rear_camera_parent")->getSensor<raisim::DepthCamera>("depth");
-  front_depthSensor->setMeasurementSource(raisim::Sensor::MeasurementSource::VISUALIZER);
+  front_depthSensor->setMeasurementSource(raisim::Sensor::MeasurementSource::MANUAL);
 
   auto front_rgbCamera = anymal->getSensorSet("depth_camera_front_camera_parent")->getSensor<raisim::RGBCamera>("color");
-  front_rgbCamera->setMeasurementSource(raisim::Sensor::MeasurementSource::VISUALIZER);
+  front_rgbCamera->setMeasurementSource(raisim::Sensor::MeasurementSource::MANUAL);
 
   auto rear_depthSensor = anymal->getSensorSet("depth_camera_rear_camera_parent")->getSensor<raisim::DepthCamera>("depth");
-  rear_depthSensor->setMeasurementSource(raisim::Sensor::MeasurementSource::VISUALIZER);
+  rear_depthSensor->setMeasurementSource(raisim::Sensor::MeasurementSource::MANUAL);
 
   auto rear_rgbCamera = anymal->getSensorSet("depth_camera_rear_camera_parent")->getSensor<raisim::RGBCamera>("color");
-  rear_rgbCamera->setMeasurementSource(raisim::Sensor::MeasurementSource::VISUALIZER);
+  rear_rgbCamera->setMeasurementSource(raisim::Sensor::MeasurementSource::MANUAL);
 
   server.setupSocket();
   raisim_examples::warnIfNoClientConnected(server);

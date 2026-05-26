@@ -25,20 +25,22 @@ inline void printRayraiTcpViewerHint(int port = 8080) {
 inline void warnIfNoClientConnected(const raisim::RaisimServer& server,
                                     int port = 8080,
                                     double waitSeconds = 10.0) {
-  // Connection can legitimately happen late (e.g., the client is still loading assets).
-  // Don't block the simulation thread; warn once after a grace period if still disconnected.
+  // Connection can legitimately happen late or complete before this hint fires.
+  // Don't block the simulation thread; warn only if no client appears during the grace period.
   std::thread([&server, port, waitSeconds]() {
     using namespace std::chrono;
     const auto deadline = steady_clock::now() + duration_cast<steady_clock::duration>(
       duration<double>(waitSeconds));
 
+    bool connectedOnce = false;
     while (steady_clock::now() < deadline) {
-      if (server.isConnected())
+      connectedOnce = connectedOnce || server.isConnected();
+      if (connectedOnce)
         return;
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
-    if (server.isConnected())
+    if (connectedOnce || server.isConnected())
       return;
 
     std::cerr

@@ -10,21 +10,16 @@ Screenshot
 ==========
 .. image:: ../../../image/map_office1.png
 
-Binary
-======
-Installed executable: ``map_office1_scene``.
+Source Status
+=============
+Source file: ``examples/src/maps/map_office1_scene.cpp``.
 
-Run
-====
-Run the installed executable:
+This page is excluded from the published docs, and the current examples CMake
+file does not register this source as an installed executable. Treat it as a
+source reference unless you register it in a local examples build.
 
-.. code-block:: bash
-
-   <raisim-install>/bin/map_office1_scene
-
-On Windows, run ``map_office1_scene.exe`` instead.
-This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
-
+For visualization, use ``rayrai_raisim_tcp_viewer`` with RaisimServer-based
+applications.
 
 Details
 =======

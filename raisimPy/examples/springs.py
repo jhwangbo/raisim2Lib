@@ -1,22 +1,23 @@
 import os
-import numpy as np
 import raisimpy as raisim
 import time
 
 
+raisim.World.setLicenseFile(os.path.dirname(os.path.abspath(__file__)) + "/../../rsc/activation.raisim")
 world = raisim.World()
 world.setTimeStep(0.001)
 
-springed_cartpole_urdf_file = os.path.dirname(os.path.abspath(__file__)) + "/../../rsc/springDamper/cartpole.urdf"
+cartpole_urdf_file = os.path.dirname(os.path.abspath(__file__)) + "/../../rsc/springDamper/cartpole.urdf"
+chain_urdf_file = os.path.dirname(os.path.abspath(__file__)) + "/../../rsc/springDamper/chainSpringed.urdf"
+
 server = raisim.RaisimServer(world)
-ground = world.addGround()
+world.addGround()
 
-springed_cartpole = world.addArticulatedSystem(springed_cartpole_urdf_file)
-springed_cartpole.setName("springed_cartpole")
-springed_cartpole.getSprings()[1].q_ref = np.array([2., 0, 0, 0]) # overwrite the spring mount position
+rev_and_pris_spring_and_damper = world.addArticulatedSystem(cartpole_urdf_file)
+ball_spring_and_damper = world.addArticulatedSystem(chain_urdf_file)
 
-for spring in springed_cartpole.getSprings():
-    print(spring.q_ref)
+rev_and_pris_spring_and_damper.setName("rev_pris_joint")
+ball_spring_and_damper.setName("ball_joint")
 
 server.launchServer(8080)
 

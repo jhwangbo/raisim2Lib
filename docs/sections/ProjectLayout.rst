@@ -25,10 +25,16 @@ Source Directories
    * - ``benchmark``
      - Unified benchmark runner and individual benchmark implementations.
    * - ``examples``
-     - Current top-level example targets named ``example_*``.
+     - Source-tree examples, including compact current checkout targets named
+       ``example_*`` and package example sources under
+       ``../raisim2Lib/examples``.
    * - ``visualizer/rayrai``
      - rayrai renderer library, TCP viewer, rendering examples, benchmarks, and
        renderer-focused tests.
+   * - ``raisim_engine2``
+     - Source-tree world authoring layer for ``.rscene`` scenes, RaiSim
+       instantiation, optional rayrai editor/viewport support, and Engine 2
+       tests/benchmarks.
    * - ``res`` and ``rsc``
      - Runtime resources such as robot models, meshes, textures, USD/glTF
        assets, and example data.
@@ -60,17 +66,28 @@ clarity:
    * - ``build-docs``
      - CMake-driven docs build that also generates Doxygen XML for Breathe.
 
-Source-tree executables are placed under ``<build-dir>/bin``. For example:
+On Linux and macOS, source-tree executables remain in the CMake subdirectory
+that defines them. For example:
 
 .. code-block:: bash
 
-    ./build-release/bin/example_anymal_contacts
-    ./build-release/bin/rayrai_raisim_tcp_viewer
-    ./build-benchmark/bin/benchmarks
+    ./build-release/examples/example_anymal_contacts
+    ./build-release/rayrai/rayrai_raisim_tcp_viewer
+    ./build-release/raisim_engine2/raisim_engine2
+    ./build-benchmark/benchmark/benchmarks
+
+On Windows, CMake places runtime executables under ``<build-dir>/bin``.
+
+The package example tree documented under :doc:`Examples` can contain grouped
+source directories such as ``src/server``, ``src/rayrai``, ``src/worlds``, and
+``src/xml`` even when the compact source checkout keeps only a subset of those
+examples. Target names, not source directory names, are the stable user-facing
+interface.
 
 Some older generated docs and package layouts used paths such as
 ``build/examples`` or ``build-examples/examples``. For the current source tree,
-prefer ``<build-dir>/bin`` unless a specific installed package says otherwise.
+prefer the target's build subdirectory on Linux/macOS or ``<build-dir>/bin`` on
+Windows unless a specific installed package says otherwise.
 
 Installed Package Layout
 ========================
@@ -105,6 +122,9 @@ Where To Add New Things
    * - New rayrai renderer feature
      - ``visualizer/rayrai`` with showcase/check image coverage when visual
        output changes.
+   * - New Engine 2 authoring feature
+     - ``raisim_engine2`` with scene serialization, validation, bridge tests,
+       and benchmarks when authoring or instantiation behavior changes.
    * - New docs page
      - ``docs/sections`` and the relevant ``toctree`` in ``index.rst`` or a
        section index page.

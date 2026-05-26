@@ -3,6 +3,19 @@ No one except the developers of RaiSim (approved by Jemin Hwangbo) should get an
 
 RaiSim might be bundled with the following open source libraries
 
+*********************************************************************
+RayRai TCP Viewer icons
+
+The RayRai TCP Viewer embeds PNG icons generated from the Flaticon UIcons
+solid rounded icon font from @flaticon/flaticon-uicons 3.3.1 by Freepik
+Company:
+
+https://www.flaticon.com/uicons
+https://github.com/flaticon/flaticon-uicons
+
+The generated PNG assets are stored in examples/src/rayrai/assets/flaticon/tcp_viewer
+with the per-asset notice reproduced in examples/src/rayrai/assets/flaticon/tcp_viewer/NOTICE.md.
+
 The heightmap uses perlin noise generator by Ryo Suzuki. The repo is
 https://github.com/Reputeless/PerlinNoise
 

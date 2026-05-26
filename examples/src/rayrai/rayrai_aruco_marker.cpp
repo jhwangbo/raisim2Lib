@@ -2,8 +2,6 @@
 #include <iostream>
 #include <string>
 
-#include <Eigen/Core>
-
 #include "rayrai/example_common.hpp"
 #include "rayrai/Camera.hpp"
 #include "rayrai_example_resources.hpp"
@@ -56,8 +54,8 @@ int main(int argc, char* argv[]) {
   auto frame = viewer->addCoordinateFrame("origin");
   if (frame) {
     raisin::CoordinateFrame::Pose pose;
-    pose.position = Eigen::Vector3d(0.0, 0.0, 1.0);
-    pose.quaternion = Eigen::Vector4d(1.0, 0.0, 0.0, 0.0); // w,x,y,z
+    pose.position = glm::vec3(0.0f, 0.0f, 1.0f);
+    pose.quaternion = glm::quat(1.0f, 0.0f, 0.0f, 0.0f); // w,x,y,z
     frame->poses.push_back(pose);
     frame->frameSize = 0.25;
   }

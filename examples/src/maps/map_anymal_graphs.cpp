@@ -48,7 +48,6 @@ int main(int argc, char* argv[]) {
 
   /// launch raisim server
   raisim::RaisimServer server(&world);
-  server.setMap("wheat");
   server.launchServer();
   server.focusOn(anymalC);
 

@@ -10,25 +10,20 @@ Screenshot
 ==========
 .. image:: ../../../image/map_anymal_graphs.png
 
-Binary
-======
-Installed executable: ``map_anymal_graphs``.
+Source Status
+=============
+Source file: ``examples/src/maps/map_anymal_graphs.cpp``.
 
-Run
-====
-Run the installed executable:
+This page is excluded from the published docs, and the current examples CMake
+file does not register this source as an installed executable. Treat it as a
+source reference unless you register it in a local examples build.
 
-.. code-block:: bash
-
-   <raisim-install>/bin/map_anymal_graphs
-
-On Windows, run ``map_anymal_graphs.exe`` instead.
-This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
-
+For visualization, use ``rayrai_raisim_tcp_viewer`` with RaisimServer-based
+applications.
 
 Details
 =======
 - Loads ANYmal B and C URDFs and applies PD targets for all leg joints.
-- Sets the Unreal map to ``wheat`` and hides the ground; focuses on anymalC.
+- Sets the server map name to ``wheat`` and hides the ground; focuses on anymalC.
 - Streams joint position/velocity/torque into three time-series graphs.
 

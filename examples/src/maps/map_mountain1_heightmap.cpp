@@ -37,7 +37,6 @@ int main(int argc, char* argv[]) {
 
   /// launch raisim server
   raisim::RaisimServer server(&world);
-  server.setMap("mountain1");
   server.focusOn(aliengo);
   server.launchServer();
 

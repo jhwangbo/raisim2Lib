@@ -49,21 +49,26 @@ void init_materials(py::module_ &m) {
              "    threshold (float): restitution threshold.",
              py::arg("friction"), py::arg("restitution"), py::arg("restitution_threshold"))
 
-        .def(py::init<double, double, double, double, double>(),
+        .def(py::init<double, double, double, double, double, double, double>(),
         "Initialize the material pair properties.\n\n"
         "Args:\n"
         "    friction (float): coefficient of friction.\n"
         "    restitution (float): coefficient of restitution.\n"
         "    threshold (float): restitution threshold.\n"
         "    static_friction (float): coefficient of static friction.\n"
-        "    static_friction_velocity_threshold (float): If the relative velocity of two contact points is bigger than this value, then the dynamic coefficient of friction is applied. Otherwise, the coefficient of friction is interpolated between the static and dynamic one proportional to the relative velocity.\n",
-        py::arg("friction"), py::arg("restitution"), py::arg("restitution_threshold"), py::arg("static_friction"), py::arg("static_friction_velocity_threshold"))
+        "    static_friction_velocity_threshold (float): If the relative velocity of two contact points is bigger than this value, then the dynamic coefficient of friction is applied. Otherwise, the coefficient of friction is interpolated between the static and dynamic one proportional to the relative velocity.\n"
+        "    rolling_friction (float): coefficient of rolling friction. Defaults to 0.0.\n"
+        "    spinning_friction (float): coefficient of spinning friction. Defaults to 0.0.\n",
+        py::arg("friction"), py::arg("restitution"), py::arg("restitution_threshold"), py::arg("static_friction"), py::arg("static_friction_velocity_threshold"),
+        py::arg("rolling_friction") = 0.0, py::arg("spinning_friction") = 0.0)
         .def_rw("c_f", &raisim::MaterialPairProperties::c_f)
         .def_rw("c_r", &raisim::MaterialPairProperties::c_r)
         .def_rw("r_th", &raisim::MaterialPairProperties::r_th)
         .def_rw("c_static_f", &raisim::MaterialPairProperties::c_static_f)
         .def_rw("v_static_speed", &raisim::MaterialPairProperties::v_static_speed)
-        .def_rw("v_static_speed_inv", &raisim::MaterialPairProperties::v_static_speed_inv);
+        .def_rw("v_static_speed_inv", &raisim::MaterialPairProperties::v_static_speed_inv)
+        .def_rw("c_rolling_f", &raisim::MaterialPairProperties::c_rolling_f)
+        .def_rw("c_spinning_f", &raisim::MaterialPairProperties::c_spinning_f);
 
     /*******************/
     /* MaterialManager */
@@ -127,8 +132,11 @@ void init_materials(py::module_ &m) {
             threshold (float): restitution threshold.
             static friction (float): coefficient of static friction.
             static friction velocity threshold (float): If the relative velocity of two contact points is bigger than this value, then the dynamic coefficient of friction is applied. Otherwise, the coefficient of friction is interpolated between the static and dynamic one proportional to the relative velocity.
+            rolling friction (float): coefficient of rolling friction. Defaults to 0.0.
+            spinning friction (float): coefficient of spinning friction. Defaults to 0.0.
         )mydelimiter",
-        py::arg("friction"), py::arg("restitution"), py::arg("restitution_threshold"), py::arg("static_friction"), py::arg("static_friction_velocity_threshold"))
+        py::arg("friction"), py::arg("restitution"), py::arg("restitution_threshold"), py::arg("static_friction"), py::arg("static_friction_velocity_threshold"),
+        py::arg("rolling_friction") = 0.0, py::arg("spinning_friction") = 0.0)
         .def("getMaterialPairProp",
              py::overload_cast<unsigned int, unsigned int>(&raisim::MaterialManager::getMaterialPairProp, py::const_),
              py::arg("material1"), py::arg("material2"))
