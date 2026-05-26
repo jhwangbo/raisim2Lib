@@ -14,6 +14,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <random>
@@ -356,14 +357,15 @@ int main(int argc, char* argv[]) {
   cubeBuild.internalStruts.radius = 2.05 * cubeParticleSpacing;
 
   std::vector<std::string> cubeObjFiles;
-  const std::string cubeObjPrefix =
-      std::string("/tmp/raisim_deformable_cube_stack_example_") +
-      std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "_";
+  const std::filesystem::path cubeObjPrefix =
+      std::filesystem::temp_directory_path() /
+      ("raisim_deformable_cube_stack_example_" +
+       std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "_");
   size_t totalCubeParticles = 0;
   size_t totalCubeTriangles = 0;
   for (int i = 0; i < cubeCount; ++i) {
     const CubeStackPose pose = cubeStackPose(i, cubeSize, cubeCollisionRadius);
-    const std::string cubeObj = cubeObjPrefix + std::to_string(i) + ".obj";
+    const std::string cubeObj = (cubeObjPrefix.string() + std::to_string(i) + ".obj");
     std::vector<raisim::Vec<3>> cubeVertices;
     std::vector<raisim::DeformableObject::Triangle> cubeTriangles;
     makeCubeSurface(cubeResolution, cubeSize, {0.0, 0.0, 0.0}, pose.roll, pose.pitch, pose.yaw,

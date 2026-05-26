@@ -146,18 +146,18 @@ Sphinx:
 
 .. code-block:: bash
 
-    cmake -S /path/to/raisim2Lib/docs -B /path/to/raisim2Lib/build-docs \
-      -DRAISIM_DOCS_RAISIM_INCLUDE_DIR=/path/to/raisim/include/raisim \
-      -DRAISIM_DOCS_RAYRAI_INCLUDE_DIR=/path/to/raisim/visualizer/rayrai/include/rayrai
-    cmake --build /path/to/raisim2Lib/build-docs -j12
+    cmake -S $HOME/raisim2Lib/docs -B $HOME/raisim2Lib/build-docs \
+      -DRAISIM_DOCS_RAISIM_INCLUDE_DIR=$HOME/raisim2Lib/raisim/include/raisim \
+      -DRAISIM_DOCS_RAYRAI_INCLUDE_DIR=$HOME/raisim2Lib/rayrai/include/rayrai
+    cmake --build $HOME/raisim2Lib/build-docs -j12
 
 For prose and link checks, the documentation can also be built directly with
 Sphinx:
 
 .. code-block:: bash
 
-    /path/to/raisim2Lib/docs/.venv/bin/sphinx-build \
-      -b html /path/to/raisim2Lib/docs /path/to/raisim2Lib/docs/_build/html
+    $HOME/raisim2Lib/docs/.venv/bin/sphinx-build \
+      -b html $HOME/raisim2Lib/docs $HOME/raisim2Lib/docs/_build/html
 
 Direct Sphinx builds do not generate Doxygen XML by themselves. They are useful
 for quick RST validation, but Breathe API directives will warn unless
