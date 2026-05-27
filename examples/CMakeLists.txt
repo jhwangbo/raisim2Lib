@@ -248,15 +248,6 @@ create_executable_if_exists(anymal_pair src/worlds/anymal_pair.cpp)
 create_executable_if_exists(hill1_heightmap src/worlds/hill1_heightmap.cpp)
 create_executable_if_exists(kinova_arm src/worlds/kinova_arm.cpp)
 
-# RaisimUnreal map examples.
-create_executable_if_exists(map_mountain1_heightmap src/maps/map_mountain1_heightmap.cpp)
-create_executable_if_exists(map_office1_scene src/maps/map_office1_scene.cpp)
-create_executable_if_exists(map_lake1_heightmap src/maps/map_lake1_heightmap.cpp)
-create_executable_if_exists(map_atlas_charts src/maps/map_atlas_charts.cpp)
-create_executable_if_exists(map_anymal_graphs src/maps/map_anymal_graphs.cpp)
-create_executable_if_exists(map_hill1_heightmap src/maps/map_hill1_heightmap.cpp)
-create_executable_if_exists(map_kinova_arm src/maps/map_kinova_arm.cpp)
-
 # rayrai examples
 # Entry points.
 create_rayrai_executable(rayrai_basic_scene src/rayrai/getting_started/rayrai_basic_scene.cpp)

@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
   world.setTimeStep(0.001);
 
   /// create objects
-  auto heightmap = world.addHeightMap(binaryPath.getDirectory() + "\\rsc\\raisimUnrealMaps\\hill1.png",
+  auto heightmap = world.addHeightMap(binaryPath.getDirectory() + "\\rsc\\maps\\hill1.png",
                                       0, 0, 504, 504, 38.0/(37312-32482), -32650 * 38.0/(37312-32482));
   heightmap->setAppearance("soil1");
   auto aliengo = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\aliengo\\aliengo.urdf");

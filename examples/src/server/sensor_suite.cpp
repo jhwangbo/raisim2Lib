@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
       posFromRaisim = pointsFromRaisim[0];
     }
 
-    dummySphere1->setPosition(posFromRaisim.e()); // this doesn't work if the update is done by Raisim Unreal
+    dummySphere1->setPosition(posFromRaisim.e());
     dummySphere2->setPosition(pointCloudFromConversion[400].e());
 
     {
