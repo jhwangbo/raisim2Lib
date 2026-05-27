@@ -4095,7 +4095,7 @@ int main(int argc, char* argv[]) {
   const float fontRasterizerDensity = readEnvFloatClamped(
     "RAYRAI_TCP_VIEWER_FONT_DENSITY", kDefaultFontRasterizerDensity, 1.0f, 3.0f);
 
-  SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "permonitorv2");
+  SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");
   SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
   std::signal(SIGINT, handleSignalQuit);
 #if defined(SIGTERM)
@@ -4119,6 +4119,9 @@ int main(int argc, char* argv[]) {
     std::cerr << "FATAL ERROR: Failed to create SDL window: " << SDL_GetError() << "\n";
     SDL_Quit();
     return -1;
+  }
+  if (!options.fullscreen) {
+    SDL_SetWindowBordered(window, SDL_TRUE);
   }
 
   SDL_GLContext context = SDL_GL_CreateContext(window);

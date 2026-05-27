@@ -10,7 +10,7 @@ int main(int argc, char* argv[]) {
   raisim::World::setActivationKey(binaryPath.getDirectory() + "\\rsc\\activation.raisim");
 
   /// create raisim world
-  raisim::World world(binaryPath.getDirectory() + "\\rsc\\raisimUnrealMaps\\office1.xml");
+  raisim::World world(binaryPath.getDirectory() + "\\rsc\\maps\\office1.xml");
   world.setTimeStep(0.001);
 
 
