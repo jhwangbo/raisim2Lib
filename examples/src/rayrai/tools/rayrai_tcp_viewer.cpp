@@ -53,6 +53,7 @@
 #include "rayrai/OpenGLMesh.hpp"
 #include "rayrai/CoordinateFrame.hpp"
 #include "rayrai/RaisimTcpCommon.hpp"
+#include "rayrai/sdl_hints.hpp"
 #include "rayrai/raisin_imgui_style.h"
 #include "raisim/configure.hpp"
 #include "raisim/sensors/Sensors.hpp"
@@ -4642,7 +4643,7 @@ int main(int argc, char* argv[]) {
   const float fontRasterizerDensity = readEnvFloatClamped(
     "RAYRAI_TCP_VIEWER_FONT_DENSITY", kDefaultFontRasterizerDensity, 1.0f, 3.0f);
 
-  SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");
+  raisin::rayrai::sdl::setWindowsDpiAwarenessHint();
   SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
   std::signal(SIGINT, handleSignalQuit);
 #if defined(SIGTERM)

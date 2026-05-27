@@ -33,6 +33,8 @@ set(RAISIM_DOC_IMAGE_OUTPUT_DIR
     "${CMAKE_CURRENT_SOURCE_DIR}/../image/rayrai"
     CACHE PATH "Directory where doc image generators write PNGs")
 file(MAKE_DIRECTORY "${RAISIM_DOC_IMAGE_OUTPUT_DIR}")
+get_filename_component(RAISIM_DOC_IMAGE_OUTPUT_DIR
+    "${RAISIM_DOC_IMAGE_OUTPUT_DIR}" REALPATH)
 
 # stb_image_write.h ships in the rayrai install tree under
 # <rayrai_prefix>/include/stb. The rayrai CONFIG target already exposes that
@@ -56,6 +58,7 @@ set(_doc_image_generators
 
 set(_doc_image_outputs "")
 set(_doc_image_targets "")
+set(_doc_image_runner "${CMAKE_CURRENT_SOURCE_DIR}/run_doc_image_generator.cmake")
 
 # Collect the rayrai and raisim install lib directories so we can put them on
 # LD_LIBRARY_PATH / DYLD_LIBRARY_PATH / PATH when invoking the generator
@@ -144,24 +147,29 @@ foreach(_gen IN LISTS _doc_image_generators)
   # under `make -jN` — concurrent SDL/GL initialization on the same display
   # is racy.
   set(_stamp "${CMAKE_CURRENT_BINARY_DIR}/${_gen}.stamp")
-  set(_doc_image_generator_env
-      "${_doc_image_runtime_env_var}=${_doc_image_lib_dirs_str}$<$<BOOL:$ENV{${_doc_image_runtime_env_var}}>:${_doc_image_path_sep}$ENV{${_doc_image_runtime_env_var}}>")
   set(_doc_image_prepare_command "")
+  set(_doc_image_rolling_frames_dir_arg "")
   if(_gen STREQUAL "doc_image_rolling_friction")
-    list(APPEND _doc_image_generator_env
-        "RAISIM_DOC_ROLLING_FRICTION_FRAMES_DIR=${_rolling_frames_dir}")
+    set(_doc_image_rolling_frames_dir_arg "${_rolling_frames_dir}")
     set(_doc_image_prepare_command
         COMMAND ${CMAKE_COMMAND} -E rm -rf "${_rolling_frames_dir}")
   endif()
   add_custom_command(
       OUTPUT "${_stamp}"
       ${_doc_image_prepare_command}
-      COMMAND ${CMAKE_COMMAND} -E env
-              ${_doc_image_generator_env}
-              $<TARGET_FILE:${_gen}> "${RAISIM_DOC_IMAGE_OUTPUT_DIR}"
+      COMMAND ${CMAKE_COMMAND}
+              -D "DOC_IMAGE_NAME=${_gen}"
+              -D "DOC_IMAGE_EXECUTABLE=$<TARGET_FILE:${_gen}>"
+              -D "DOC_IMAGE_OUTPUT_DIR=${RAISIM_DOC_IMAGE_OUTPUT_DIR}"
+              -D "DOC_IMAGE_RUNTIME_ENV_VAR=${_doc_image_runtime_env_var}"
+              -D "DOC_IMAGE_RUNTIME_ENV_VALUE=${_doc_image_lib_dirs_str}"
+              -D "DOC_IMAGE_ROLLING_FRAMES_DIR=${_doc_image_rolling_frames_dir_arg}"
+              -D "DOC_IMAGE_ATTEMPTS=3"
+              -P "${_doc_image_runner}"
       COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
       DEPENDS ${_gen} "${CMAKE_CURRENT_SOURCE_DIR}/${_gen}.cpp"
               "${CMAKE_CURRENT_SOURCE_DIR}/doc_image_common.hpp"
+              "${_doc_image_runner}"
               ${_previous_stamp}
       WORKING_DIRECTORY "${RAISIM_DOC_IMAGE_OUTPUT_DIR}"
       COMMENT "Generating rayrai doc images: ${_gen}"
