@@ -44,22 +44,22 @@ Render-quality controls
 =======================
 rayrai keeps RL throughput and visual fidelity separate. The ``Fast`` preset keeps
 reflections, high-fidelity PBR, FXAA, and extra expensive viewer effects off by default.
-``High`` and ``Ultra`` enable the quality-oriented path, including high-fidelity PBR,
-reflective ground, planar reflection sampling, stronger shadow filtering, FXAA, and
-depth-of-field postprocessing.
+``Balanced`` now uses the PBR + IBL path and a reflective checker ground, but
+still leaves the heavier High/Ultra effects off. ``High`` and ``Ultra`` enable
+the quality-oriented path, including stronger shadow filtering, FXAA,
+additional screen-space effects, and depth-of-field postprocessing.
 
-Every preset is tuned so directional shadows are clearly visible out of the
-box (low ``mainLightAmbient``, bright ``mainLightDiffuse``, high
-``shadowStrength``, single tight directional cascade). You should not need
-to tweak ambient/diffuse/shadow values to get a readable shadow under
-default lighting; raise ``mainLightAmbient`` only when you want a flatter
-indoor or overcast look.
+Every preset is tuned so directional shadows are readable out of the box while
+smooth and metallic materials still receive enough sky/IBL fill. Balanced and
+High use brighter ambient/environment defaults than older releases; Ultra keeps
+a lower direct ambient with stronger IBL and AgX tone mapping. You should not
+need to tweak ambient/diffuse/shadow values for a readable outdoor scene.
 
-The reflective ground is on by default for ``High`` and ``Ultra``
-(``reflectiveGround = true`` plus ``highFidelityPbr = true``) and off for
-``Fast`` / ``Balanced``. The ``Fast`` and ``Balanced`` images below show a
-matte checker floor; ``High`` and ``Ultra`` show the same checker plus
-sky/wall/prop reflections off the floor.
+The reflective checker ground is on by default for ``Balanced``, ``High``, and
+``Ultra`` (``reflectiveGround = true`` plus the PBR path) and off for ``Fast``.
+Heightmap terrain is intentionally excluded from the planar reflective-ground
+policy; it uses a rough, non-reflective PBR terrain material even when
+``reflectiveGround`` is enabled.
 
 Use presets for common cases:
 

@@ -21,7 +21,8 @@ see :doc:`RaisimServer`.
 
    The viewer connected to the ``primitive_grid`` example. The same rayrai
    PBR pipeline is used as the in-process ``RayraiWindow``: procedural sky,
-   directional shadows, reflective ground for the High and Ultra presets.
+   directional shadows, and the reflective checker ground used by the
+   Balanced, High, and Ultra presets.
 
 .. contents::
    :local:
@@ -57,9 +58,19 @@ Command-line options
    * - ``--auto-connect`` / ``--no-auto-connect``
      - Whether to dial the server on launch. Also controlled by env var
        ``RAYRAI_TCP_VIEWER_AUTO_CONNECT``.
+   * - ``--no-pre-warm``
+     - Skip the targeted shader prewarm pass. Startup is shorter, but the
+       first content frame may pay shader compile cost.
+   * - ``--warm-at-startup``
+     - Also run the heavier renderer content-frame warmup at startup. This is
+       intended for demos or drag/drop inspection where the first loaded model
+       should appear immediately.
    * - ``--minimize-panels``
      - Start with both side panels collapsed (full-screen scene). Also via
        ``RAYRAI_TCP_VIEWER_MINIMIZE_PANELS``.
+   * - ``--keep-overlay-open``
+     - Disable auto-collapse of the left overlay. Useful for documentation
+       screenshots and recorded demos.
    * - ``--auto-frame``
      - Automatically frame the scene after the first state update.
    * - ``--screenshot PATH``
@@ -68,12 +79,26 @@ Command-line options
      - Directory used by the F12 hotkey and PNG sequence recording.
    * - ``--record-session PATH.rrtcs``
      - Record the raw TCP stream to a session file for later replay.
+   * - ``--update-rate HZ``
+     - Target TCP scene-update request rate. Values are clamped to the
+       supported 15-120 Hz range; the default is 60 Hz.
    * - ``--replay-session PATH.rrtcs``
      - Replay a recorded session instead of opening a TCP connection.
    * - ``--replay-speed N``
      - Playback rate multiplier (1.0 = real time).
+   * - ``--replay-loop``
+     - Loop the recorded session when replay reaches the end.
    * - ``--export-scene PATH.json``
      - Dump the parsed scene graph as JSON and exit.
+   * - ``--trajectory-csv PATH``
+     - Log object poses to CSV while updates arrive.
+   * - ``--server-list PATH``
+     - Load additional ``host:port`` endpoints from a text file.
+   * - ``--wait-for-server SECONDS``
+     - In batch runs, exit if the initial connection does not succeed within
+       this wall-clock limit.
+   * - ``--exit-after SECONDS``
+     - Exit after the given wall-clock duration.
 
 UI layout
 =========
@@ -85,7 +110,7 @@ UI layout
    ``sim_control_demo``. The right side of the window is the rayrai-rendered
    scene; the overlay floats above it with translucent background so the
    scene stays visible. The overlay auto-collapses to a small icon after
-   5 s without hover — pass ``--keep-overlay-open`` to disable that
+   3.5 s without hover — pass ``--keep-overlay-open`` to disable that
    behaviour for screenshots or demos.
 
 The viewer overlay has two compact panels:
@@ -93,9 +118,10 @@ The viewer overlay has two compact panels:
 * **Left panel** — tabbed UI: **Control / Options / Render / Objects /
   Diagnostics**. This is where every TCP-client setting lives.
 * **Right panel — Selected object inspector**. Appears when you click an
-  object in the scene or in the **Objects** tab. Shows pose, body type,
-  per-joint angles for articulated systems, and a per-object collision-shape
-  toggle.
+  object in the scene or in the **Objects** tab. Shows read-only pose, body
+  type, mesh/resource metadata, estimated velocity, and per-joint angles for
+  articulated systems. Editing controls live in the **Control** tab's
+  selected-control section.
 
 Both panels are independently collapsible. Click the small chevron in the
 header, or pass ``--minimize-panels`` to start with both panels minimized.
@@ -132,7 +158,9 @@ Control tab — widget reference
   bottleneck (lower the quality preset on the **Render** tab). If updates
   drop while FPS is fine, the server or network is the bottleneck.
 * ``Objects N | visuals N | instanced N | point clouds N`` — current scene
-  counts as parsed from the latest frame.
+  counts as parsed from the latest frame. ``instanced`` includes ordinary
+  streamed instanced visuals plus synthesized TCP mesh batches for repeated
+  articulated meshes.
 * ``Assets unresolved N | sensor requests N | session live|recording|replay``
   — ``unresolved`` is the number of mesh paths that could not be found; fix
   by passing ``--resource-dir PATH`` (or the **Options** tab field). The
@@ -168,15 +196,21 @@ side.
 * **Show Collision Bodies** — draw the collision shapes the contact solver
   actually sees, instead of the visual meshes. Distinguishes "the visual
   mesh I authored is huge" from "the collision body is right".
-* **All Transparent** — alpha-blend every opaque object so you can see
+* **X-ray (transparent)** — alpha-blend every opaque object so you can see
   through the scene. Useful for inspecting nested articulated systems or
   hidden constraints.
 * **Show World Frame** — draw the X/Y/Z triad at the world origin.
+* **Show Body Frames** — draw body-frame axes for selectable streamed bodies.
+* **Show COM Markers** — draw markers at streamed center-of-mass positions.
+* **Pose Grabber (drag axes)** — show a world-axis pose gizmo on the selected
+  object. Drag its translation or rotation handles to queue pose edits.
 * **Show Contact Points** — render small spheres at every active contact
   point reported by ``world.getContacts()``.
 * **Show Contact Forces** — render arrows scaled by the contact impulse
   magnitude at every contact point. Pair with **Contact Pt** and **Contact
   Force** sliders below to scale them so they're visible.
+* **Force Scale: Absolute** — interpret contact-force arrows in absolute
+  units instead of normalizing them to the current frame's largest force.
 
 **Light and camera sliders.** Direct overrides of the renderer's main
 directional light and camera, equivalent to the C++ ``Light::setRotation``,
@@ -212,12 +246,21 @@ the TCP socket, so they apply to every connection:
   the panel header when minimized. Off for a more compact corner.
 * **Hover the collapsed header to open the panel** vs the legacy
   click-to-expand behaviour.
+* **Frame Scene / Frame Selected / Reset Camera** — camera framing shortcuts
+  matching ``F``, ``C``, and ``R``.
+* **Orthographic views** — snap to Top / Bottom / Front / Back / Left / Right
+  orthographic projections of the current scene bounds, or return to
+  Perspective.
+* **Camera bookmarks** — save and restore four named camera positions from
+  the UI. The keyboard shortcuts use the same camera state.
+* **Toggle Fullscreen** — same as ``F11``.
 * **Screenshot directory** — path used by F12 and the **Screenshot**
   button. Defaults to the current working directory unless
   ``--screenshot-dir`` overrides it.
-* **PNG-sequence record every N frames** — paired with the F11 hotkey, this
-  records a frame-numbered PNG sequence at the chosen stride. Output goes
-  into the screenshot directory.
+* **PNG-sequence record every N frames** — records a frame-numbered PNG
+  sequence at the chosen stride. Output goes into the screenshot directory.
+* **TCP session recording** — start / stop raw TCP recording from the UI.
+  Replay sessions also expose pause, single-step, restart, and speed controls.
 
 Render tab
 ----------
@@ -281,6 +324,11 @@ than driving one:
 * **Cache stats** — shader binary cache hits / misses / stores for the
   current process. See :doc:`rayrai/Performance` for the underlying
   ``Shader::binaryCacheStats()`` API.
+* **Data transfer target** — graph recent receive bandwidth and set the
+  target TCP update request rate between 15 and 120 Hz. This is the runtime
+  equivalent of ``--update-rate``.
+* **Security note** — the viewer reminds you that TCP traffic is plain and
+  unauthenticated; use loopback, SSH/VPN, or a trusted network.
 
 Right-side inspector
 --------------------
@@ -288,14 +336,14 @@ The right-side panel only appears when an object is selected. Top-to-bottom:
 
 * **Object name and stable id** (``Object::Id`` from the world).
 * **Body type** — Static / Kinematic / Dynamic.
-* **Position / Orientation** — drag-to-edit widgets. Edits send
-  ``CR_SET_POSE`` (single-body) or set the floating-base portion of the
-  generalized coordinate vector (articulated).
-* **Joint angles** (articulated systems only) — one slider per actuated
-  joint, bounded by the URDF/MJCF joint limits when those are set, free
-  range otherwise. Edits send ``CR_SET_GC`` with the updated vector.
-* **Show collision shape** — per-object toggle that overrides the global
-  **All Transparent** / **Show Collision Bodies** state for this object.
+* **Position / Orientation** — current streamed pose in world coordinates.
+* **Velocity** — estimated linear speed and angular speed when enough samples
+  are available.
+* **Joint angles** (articulated systems only) — read-only angle table from the
+  selected articulated body. Use the **Control** tab's generalized-coordinate
+  editor when you want to send ``CR_SET_GC``.
+* **Mesh / resource metadata** — mesh file and resolved resource directory when
+  available.
 
 Sim control workflow
 ====================
@@ -327,12 +375,20 @@ in ``rayrai/RaisimTcpCommon.hpp``.
 
 Force / pose application
 ========================
-Right-click drag on an object in the scene sends ``CR_APPLY_FORCE`` /
-``CR_APPLY_TORQUE`` for the duration of the drag. The right-side inspector's
-*Pose* widgets emit ``CR_SET_POSE`` (single-body) and ``CR_SET_GC``
-(articulated systems). All four are drained by the server inside
-``integrateWorldThreadSafe()`` just before the next ``world.integrate()``,
-so the force lands on exactly the tick the viewer requested.
+Shift + left-drag on the selected object sends ``CR_APPLY_FORCE`` for the
+duration of the drag. The drag anchor is stored in the selected body's local
+frame, so the force application point follows the body as it moves. The
+selected-control panel can also send explicit ``CR_APPLY_FORCE`` /
+``CR_APPLY_TORQUE`` requests.
+
+Pose widgets and the pose grabber emit ``CR_SET_POSE`` for single bodies and
+``CR_SET_GC`` for articulated systems. Pose and generalized-coordinate edits
+are applied under the world mutex as soon as the server drains client
+requests. Force and torque requests are converted into active client forces
+with a short hold window (0.12 s of simulation time) and are applied on each
+subsequent integration tick until they are refreshed or expire. While the
+server is paused, a queued force is refreshed but is not applied until a
+step or resume tick actually integrates the world.
 
 Access control
 ==============
@@ -345,10 +401,15 @@ trusted networks (see :doc:`RaisimServer` for details).
 Screenshots and recording
 =========================
 * **F12** — capture a PNG to the configured screenshot directory.
-* **F11** — toggle a PNG sequence recorder (every N-th frame, configurable).
-* **Camera bookmarks F1–F4** — save the current view; press the same key to
-  restore. The bookmarks panel shows the four slots and a one-click overwrite
-  button.
+* **F11** — toggle fullscreen desktop mode.
+* **PNG sequence** — enable the Options-tab checkbox and choose the frame
+  stride to record numbered PNGs into the screenshot directory.
+* **Camera bookmarks** — save and restore four camera positions from the
+  Options tab.
+* **H / ?** — show or hide the keyboard shortcut overlay.
+* **M** — cycle the measure tool through off, 2-point ruler, and 3-point
+  angle measurement. Left-click places measurement points.
+* **G** — toggle the pose grabber for the selected object.
 * **Session recording** — see ``--record-session`` / ``--replay-session``.
   Recorded sessions store the raw TCP frames, so you can re-render a run
   later at any quality preset.
@@ -417,9 +478,9 @@ server replies with the negotiated feature set. A viewer rejects newer
 unsupported protocol versions with a clear error instead of attempting to
 parse an incompatible stream.
 
-Current feature bits cover the explicit header and deformable delta
-streaming. Deformable objects send mesh topology during initialization or
-topology changes; ordinary update frames send vertex positions only. This
+Current feature bits cover the explicit header, deformable delta streaming,
+and sim control. Deformable objects send mesh topology during initialization
+or topology changes; ordinary update frames send vertex positions only. This
 keeps dynamic cloth/cube streaming cheaper while avoiding binary compression
 until network bandwidth is measured as a bottleneck.
 
@@ -429,9 +490,9 @@ The protocol constants live in ``rayrai/RaisimTcpCommon.hpp`` (namespace
 * ``kDefaultPort`` — default ``RaisimServer`` port the viewer connects to.
 * ``kProtocolVersion`` — the current wire version. Mismatched versions cause
   the viewer to disconnect with a versioned-protocol error.
-* ``kProtocolFeatureExplicitHeader`` and ``kProtocolFeatureDeformableDelta`` —
-  the two currently-negotiated feature bits; ``kProtocolFeaturesSupported``
-  is the OR of all bits this build understands.
+* ``kProtocolFeatureExplicitHeader``, ``kProtocolFeatureDeformableDelta``,
+  and ``kProtocolFeatureSimControl`` — the currently-negotiated feature bits;
+  ``kProtocolFeaturesSupported`` is the OR of all bits this build understands.
 * ``kMaxMessageBytes`` — maximum accepted message size (default 64 MiB),
   overridable at build time via the
   ``RAISIM_TCP_VIEWER_MAX_MESSAGE_BYTES`` preprocessor define when very large
@@ -491,7 +552,8 @@ callback that runs under the world mutex:
       server.launchServer(8080);
 
       // Optional: drive your own work inside the locked region, after
-      // any client requests are applied and before world.integrate().
+      // client requests are drained and before world.integrate() when
+      // this tick is allowed to step.
       for (size_t i = 0;; ++i) {
         server.integrateWorldThreadSafe([&] {
           if (i % 600 == 0) ball->setLinearVelocity({0, 0, 4.0});
@@ -595,9 +657,9 @@ the fields relevant to ``type`` are read by the encoder:
     requests.push_back(gc);
 
     sendUpdateRequest(client, /*objectId=*/0, requests);
-    // The server applies all requests inside integrateWorldThreadSafe()
-    // before the next world.integrate(), so external forces land on
-    // exactly the next tick.
+    // The server drains requests inside integrateWorldThreadSafe().
+    // Pose/GC edits apply under the mutex; forces are held briefly and
+    // applied on integration ticks until refreshed or expired.
 
 The same enum and ``SimControlRequest`` struct are what the viewer's UI
 populates internally, so a custom Python or C# client built on top of

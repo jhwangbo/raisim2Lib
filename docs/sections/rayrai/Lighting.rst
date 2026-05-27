@@ -19,11 +19,12 @@ Shadow defaults are tuned so a directional shadow is clearly visible without
 any per-application setup. Every preset uses a compact directional shadow
 ortho box (``halfSize=12.5``, ``near=0.1``, ``far=55``) and a single
 cascade, which keeps each shadow-map texel small enough that the resulting
-shadow stays crisp even with bright IBL fill. ``mainLightAmbient`` is low
-(``≈ 0.2-0.3`` per preset), ``mainLightDiffuse`` is high (``≈ 1.4-1.65``)
-and ``shadowStrength`` is high (``0.75-0.90``). Raise ``mainLightAmbient``
-or lower ``shadowStrength`` for a flatter indoor look; the defaults are
-aimed at outdoor daylight.
+shadow stays crisp even with bright IBL fill. Balanced and High use brighter
+ambient/IBL defaults than older releases so smooth metallic surfaces do not
+read black under sky fill; Ultra keeps more contrast through lower direct
+ambient, stronger IBL, and AgX tone mapping. Raise ``mainLightAmbient`` or
+lower ``shadowStrength`` for a flatter indoor look; the defaults are aimed at
+outdoor daylight.
 
 By default, the main shadow center tracks a point in front of the camera and the shadow
 box is fixed in size. You can customize both via ``RayraiWindow``:

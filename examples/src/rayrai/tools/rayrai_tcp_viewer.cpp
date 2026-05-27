@@ -77,6 +77,10 @@ namespace
 // ourselves by requesting a graceful shutdown.
 std::atomic<bool> gSignalQuit{false};
 
+constexpr float kTcpUpdateRateDefaultHz = 60.0f;
+constexpr float kTcpUpdateRateMinHz = 15.0f;
+constexpr float kTcpUpdateRateMaxHz = 120.0f;
+
 void handleSignalQuit(int /*sig*/) {
   gSignalQuit.store(true, std::memory_order_relaxed);
 }
@@ -89,7 +93,7 @@ constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
 constexpr float kRadToDeg = 180.0f / 3.14159265358979323846f;
 constexpr auto kAutoConnectInterval = std::chrono::seconds(3);
 constexpr auto kDiscoveryBeaconTimeout = std::chrono::seconds(8);
-constexpr auto kOverlayAutoCollapseDelay = std::chrono::seconds(5);
+constexpr auto kOverlayAutoCollapseDelay = std::chrono::milliseconds(3500);
 constexpr auto kSettingsSaveDebounce = std::chrono::milliseconds(750);
 constexpr int kTransferRateGraphBuckets = 60;
 constexpr double kTransferRateGraphWindowSeconds = 30.0;
@@ -139,6 +143,7 @@ struct MouseForceGesture {
   int index = 0;
   int localBodyIdx = 0;
   glm::vec3 applicationPoint{0.0f};
+  glm::vec3 localApplicationPoint{0.0f};
   glm::vec3 force{0.0f};
   ImVec2 pressMouse{0.0f, 0.0f};
   ImVec2 currentMouse{0.0f, 0.0f};
@@ -154,6 +159,54 @@ struct RulerToolState {
   glm::vec3 b{0.0f};
   std::string aLabel;
   std::string bLabel;
+};
+
+// Pose gizmo: translate handles (3 colored axis lines) plus rotate handles
+// (3 colored rings, each in a plane perpendicular to one world axis). While
+// the gizmo is enabled, the selected body's visual pose is "held" — the
+// server's pose stream is shadowed each frame so the body stays where the
+// user put it. CR_SET_POSE is queued during drag to push the new pose to the
+// server. Disabling the gizmo releases the hold and the server takes over again.
+struct PoseGrabberGesture {
+  enum class Mode { Translate, Rotate };
+  bool enabled = false;
+  bool dragging = false;
+  Mode mode = Mode::Translate;
+  int axis = -1;                 // 0=X, 1=Y, 2=Z while dragging
+  uint32_t tag = 0;
+  int index = 0;
+  glm::vec3 anchorWorld{0.0f};   // body origin captured on drag start
+  // Quaternion vec4 layout used throughout: x=X, y=Y, z=Z, w=W (XYZW), matching
+  // VisualEntry::lastQuat, SimControlRequest::quat, and Visuals::setOrientation.
+  glm::vec4 anchorQuat{0.0f, 0.0f, 0.0f, 1.0f};
+  ImVec2 anchorMouse{0.0f, 0.0f};
+  float anchorScreenAngle = 0.0f;                  // mouse angle around body center at start
+  glm::vec3 currentTarget{0.0f};                   // proposed position during drag
+  glm::vec4 currentQuat{0.0f, 0.0f, 0.0f, 1.0f};   // proposed orientation during drag (XYZW)
+
+  // Held pose: while `heldActive` is true the body identified by `heldTag` has
+  // its visual pose forced to (heldPos, heldQuat) each frame. Survives across
+  // frames so the body stays put between drags. `heldDirty` flags whether the
+  // user has actually changed the pose during this hold; we only emit a single
+  // CR_SET_POSE to the server on deactivation when this flag is set.
+  bool heldActive = false;
+  bool heldDirty = false;
+  uint32_t heldTag = 0;
+  glm::vec3 heldPos{0.0f};
+  glm::vec4 heldQuat{0.0f, 0.0f, 0.0f, 1.0f};      // XYZW
+};
+
+// 3-point angle measurement. Picks three points; the angle is measured at the
+// middle (B) between rays BA and BC. UI parallel to RulerToolState.
+struct AngleToolState {
+  bool enabled = false;
+  int picked = 0;            // 0, 1, 2, or 3 (= complete)
+  glm::vec3 a{0.0f};         // first arm endpoint
+  glm::vec3 b{0.0f};         // vertex
+  glm::vec3 c{0.0f};         // second arm endpoint
+  std::string aLabel;
+  std::string bLabel;
+  std::string cLabel;
 };
 
 struct ViewerSettings {
@@ -268,6 +321,7 @@ struct ViewerSettings {
   float uiScale = 1.0f;
   bool uiScaleUserSet = false;
   bool showCollapsedLogo = true;
+  float tcpUpdateRateHz = kTcpUpdateRateDefaultHz;
   std::vector<ConnectionEntry> recentConnections;
   std::vector<std::string> resourceDirs;
 };
@@ -320,6 +374,7 @@ struct ProgramOptions {
   bool exitAfterScreenshot = false;
   bool replayLoop = false;
   float replaySpeed = 1.0f;
+  float updateRateHz = -1.0f;
   double waitForServerSeconds = 0.0;
   double exitAfterSeconds = 0.0;
   bool printHelp = false;
@@ -822,6 +877,7 @@ void printUsage(const char* argv0) {
     << "  --screenshot PATH           Save one PNG after the first rendered frame and exit\n"
     << "  --screenshot-dir PATH       Directory used by F12 and PNG sequence recording\n"
     << "  --record-session PATH       Record raw TCP scene updates for offline replay\n"
+    << "  --update-rate HZ            Target TCP scene update rate (15-120, default 60)\n"
     << "  --replay-session PATH       Replay a previously recorded TCP session\n"
     << "  --replay-speed SCALE        Replay speed multiplier (default: 1.0)\n"
     << "  --replay-loop               Loop replay sessions\n"
@@ -928,6 +984,18 @@ bool parseProgramOptions(int argc, char** argv, ProgramOptions& options) {
       const char* value = requireValue("--record-session");
       if (!value) return false;
       options.recordSessionPath = value;
+    } else if (arg == "--update-rate") {
+      const char* value = requireValue("--update-rate");
+      if (!value) return false;
+      float rateHz = 0.0f;
+      if (!parseFloatStrict(value, rateHz) || rateHz < kTcpUpdateRateMinHz ||
+          rateHz > kTcpUpdateRateMaxHz) {
+        std::cerr << "ERROR: invalid --update-rate value: " << value
+                  << " (expected " << kTcpUpdateRateMinHz << ".."
+                  << kTcpUpdateRateMaxHz << " Hz)\n";
+        return false;
+      }
+      options.updateRateHz = rateHz;
     } else if (arg == "--replay-session") {
       const char* value = requireValue("--replay-session");
       if (!value) return false;
@@ -1636,6 +1704,29 @@ glm::vec4 clampVec4(const glm::vec4& value, float minValue, float maxValue) {
     clampValue(value.w, minValue, maxValue));
 }
 
+float sanitizeTcpUpdateRateHz(float value) {
+  if (!std::isfinite(value)) {
+    return kTcpUpdateRateDefaultHz;
+  }
+  return clampValue(value, kTcpUpdateRateMinHz, kTcpUpdateRateMaxHz);
+}
+
+std::chrono::steady_clock::duration tcpUpdatePeriodForHz(float rateHz) {
+  const double seconds = 1.0 / static_cast<double>(sanitizeTcpUpdateRateHz(rateHz));
+  return std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+    std::chrono::duration<double>(seconds));
+}
+
+bool consumeTcpUpdateSlot(std::chrono::steady_clock::time_point now,
+                          std::chrono::steady_clock::time_point& nextRequestTime,
+                          float rateHz) {
+  if (now < nextRequestTime) {
+    return false;
+  }
+  nextRequestTime = now + tcpUpdatePeriodForHz(rateHz);
+  return true;
+}
+
 void sanitizeViewerSettings(ViewerSettings& settings) {
   settings.renderQuality = clampValue(settings.renderQuality, 0, 4);
   settings.backgroundColorRgb255 = clampVec4(settings.backgroundColorRgb255, 0.0f, 255.0f);
@@ -1737,6 +1828,7 @@ void sanitizeViewerSettings(ViewerSettings& settings) {
   settings.maxAdditionalLightsPerFrame = clampValue(settings.maxAdditionalLightsPerFrame, 0, 16);
   settings.minAdditionalLightInfluence = clampValue(settings.minAdditionalLightInfluence, 0.0f, 1.0f);
   settings.uiScale = clampValue(settings.uiScale, 0.8f, 2.6f);
+  settings.tcpUpdateRateHz = sanitizeTcpUpdateRateHz(settings.tcpUpdateRateHz);
 }
 
 std::filesystem::path settingsFilePath() {
@@ -1878,6 +1970,7 @@ void loadViewerSettings(ViewerSettings& settings) {
     else if (key == "ui_scale") settings.uiScale = parseFloatValue(value, settings.uiScale);
     else if (key == "ui_scale_user_set") settings.uiScaleUserSet = parseBoolValue(value, settings.uiScaleUserSet);
     else if (key == "show_collapsed_logo") settings.showCollapsedLogo = parseBoolValue(value, settings.showCollapsedLogo);
+    else if (key == "tcp_update_rate_hz") settings.tcpUpdateRateHz = parseFloatValue(value, settings.tcpUpdateRateHz);
     else if (key == "recent_connection") {
       ConnectionEntry entry;
       if (parseConnectionLabel(value, entry)) {
@@ -2020,6 +2113,7 @@ void saveViewerSettings(const ViewerSettings& settings) {
   output << "ui_scale: " << settings.uiScale << "\n";
   output << "ui_scale_user_set: " << settings.uiScaleUserSet << "\n";
   output << "show_collapsed_logo: " << settings.showCollapsedLogo << "\n";
+  output << "tcp_update_rate_hz: " << settings.tcpUpdateRateHz << "\n";
   for (const auto& entry : settings.recentConnections) {
     output << "recent_connection: " << formatConnectionLabel(entry) << "\n";
   }
@@ -2173,6 +2267,32 @@ void frameBounds(raisin::RayraiWindow& viewer, const glm::vec3& minBound, const 
   applyCameraLookAt(viewer.getCamera(), center + viewDir * distance, center);
 }
 
+enum class OrthoView { Top, Bottom, Front, Back, Left, Right };
+
+// Snap the camera to a canonical orthographic axis-aligned view of the given
+// world-space bounds. Up-axis is +Z (raisim convention).
+void applyOrthoView(raisin::RayraiWindow& viewer, OrthoView v,
+                    const glm::vec3& minBound, const glm::vec3& maxBound) {
+  auto& camera = viewer.getCamera();
+  const glm::vec3 center = 0.5f * (minBound + maxBound);
+  const glm::vec3 extent = glm::max(maxBound - minBound, glm::vec3(0.25f));
+  const float radius = std::max(0.25f, 0.5f * glm::length(extent));
+  const float distance = std::max(radius * 2.5f, 1.0f);
+
+  glm::vec3 dir{0.0f};   // camera-from-target direction
+  switch (v) {
+    case OrthoView::Top:    dir = glm::vec3(0.0f, 0.0f, 1.0f); break;
+    case OrthoView::Bottom: dir = glm::vec3(0.0f, 0.0f, -1.0f); break;
+    case OrthoView::Front:  dir = glm::vec3(1.0f, 0.0f, 0.0f); break;
+    case OrthoView::Back:   dir = glm::vec3(-1.0f, 0.0f, 0.0f); break;
+    case OrthoView::Right:  dir = glm::vec3(0.0f, 1.0f, 0.0f); break;
+    case OrthoView::Left:   dir = glm::vec3(0.0f, -1.0f, 0.0f); break;
+  }
+  applyCameraLookAt(camera, center + dir * distance, center);
+  camera.setProjectionMode(raisin::Camera::ProjectionMode::ORTHOGRAPHIC);
+  camera.orthoScale = std::max(0.5f, std::max(extent.x, std::max(extent.y, extent.z)) * 1.25f);
+}
+
 bool frameScene(raisin::RayraiWindow& viewer, const RemoteScene& scene) {
   glm::vec3 minBound, maxBound;
   if (!scene.computeSceneBounds(minBound, maxBound)) {
@@ -2217,6 +2337,25 @@ glm::vec3 mouseForceFromDragPixels(
   return mouseForceFromDragPixels(camera.right, camera.up, dragPixels, newtonsPerPixel);
 }
 
+glm::quat normalizedQuatFromWxyz(const glm::vec4& quat) {
+  const float norm2 = quat.w * quat.w + quat.x * quat.x + quat.y * quat.y + quat.z * quat.z;
+  if (!std::isfinite(norm2) || norm2 <= 1.0e-12f) {
+    return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+  }
+  const float invNorm = 1.0f / std::sqrt(norm2);
+  return glm::quat(quat.w * invNorm, quat.x * invNorm, quat.y * invNorm, quat.z * invNorm);
+}
+
+glm::vec3 visualWorldPointToLocal(const VisualEntry& entry, const glm::vec3& worldPoint) {
+  const glm::quat q = normalizedQuatFromWxyz(entry.lastQuat);
+  return glm::inverse(q) * (worldPoint - entry.lastPos);
+}
+
+glm::vec3 visualLocalPointToWorld(const VisualEntry& entry, const glm::vec3& localPoint) {
+  const glm::quat q = normalizedQuatFromWxyz(entry.lastQuat);
+  return entry.lastPos + q * localPoint;
+}
+
 bool projectWorldToViewport(
   const raisin::Camera& camera, const ViewerViewportState& viewport, const glm::vec3& world,
   ImVec2& screen) {
@@ -2259,6 +2398,38 @@ std::string formatRulerPoint(const glm::vec3& point) {
   return buffer;
 }
 
+const char* nextRulerPointLabel(const RulerToolState& ruler) {
+  if (!ruler.hasA || (ruler.hasA && ruler.hasB) || ruler.nextPoint == 0) {
+    return "A";
+  }
+  return "B";
+}
+
+std::string formatAngleDegrees(float radians) {
+  if (!std::isfinite(radians)) return "--";
+  char buffer[32];
+  std::snprintf(buffer, sizeof(buffer), "%.2f°", radians * 57.2957795f);
+  return buffer;
+}
+
+const char* nextAnglePointLabel(const AngleToolState& angle) {
+  if (angle.picked >= 3) return "A";
+  static const char* names[] = {"A", "B", "C"};
+  return names[angle.picked];
+}
+
+float computeAngleRadians(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
+  // Angle at vertex B between rays BA and BC.
+  const glm::vec3 ba = a - b;
+  const glm::vec3 bc = c - b;
+  const float lba = glm::length(ba);
+  const float lbc = glm::length(bc);
+  if (lba <= 1e-6f || lbc <= 1e-6f) return std::numeric_limits<float>::quiet_NaN();
+  float cosA = glm::dot(ba, bc) / (lba * lbc);
+  cosA = std::clamp(cosA, -1.0f, 1.0f);
+  return std::acos(cosA);
+}
+
 bool readRulerWorldPointAtCursor(
   const raisin::Camera& camera, const ViewerViewportState& viewport, glm::vec3& world) {
   const int width = camera.rtWidth();
@@ -2283,6 +2454,7 @@ bool readRulerWorldPointAtCursor(
     return false;
   }
 
+  // The depth buffer gives the first rendered surface hit by the camera ray.
   const float ndcX = ((static_cast<float>(x) + 0.5f) / static_cast<float>(width)) * 2.0f - 1.0f;
   const float ndcY = 1.0f - ((static_cast<float>(y) + 0.5f) / static_cast<float>(height)) * 2.0f;
   const float ndcZ = depth * 2.0f - 1.0f;
@@ -2433,6 +2605,356 @@ void drawRulerOverlay(
 
   if (visibleA) drawEndpoint(screenA, "A", pointAColor);
   if (visibleB) drawEndpoint(screenB, "B", pointBColor);
+}
+
+// World-space axis arrows + rotation rings projected to screen at the given
+// world position. `origin` is the screen-space body center.
+struct GizmoScreenLayout {
+  static constexpr int kRingSamples = 32;
+  ImVec2 origin{0.0f, 0.0f};
+  ImVec2 axisTip[3]{};                          // translate-arrow tips, X/Y/Z
+  ImVec2 ringSamples[3][kRingSamples]{};        // rotation-ring screen samples
+  bool ringPointVisible[3][kRingSamples]{};
+  bool visible = false;
+  float worldScale = 1.0f;                       // metres of one axis arrow
+};
+
+// Compute the screen-space layout of a world-axis-aligned gizmo at the given
+// world position. The handles always point along world X/Y/Z regardless of
+// the body's orientation — translate/rotate then act in the world frame, and
+// the resulting delta is composed with the body's held pose by the drag
+// handler.
+GizmoScreenLayout computeGizmoLayout(
+  const raisin::Camera& camera, const ViewerViewportState& viewport, const glm::vec3& world) {
+  GizmoScreenLayout L;
+  if (!projectWorldToViewport(camera, viewport, world, L.origin)) return L;
+
+  // Pick an axis length that occupies a consistent pixel span at the body's
+  // depth — about 90 px.
+  const glm::vec3 probeAxis(1.0f, 0.0f, 0.0f);
+  ImVec2 probeScreen;
+  float pixelsPerMetre = 0.0f;
+  if (projectWorldToViewport(camera, viewport, world + probeAxis, probeScreen)) {
+    const float dx = probeScreen.x - L.origin.x;
+    const float dy = probeScreen.y - L.origin.y;
+    pixelsPerMetre = std::sqrt(dx * dx + dy * dy);
+  }
+  const float targetPixels = 90.0f;
+  const float worldLen = pixelsPerMetre > 1e-4f
+    ? std::clamp(targetPixels / pixelsPerMetre, 0.05f, 5.0f)
+    : 0.5f;
+  L.worldScale = worldLen;
+
+  const glm::vec3 axes[3] = {
+    glm::vec3(worldLen, 0.0f, 0.0f),
+    glm::vec3(0.0f, worldLen, 0.0f),
+    glm::vec3(0.0f, 0.0f, worldLen),
+  };
+  for (int i = 0; i < 3; ++i) {
+    if (!projectWorldToViewport(camera, viewport, world + axes[i], L.axisTip[i])) {
+      L.axisTip[i] = L.origin;
+    }
+  }
+
+  // Rotation rings: a circle in the world plane perpendicular to each world
+  // axis, radius slightly larger than the translate arrows so handles don't
+  // overlap visually.
+  const float ringRadius = worldLen * 1.05f;
+  for (int a = 0; a < 3; ++a) {
+    glm::vec3 u(0.0f), v(0.0f);
+    if (a == 0)      { u = glm::vec3(0.0f, 1.0f, 0.0f); v = glm::vec3(0.0f, 0.0f, 1.0f); }
+    else if (a == 1) { u = glm::vec3(1.0f, 0.0f, 0.0f); v = glm::vec3(0.0f, 0.0f, 1.0f); }
+    else             { u = glm::vec3(1.0f, 0.0f, 0.0f); v = glm::vec3(0.0f, 1.0f, 0.0f); }
+    for (int s = 0; s < GizmoScreenLayout::kRingSamples; ++s) {
+      const float t = static_cast<float>(s) /
+                      static_cast<float>(GizmoScreenLayout::kRingSamples) * 6.2831853f;
+      const glm::vec3 worldPt = world + (u * std::cos(t) + v * std::sin(t)) * ringRadius;
+      ImVec2 sc;
+      L.ringPointVisible[a][s] = projectWorldToViewport(camera, viewport, worldPt, sc);
+      L.ringSamples[a][s] = sc;
+    }
+  }
+  L.visible = true;
+  return L;
+}
+
+// Distance from point p to segment (a, b) in screen space.
+float pointSegmentDistance(const ImVec2& p, const ImVec2& a, const ImVec2& b) {
+  const float dx = b.x - a.x;
+  const float dy = b.y - a.y;
+  const float l2 = dx * dx + dy * dy;
+  if (l2 < 1e-3f) {
+    const float ex = p.x - a.x;
+    const float ey = p.y - a.y;
+    return std::sqrt(ex * ex + ey * ey);
+  }
+  const float t = std::clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / l2, 0.0f, 1.0f);
+  const float cx = a.x + dx * t;
+  const float cy = a.y + dy * t;
+  const float ex = p.x - cx;
+  const float ey = p.y - cy;
+  return std::sqrt(ex * ex + ey * ey);
+}
+
+// Returns the picked handle: mode (Translate/Rotate) and axis (0,1,2), or
+// (Translate, -1) for "nothing hit". Picks translate over rotate when both are
+// equidistant — translate arrows render in front of rotation rings.
+struct PoseGrabberHit {
+  PoseGrabberGesture::Mode mode = PoseGrabberGesture::Mode::Translate;
+  int axis = -1;
+};
+
+PoseGrabberHit pickPoseGrabberHandle(const GizmoScreenLayout& L, const ImVec2& mouse) {
+  PoseGrabberHit hit;
+  if (!L.visible) return hit;
+  constexpr float kHitRadius = 9.0f;
+  float bestDist = kHitRadius;
+
+  // Translate arrows.
+  for (int i = 0; i < 3; ++i) {
+    const float d = pointSegmentDistance(mouse, L.origin, L.axisTip[i]);
+    if (d < bestDist) {
+      bestDist = d;
+      hit.mode = PoseGrabberGesture::Mode::Translate;
+      hit.axis = i;
+    }
+  }
+  // Rotation rings: min distance to any consecutive sample segment.
+  for (int a = 0; a < 3; ++a) {
+    for (int s = 0; s < GizmoScreenLayout::kRingSamples; ++s) {
+      const int sNext = (s + 1) % GizmoScreenLayout::kRingSamples;
+      if (!L.ringPointVisible[a][s] || !L.ringPointVisible[a][sNext]) continue;
+      const float d = pointSegmentDistance(mouse, L.ringSamples[a][s], L.ringSamples[a][sNext]);
+      if (d < bestDist) {
+        bestDist = d;
+        hit.mode = PoseGrabberGesture::Mode::Rotate;
+        hit.axis = a;
+      }
+    }
+  }
+  return hit;
+}
+
+void drawPoseGrabberOverlay(const GizmoScreenLayout& L,
+                            PoseGrabberGesture::Mode activeMode, int activeAxis,
+                            PoseGrabberGesture::Mode hoverMode, int hoverAxis) {
+  if (!L.visible) return;
+  ImDrawList* drawList = ImGui::GetForegroundDrawList();
+  const ImU32 shadow = IM_COL32(0, 0, 0, 180);
+  const ImU32 axisColors[3] = {
+    IM_COL32(255, 90, 90, 255),    // X = red
+    IM_COL32(110, 220, 110, 255),  // Y = green
+    IM_COL32(110, 160, 255, 255),  // Z = blue
+  };
+  const ImU32 hot = IM_COL32(255, 230, 60, 255);
+  const char* labels[3] = {"X", "Y", "Z"};
+
+  // Rotation rings first (drawn behind translate arrows). Use the axis color
+  // at lower alpha, full alpha when hot.
+  for (int a = 0; a < 3; ++a) {
+    const bool isHot =
+      (activeAxis >= 0 && activeMode == PoseGrabberGesture::Mode::Rotate && activeAxis == a) ||
+      (activeAxis < 0  && hoverMode == PoseGrabberGesture::Mode::Rotate && hoverAxis == a);
+    const ImU32 col = isHot ? hot : ((axisColors[a] & 0x00FFFFFF) | (160u << 24));
+    const float thickness = isHot ? 3.0f : 1.6f;
+    for (int s = 0; s < GizmoScreenLayout::kRingSamples; ++s) {
+      const int sNext = (s + 1) % GizmoScreenLayout::kRingSamples;
+      if (!L.ringPointVisible[a][s] || !L.ringPointVisible[a][sNext]) continue;
+      drawList->AddLine(L.ringSamples[a][s], L.ringSamples[a][sNext], col, thickness);
+    }
+  }
+
+  // Translate arrows on top.
+  for (int i = 0; i < 3; ++i) {
+    const bool isHot =
+      (activeAxis >= 0 && activeMode == PoseGrabberGesture::Mode::Translate && activeAxis == i) ||
+      (activeAxis < 0  && hoverMode == PoseGrabberGesture::Mode::Translate && hoverAxis == i);
+    const ImU32 col = isHot ? hot : axisColors[i];
+    drawList->AddLine(ImVec2(L.origin.x + 1, L.origin.y + 1),
+                      ImVec2(L.axisTip[i].x + 1, L.axisTip[i].y + 1), shadow, 4.0f);
+    drawList->AddLine(L.origin, L.axisTip[i], col, isHot ? 3.5f : 2.5f);
+    drawList->AddCircleFilled(L.axisTip[i], isHot ? 6.0f : 4.5f, col, 24);
+    drawList->AddText(ImVec2(L.axisTip[i].x + 6.0f, L.axisTip[i].y - 6.0f), col, labels[i]);
+  }
+  drawList->AddCircleFilled(L.origin, 4.0f, shadow, 24);
+  drawList->AddCircleFilled(L.origin, 2.5f, IM_COL32(240, 240, 240, 255), 24);
+}
+
+void drawAngleOverlay(
+  const AngleToolState& angle, const ViewerViewportState& viewport, const raisin::Camera& camera) {
+  if (angle.picked == 0) return;
+
+  ImVec2 sA, sB, sC;
+  const bool visA = angle.picked >= 1 && projectWorldToViewport(camera, viewport, angle.a, sA);
+  const bool visB = angle.picked >= 2 && projectWorldToViewport(camera, viewport, angle.b, sB);
+  const bool visC = angle.picked >= 3 && projectWorldToViewport(camera, viewport, angle.c, sC);
+  if (!visA && !visB && !visC) return;
+
+  ImDrawList* drawList = ImGui::GetForegroundDrawList();
+  const ImU32 shadow = IM_COL32(4, 7, 11, 205);
+  const ImU32 armColor = IM_COL32(255, 168, 84, 255);
+  const ImU32 arcColor = IM_COL32(120, 230, 120, 255);
+  const ImU32 ptColor[3] = {
+    IM_COL32(255, 214, 84, 255),
+    IM_COL32(120, 230, 120, 255),
+    IM_COL32(74, 214, 255, 255)};
+  const char* lbls[3] = {"A", "B (vertex)", "C"};
+
+  if (visA && visB) {
+    drawList->AddLine(ImVec2(sA.x + 1, sA.y + 1), ImVec2(sB.x + 1, sB.y + 1), shadow, 4.0f);
+    drawList->AddLine(sA, sB, armColor, 2.0f);
+  }
+  if (visB && visC) {
+    drawList->AddLine(ImVec2(sB.x + 1, sB.y + 1), ImVec2(sC.x + 1, sC.y + 1), shadow, 4.0f);
+    drawList->AddLine(sB, sC, armColor, 2.0f);
+  }
+
+  if (angle.picked >= 3 && visA && visB && visC) {
+    const ImVec2 ba(sA.x - sB.x, sA.y - sB.y);
+    const ImVec2 bc(sC.x - sB.x, sC.y - sB.y);
+    const float lba = std::sqrt(ba.x * ba.x + ba.y * ba.y);
+    const float lbc = std::sqrt(bc.x * bc.x + bc.y * bc.y);
+    if (lba > 1.0f && lbc > 1.0f) {
+      const float aA = std::atan2(ba.y, ba.x);
+      const float aC = std::atan2(bc.y, bc.x);
+      float d = aC - aA;
+      while (d > 3.14159265f) d -= 6.2831853f;
+      while (d < -3.14159265f) d += 6.2831853f;
+      const float arcR = std::min(lba, lbc) * 0.30f;
+      const int steps = 28;
+      ImVec2 prev(sB.x + std::cos(aA) * arcR, sB.y + std::sin(aA) * arcR);
+      for (int i = 1; i <= steps; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(steps);
+        const float ang = aA + d * t;
+        const ImVec2 cur(sB.x + std::cos(ang) * arcR, sB.y + std::sin(ang) * arcR);
+        drawList->AddLine(prev, cur, arcColor, 2.0f);
+        prev = cur;
+      }
+      const float angRad = computeAngleRadians(angle.a, angle.b, angle.c);
+      const std::string label = formatAngleDegrees(angRad);
+      const ImVec2 tsz = ImGui::CalcTextSize(label.c_str());
+      const float midA = aA + d * 0.5f;
+      const ImVec2 labelPos(sB.x + std::cos(midA) * (arcR + 14.0f) - tsz.x * 0.5f,
+                            sB.y + std::sin(midA) * (arcR + 14.0f) - tsz.y * 0.5f);
+      const ImVec2 pad(6.0f, 3.0f);
+      drawList->AddRectFilled(ImVec2(labelPos.x - pad.x, labelPos.y - pad.y),
+        ImVec2(labelPos.x + tsz.x + pad.x, labelPos.y + tsz.y + pad.y),
+        IM_COL32(8, 13, 20, 220), 4.0f);
+      drawList->AddText(labelPos, arcColor, label.c_str());
+    }
+  }
+
+  const auto drawPoint = [&](const ImVec2& pos, const char* label, ImU32 color) {
+    drawList->AddCircleFilled(ImVec2(pos.x + 1, pos.y + 1), 6.0f, shadow, 24);
+    drawList->AddCircleFilled(pos, 4.0f, color, 24);
+    const ImVec2 tp(pos.x + 8.0f, pos.y - ImGui::GetFontSize() * 0.5f);
+    drawList->AddText(ImVec2(tp.x + 1, tp.y + 1), shadow, label);
+    drawList->AddText(tp, color, label);
+  };
+  if (visA) drawPoint(sA, lbls[0], ptColor[0]);
+  if (visB) drawPoint(sB, lbls[1], ptColor[1]);
+  if (visC) drawPoint(sC, lbls[2], ptColor[2]);
+}
+
+void drawRulerCursorIcon(const RulerToolState& ruler, const ViewerViewportState& viewport) {
+  if (!ruler.enabled) {
+    return;
+  }
+
+  const ImGuiIO& io = ImGui::GetIO();
+  if (!std::isfinite(io.MousePos.x) || !std::isfinite(io.MousePos.y)) {
+    return;
+  }
+
+  ImDrawList* drawList = ImGui::GetForegroundDrawList();
+  const bool active = viewport.hovered;
+  const ImU32 shadow = IM_COL32(4, 7, 11, active ? 190 : 120);
+  const ImU32 lineColor = active ? IM_COL32(74, 214, 255, 245) : IM_COL32(166, 180, 193, 170);
+  const ImU32 tickColor = active ? IM_COL32(255, 216, 92, 255) : IM_COL32(205, 214, 224, 170);
+  const ImVec2 base(io.MousePos.x + 15.0f, io.MousePos.y + 18.0f);
+  const ImVec2 end(base.x + 28.0f, base.y - 10.0f);
+  const ImVec2 delta(end.x - base.x, end.y - base.y);
+  const float len = std::max(1.0f, std::sqrt(delta.x * delta.x + delta.y * delta.y));
+  const ImVec2 dir(delta.x / len, delta.y / len);
+  const ImVec2 normal(-dir.y, dir.x);
+
+  drawList->AddLine(ImVec2(base.x + 1.0f, base.y + 1.0f),
+    ImVec2(end.x + 1.0f, end.y + 1.0f), shadow, 4.5f);
+  drawList->AddLine(base, end, lineColor, 2.5f);
+  for (int i = 0; i <= 4; ++i) {
+    const float t = static_cast<float>(i) / 4.0f;
+    const float tickHalf = (i == 0 || i == 4) ? 6.0f : 4.0f;
+    const ImVec2 center(base.x + delta.x * t, base.y + delta.y * t);
+    const ImVec2 a(center.x - normal.x * tickHalf, center.y - normal.y * tickHalf);
+    const ImVec2 b(center.x + normal.x * tickHalf, center.y + normal.y * tickHalf);
+    drawList->AddLine(ImVec2(a.x + 1.0f, a.y + 1.0f),
+      ImVec2(b.x + 1.0f, b.y + 1.0f), shadow, 3.0f);
+    drawList->AddLine(a, b, tickColor, 1.7f);
+  }
+
+  const char* label = nextRulerPointLabel(ruler);
+  const ImVec2 labelPos(end.x + 5.0f, end.y - ImGui::GetFontSize() * 0.5f);
+  drawList->AddText(ImVec2(labelPos.x + 1.0f, labelPos.y + 1.0f), shadow, label);
+  drawList->AddText(labelPos, tickColor, label);
+}
+
+void drawAngleCursorIcon(const AngleToolState& angle, const ViewerViewportState& viewport) {
+  if (!angle.enabled) {
+    return;
+  }
+
+  const ImGuiIO& io = ImGui::GetIO();
+  if (!std::isfinite(io.MousePos.x) || !std::isfinite(io.MousePos.y)) {
+    return;
+  }
+
+  ImDrawList* drawList = ImGui::GetForegroundDrawList();
+  const bool active = viewport.hovered;
+  const ImU32 shadow = IM_COL32(4, 7, 11, active ? 190 : 120);
+  const ImU32 arcColor = active ? IM_COL32(120, 230, 120, 245) : IM_COL32(166, 180, 193, 170);
+  const ImU32 armColor = active ? IM_COL32(255, 168, 84, 255) : IM_COL32(205, 214, 224, 170);
+
+  // Small protractor: flat base + half-circle arc opening upward, drawn to the
+  // lower-right of the cursor so it doesn't occlude the pick point.
+  const ImVec2 c(io.MousePos.x + 26.0f, io.MousePos.y + 22.0f);   // arc center
+  const float r = 12.0f;
+
+  // Flat baseline (the protractor's straight edge), pi to 0 in screen coords.
+  drawList->AddLine(ImVec2(c.x - r + 1.0f, c.y + 1.0f),
+    ImVec2(c.x + r + 1.0f, c.y + 1.0f), shadow, 3.0f);
+  drawList->AddLine(ImVec2(c.x - r, c.y), ImVec2(c.x + r, c.y), arcColor, 1.7f);
+
+  // Upper half-arc (semicircle).
+  constexpr int kSteps = 22;
+  ImVec2 prev(c.x - r, c.y);
+  for (int i = 1; i <= kSteps; ++i) {
+    const float t = static_cast<float>(i) / static_cast<float>(kSteps);
+    const float a = 3.14159265f - 3.14159265f * t;   // pi → 0
+    const ImVec2 cur(c.x + std::cos(a) * r, c.y - std::sin(a) * r);
+    drawList->AddLine(ImVec2(prev.x + 1.0f, prev.y + 1.0f),
+      ImVec2(cur.x + 1.0f, cur.y + 1.0f), shadow, 3.0f);
+    drawList->AddLine(prev, cur, arcColor, 1.7f);
+    prev = cur;
+  }
+
+  // Tick marks at 0°, 45°, 90°, 135°, 180°.
+  for (int k = 0; k <= 4; ++k) {
+    const float a = 3.14159265f - 3.14159265f * (static_cast<float>(k) / 4.0f);
+    const float tickInner = (k == 0 || k == 4 || k == 2) ? r - 4.5f : r - 3.0f;
+    const ImVec2 inner(c.x + std::cos(a) * tickInner, c.y - std::sin(a) * tickInner);
+    const ImVec2 outer(c.x + std::cos(a) * r,        c.y - std::sin(a) * r);
+    drawList->AddLine(inner, outer, armColor, 1.5f);
+  }
+
+  // Central pivot dot.
+  drawList->AddCircleFilled(ImVec2(c.x + 1.0f, c.y + 1.0f), 2.5f, shadow, 12);
+  drawList->AddCircleFilled(c, 1.8f, armColor, 12);
+
+  // Label which point comes next.
+  const char* label = nextAnglePointLabel(angle);
+  const ImVec2 labelPos(c.x + r + 4.0f, c.y - ImGui::GetFontSize() * 0.5f);
+  drawList->AddText(ImVec2(labelPos.x + 1.0f, labelPos.y + 1.0f), shadow, label);
+  drawList->AddText(labelPos, armColor, label);
 }
 
 void flipRows(std::vector<unsigned char>& rgba, int width, int height) {
@@ -3873,6 +4395,31 @@ ImVec2 iconTextButtonSize(const char* label, ImVec2 requestedSize = ImVec2(0.0f,
     requestedSize.y > 0.0f ? std::max(requestedSize.y, minSize.y) : minSize.y);
 }
 
+float fontScaledTextControlWidth(float visibleChars) {
+  const ImGuiStyle& style = ImGui::GetStyle();
+  const float charWidth = std::max(1.0f, ImGui::CalcTextSize("M").x);
+  return charWidth * std::max(1.0f, visibleChars) + style.FramePadding.x * 2.0f;
+}
+
+float responsiveTextControlWidth(float visibleChars, float viewportFraction = 0.46f) {
+  const float desired = fontScaledTextControlWidth(visibleChars);
+  const float currentAvail = std::max(0.0f, ImGui::GetContentRegionAvail().x);
+  const float displayWidth = ImGui::GetIO().DisplaySize.x;
+  const float maxWidth = displayWidth > 1.0f
+    ? std::max(ImGui::GetFontSize() * 12.0f, displayWidth * viewportFraction)
+    : FLT_MAX;
+  return std::max(ImGui::GetFontSize() * 8.0f, std::min(std::max(currentAvail, desired), maxWidth));
+}
+
+float comboWidthForTextItems(const char* const* items, int itemCount) {
+  const ImGuiStyle& style = ImGui::GetStyle();
+  float maxTextWidth = 0.0f;
+  for (int i = 0; i < itemCount; ++i) {
+    maxTextWidth = std::max(maxTextWidth, ImGui::CalcTextSize(items[i]).x);
+  }
+  return maxTextWidth + style.FramePadding.x * 2.0f + ImGui::GetFrameHeight();
+}
+
 bool drawIconTextButton(const TcpViewerIcons& icons, TcpViewerIconKind kind, const char* label,
                         const char* id, ImVec2 requestedSize = ImVec2(0.0f, 0.0f)) {
   const ImVec2 buttonSize = iconTextButtonSize(label, requestedSize);
@@ -4177,6 +4724,10 @@ int main(int argc, char* argv[]) {
   settings.cameraSpeed = viewer->getCamera().movementSpeed;
   settings.cameraFovDeg = viewer->getCamera().zoom;
   loadViewerSettings(settings);
+  if (options.updateRateHz > 0.0f) {
+    settings.tcpUpdateRateHz = options.updateRateHz;
+    sanitizeViewerSettings(settings);
+  }
   const GpuQualityRecommendation gpuQuality = recommendRenderQualityForCurrentGpu();
   if (applyAutomaticRenderQualityIfUnset(settings, gpuQuality.quality)) {
     std::cerr << "INFO: Auto render quality selected " << qualityName(settings.renderQuality)
@@ -4343,9 +4894,15 @@ int main(int argc, char* argv[]) {
   bool showWorldFrame = false;
   bool showContactPoints = false;
   bool showContactForces = false;
-  bool forceTransparent = false;
+  bool contactForceAbsolute = false;     // false = relative (normalized to max), true = length = mag * scale
+  bool forceTransparent = false;         // X-ray (transparent) — see-through bodies
+  bool showBodyFrames = false;           // per-body coordinate axes
+  bool showComMarkers = false;           // per-body center-of-mass spheres
+  bool showShortcutsHelp = false;        // help modal toggle
   float contactPointSize = 0.05f;
   float contactForceSize = 0.3f;
+  float bodyFrameSize = 0.15f;
+  float comMarkerSize = 0.03f;
   float cameraSpeed = settings.cameraSpeed;
   float lightYawDeg = settings.lightYawDeg;
   float lightPitchDeg = settings.lightPitchDeg;
@@ -4353,7 +4910,6 @@ int main(int argc, char* argv[]) {
   float ambientStrength = settings.ambientStrength;
   ImVec2 overlayOffset(0.0f, 0.0f);
   ImVec2 detailOffset(0.0f, 0.0f);
-  ImVec2 detailSize(260.0f, 200.0f);
   const bool defaultAutoConnect = options.autoConnectSet ? options.autoConnect :
                                   readEnvBool("RAYRAI_TCP_VIEWER_AUTO_CONNECT", true);
   const bool envMinimizePanels = options.minimizePanelsSet ? options.minimizePanels :
@@ -4391,7 +4947,12 @@ int main(int argc, char* argv[]) {
   float mouseForceScale = 1.0f;
   MouseForceGesture mouseForce;
   RulerToolState ruler;
+  AngleToolState angle;
+  PoseGrabberGesture poseGrabber;
   ViewerViewportState viewportState;
+
+  std::shared_ptr<raisin::CoordinateFrame> bodyFramesNode;     // multi-pose frame for "Show Body Frames"
+  std::vector<std::shared_ptr<raisin::Visuals>> comMarkers;    // sphere visuals for COM toggle
 
   // These were declared further down before the inspector was added; pull them up so the
   // load/close lambdas below can capture them.
@@ -4571,7 +5132,7 @@ int main(int argc, char* argv[]) {
   bool baseStyleCaptured = false;
   ImGuiStyle baseStyle;
   ImVec2 lastDisplaySize(0.0f, 0.0f);
-  bool settingsDirty = !options.resourceDirs.empty();
+  bool settingsDirty = !options.resourceDirs.empty() || options.updateRateHz > 0.0f;
   bool settingsApplied = false;
   bool settingsSavePending = false;
   auto lastSettingsDirtyTime = std::chrono::steady_clock::now();
@@ -4591,6 +5152,7 @@ int main(int argc, char* argv[]) {
   ViewerStats stats;
   const auto steadyStart = std::chrono::steady_clock::now();
   auto nextAutoConnectAttempt = std::chrono::steady_clock::now();
+  auto nextTcpUpdateRequestTime = std::chrono::steady_clock::now();
   auto clearSceneState = [&]() {
     scene.clear();
     motionEstimates.clear();
@@ -4615,6 +5177,7 @@ int main(int argc, char* argv[]) {
       std::snprintf(portBuf, sizeof(portBuf), "%d", port);
       recordConnection(recentConnections, endpoint.host, endpoint.port);
       settingsDirty = true;
+      nextTcpUpdateRequestTime = std::chrono::steady_clock::now();
       stats.reconnects++;
       return true;
     }
@@ -4828,6 +5391,57 @@ int main(int argc, char* argv[]) {
       if (ImGui::IsKeyPressed(ImGuiKey_F, false)) requestFrameScene = true;
       if (ImGui::IsKeyPressed(ImGuiKey_C, false)) requestFrameSelected = true;
       if (ImGui::IsKeyPressed(ImGuiKey_R, false)) requestResetCamera = true;
+      if (ImGui::IsKeyPressed(ImGuiKey_M, false)) {
+        // Cycle: off -> ruler -> angle -> off. 'A' would collide with the
+        // camera's WASD strafe, so the angle tool reuses M's second press.
+        if (!ruler.enabled && !angle.enabled) {
+          ruler.enabled = true;
+          lastStatus = "ruler enabled (M again for angle)";
+        } else if (ruler.enabled) {
+          ruler.enabled = false;
+          angle.enabled = true;
+          angle.picked = 0;
+          lastStatus = "angle tool: pick A";
+        } else {
+          angle.enabled = false;
+          angle.picked = 0;
+          lastStatus = "measure tool disabled";
+        }
+      }
+      if (ImGui::IsKeyPressed(ImGuiKey_G, false)) {
+        poseGrabber.enabled = !poseGrabber.enabled;
+        if (!poseGrabber.enabled) {
+          poseGrabber.dragging = false;
+          poseGrabber.axis = -1;
+        }
+        lastStatus = poseGrabber.enabled ? "pose grabber enabled" : "pose grabber disabled";
+      }
+      if (ImGui::IsKeyPressed(ImGuiKey_H, false) ||
+          ImGui::IsKeyPressed(ImGuiKey_Slash, false) /* '?' on US layout = shift+/ */) {
+        showShortcutsHelp = !showShortcutsHelp;
+      }
+      if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+        const Uint32 flags = SDL_GetWindowFlags(window);
+        const bool isFullscreen = (flags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0;
+        if (isFullscreen) {
+          SDL_SetWindowFullscreen(window, 0);
+        }
+        if (ruler.enabled) {
+          ruler.enabled = false;
+          lastStatus = "ruler disabled";
+        }
+        if (angle.enabled) {
+          angle.enabled = false;
+          angle.picked = 0;
+          lastStatus = "angle tool disabled";
+        }
+        if (poseGrabber.dragging || poseGrabber.enabled) {
+          poseGrabber.enabled = false;
+          poseGrabber.dragging = false;
+          poseGrabber.axis = -1;
+        }
+        if (showShortcutsHelp) showShortcutsHelp = false;
+      }
       if (ImGui::IsKeyPressed(ImGuiKey_F12, false)) screenshotRequested = true;
       if (ImGui::IsKeyPressed(ImGuiKey_F11, false)) {
         const Uint32 flags = SDL_GetWindowFlags(window);
@@ -4995,7 +5609,8 @@ int main(int argc, char* argv[]) {
       }
 
       if (!networkFailed && !awaitingSensorAck) {
-        if (!awaitingResponse) {
+        if (!awaitingResponse &&
+            consumeTcpUpdateSlot(now, nextTcpUpdateRequestTime, settings.tcpUpdateRateHz)) {
           if (!sendUpdateRequest(client, updateRequestTag, pendingControlRequests)) {
             if (!client.lastIoWouldBlock()) {
               lastStatus = "connection lost";
@@ -5139,7 +5754,140 @@ int main(int argc, char* argv[]) {
     }
 
     scene.updateContactVisuals(
-      showContactPoints, contactPointSize, showContactForces, contactForceSize);
+      showContactPoints, contactPointSize, showContactForces, contactForceSize,
+      contactForceAbsolute);
+
+    // Per-body coordinate axes: drive a single shared CoordinateFrame node that
+    // collects one Pose per visible body. Filters out collision-pass duplicates,
+    // ground, and heightmaps (they don't have meaningful body frames).
+    {
+      const bool wantFrames = showBodyFrames;
+      if (wantFrames && !bodyFramesNode) {
+        bodyFramesNode = viewer->addCoordinateFrame("body_frames");
+      }
+      if (bodyFramesNode) {
+        bodyFramesNode->enable(wantFrames);
+      }
+      if (wantFrames && bodyFramesNode) {
+        const auto entries = scene.getVisualEntries();
+        bodyFramesNode->poses.clear();
+        bodyFramesNode->poses.reserve(entries.size());
+        for (const auto& s : entries) {
+          if (s.entry.isCollision) continue;
+          if (s.entry.shape == raisim::Shape::Ground ||
+              s.entry.shape == raisim::Shape::HeightMap) continue;
+          if (!s.entry.hasState) continue;
+          raisin::CoordinateFrame::Pose p;
+          p.position = s.entry.lastPos;
+          // lastQuat is wxyz; glm::quat constructor takes (w,x,y,z).
+          p.quaternion = glm::quat(
+            s.entry.lastQuat.x, s.entry.lastQuat.y, s.entry.lastQuat.z, s.entry.lastQuat.w);
+          bodyFramesNode->poses.push_back(p);
+        }
+        bodyFramesNode->frameSize = bodyFrameSize;
+      }
+    }
+
+    // COM markers: spheres at each body's frame origin. For single rigid bodies
+    // this is the COM exactly; for articulated system links it's the link frame
+    // origin (not the COM offset within that link — server doesn't stream that).
+    {
+      const auto comMarkerName = [](size_t i) {
+        return "com_marker_" + std::to_string(i);
+      };
+      if (!showComMarkers) {
+        for (size_t i = comMarkers.size(); i-- > 0;) {
+          viewer->removeVisualObject(comMarkerName(i));
+        }
+        comMarkers.clear();
+      } else {
+        const auto entries = scene.getVisualEntries();
+        std::vector<glm::vec3> targets;
+        targets.reserve(entries.size());
+        for (const auto& s : entries) {
+          if (s.entry.isCollision) continue;
+          if (s.entry.shape == raisim::Shape::Ground ||
+              s.entry.shape == raisim::Shape::HeightMap) continue;
+          if (!s.entry.hasState) continue;
+          targets.push_back(s.entry.lastPos);
+        }
+        const float r = std::max(0.001f, comMarkerSize);
+        while (comMarkers.size() < targets.size()) {
+          const size_t idx = comMarkers.size();
+          auto v = viewer->addVisualSphere(comMarkerName(idx), r, 0.2f, 0.8f, 1.0f, 1.0f);
+          comMarkers.push_back(v);
+        }
+        while (comMarkers.size() > targets.size()) {
+          const size_t idx = comMarkers.size() - 1;
+          viewer->removeVisualObject(comMarkerName(idx));
+          comMarkers.pop_back();
+        }
+        for (size_t i = 0; i < comMarkers.size(); ++i) {
+          if (!comMarkers[i]) continue;
+          comMarkers[i]->setSphereSize(r);
+          comMarkers[i]->setPosition(targets[i]);
+        }
+      }
+    }
+
+    // Pose grabber: shadow the server's stream while the gizmo is enabled. The
+    // applyScenePayload calls above just updated visual->setPosition/Orientation
+    // from the server's view of the world; here we force the held body back to
+    // the user-controlled pose BEFORE renderViewer reads the visual state.
+    // - Seed the hold on first enable (or when selection changes) from the
+    //   body's current server pose so there's no jump.
+    // - The drag handler (later in the frame) updates heldPos/heldQuat as the
+    //   user drags; nothing is sent to the server during the drag.
+    // - On deactivation (gizmo turned off, Esc, or selection change), if the
+    //   user actually moved the body, emit one CR_SET_POSE with the final
+    //   pose so the server commits to it.
+    auto releasePoseHold = [&]() {
+      if (!poseGrabber.heldActive) return;
+      const bool canSend = client.isConnected() && scene.serverSupportsSimControl();
+      if (poseGrabber.heldDirty && canSend && poseGrabber.heldTag != 0) {
+        raisin::tcp_viewer::SimControlRequest r;
+        r.type = raisin::tcp_viewer::ClientRequestType::CR_SET_POSE;
+        r.visTag = poseGrabber.heldTag;
+        r.vec3a = poseGrabber.heldPos;
+        r.quat = poseGrabber.heldQuat;
+        // Coalesce with any in-flight pose request for the same tag.
+        bool replaced = false;
+        for (auto& pending : pendingControlRequests) {
+          if (pending.type == raisin::tcp_viewer::ClientRequestType::CR_SET_POSE &&
+              pending.visTag == r.visTag) {
+            pending = r;
+            replaced = true;
+            break;
+          }
+        }
+        if (!replaced) pendingControlRequests.push_back(r);
+      }
+      poseGrabber.heldActive = false;
+      poseGrabber.heldDirty = false;
+      poseGrabber.heldTag = 0;
+      poseGrabber.dragging = false;
+      poseGrabber.axis = -1;
+    };
+    if (poseGrabber.enabled && requestedEntry) {
+      // Selection changed mid-hold: commit the previous body's pose, then
+      // seed a fresh hold on the new body.
+      if (poseGrabber.heldActive && poseGrabber.heldTag != requestedTag) {
+        releasePoseHold();
+      }
+      if (!poseGrabber.heldActive) {
+        poseGrabber.heldActive = true;
+        poseGrabber.heldDirty = false;
+        poseGrabber.heldTag = requestedTag;
+        poseGrabber.heldPos = requestedEntry->lastPos;
+        poseGrabber.heldQuat = requestedEntry->lastQuat;
+      }
+      if (requestedEntry->visual) {
+        requestedEntry->visual->setPosition(poseGrabber.heldPos);
+        requestedEntry->visual->setOrientation(poseGrabber.heldQuat);
+      }
+    } else if (poseGrabber.heldActive) {
+      releasePoseHold();
+    }
 
     const bool canQueueSimControl = client.isConnected() && scene.serverSupportsSimControl();
     const bool mouseForceCanStart = !ruler.enabled && mouseForceEnabled && canQueueSimControl &&
@@ -5147,20 +5895,181 @@ int main(int argc, char* argv[]) {
     const bool mouseForceShortcutActive = mouseForceCanStart && io.KeyShift;
     const bool mouseForceSuppressViewportInput = mouseForce.active ||
       (mouseForceShortcutActive && io.MouseDown[ImGuiMouseButton_Left]);
+    // While the gizmo is being dragged, or while the user is left-pressing with
+    // a selected body and the gizmo enabled, swallow viewport input so the
+    // camera doesn't orbit/pan during gizmo manipulation.
+    const bool poseGrabberSuppressViewportInput =
+      poseGrabber.dragging ||
+      (poseGrabber.enabled && requestedEntry && io.MouseDown[ImGuiMouseButton_Left]);
     viewportState = ViewerViewportState{};
 
     const auto tFrameStart = std::chrono::steady_clock::now();
-    const bool rulerCapturesViewportInput = ruler.enabled && !mouseForce.active;
-    renderViewer(*viewer, window, !mouseForceSuppressViewportInput && !rulerCapturesViewportInput,
-      !mouseForce.active && !rulerCapturesViewportInput, &viewportState);
+    const bool measureToolActive = ruler.enabled || angle.enabled;
+    const bool rulerCapturesViewportInput = measureToolActive && !mouseForce.active;
+    const bool allowViewportInput = !mouseForceSuppressViewportInput &&
+                                    !rulerCapturesViewportInput &&
+                                    !poseGrabberSuppressViewportInput;
+    const bool allowClickSelection = !mouseForce.active && !rulerCapturesViewportInput &&
+                                     !poseGrabber.dragging;
+    renderViewer(*viewer, window, allowViewportInput, allowClickSelection, &viewportState);
 
     if (ruler.enabled && !mouseForce.active && viewportState.hovered &&
-        ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+        ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
       glm::vec3 rulerPoint(0.0f);
       if (readRulerWorldPointAtCursor(viewer->getCamera(), viewportState, rulerPoint)) {
         appendRulerPoint(rulerPoint, "scene point");
       } else {
         lastStatus = "ruler pick missed";
+      }
+    }
+
+    if (angle.enabled && !mouseForce.active && viewportState.hovered &&
+        ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+      glm::vec3 picked(0.0f);
+      if (readRulerWorldPointAtCursor(viewer->getCamera(), viewportState, picked)) {
+        if (angle.picked >= 3) {
+          angle.picked = 0;
+        }
+        if (angle.picked == 0)      { angle.a = picked; angle.aLabel = formatRulerPoint(picked); }
+        else if (angle.picked == 1) { angle.b = picked; angle.bLabel = formatRulerPoint(picked); }
+        else                         { angle.c = picked; angle.cLabel = formatRulerPoint(picked); }
+        angle.picked++;
+        lastStatus = angle.picked >= 3
+          ? std::string("angle = ") + formatAngleDegrees(computeAngleRadians(angle.a, angle.b, angle.c))
+          : std::string("angle: pick ") + nextAnglePointLabel(angle);
+      } else {
+        lastStatus = "angle pick missed";
+      }
+    }
+
+    // Pose grabber gizmo: translate handles (3 colored arrows) plus rotate
+    // handles (3 colored rings). Drag a handle to set position or orientation
+    // via CR_SET_POSE. While dragging, the body's visual pose is overridden so
+    // the incoming server stream doesn't snap the body back under the cursor.
+    GizmoScreenLayout gizmoLayout;
+    PoseGrabberHit gizmoHover;
+    const bool poseGrabberPickable = poseGrabber.enabled && requestedEntry && !mouseForce.active &&
+                                     !ruler.enabled && !angle.enabled && canQueueSimControl;
+    // The gizmo lives at the user-controlled (held) pose, not the server's
+    // pose. This keeps the handles attached to what the user actually sees.
+    const glm::vec3 gizmoOriginWorld = (poseGrabber.heldActive && requestedEntry)
+        ? poseGrabber.heldPos
+        : (requestedEntry ? requestedEntry->lastPos : glm::vec3(0.0f));
+    const glm::vec4 gizmoOriginQuat = (poseGrabber.heldActive && requestedEntry)
+        ? poseGrabber.heldQuat
+        : (requestedEntry ? requestedEntry->lastQuat : glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+    // Gizmo handles are world-axis-aligned. Translate/rotate produce deltas
+    // expressed in the world frame; those deltas are composed with the body's
+    // current held pose by the drag handler below.
+    (void)gizmoOriginQuat;  // (kept for future use; gizmo display is world-aligned)
+    if (poseGrabberPickable) {
+      gizmoLayout = computeGizmoLayout(viewer->getCamera(), viewportState, gizmoOriginWorld);
+      if (!poseGrabber.dragging && viewportState.hovered) {
+        gizmoHover = pickPoseGrabberHandle(gizmoLayout, io.MousePos);
+      }
+    }
+    if (poseGrabberPickable && !poseGrabber.dragging && viewportState.hovered &&
+        gizmoHover.axis >= 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+      poseGrabber.dragging = true;
+      poseGrabber.mode = gizmoHover.mode;
+      poseGrabber.axis = gizmoHover.axis;
+      poseGrabber.tag = requestedTag;
+      poseGrabber.index = requestedIndex;
+      poseGrabber.anchorWorld = gizmoOriginWorld;
+      poseGrabber.anchorQuat = gizmoOriginQuat;
+      poseGrabber.anchorMouse = io.MousePos;
+      poseGrabber.currentTarget = poseGrabber.anchorWorld;
+      poseGrabber.currentQuat = poseGrabber.anchorQuat;
+      // For rotation, capture mouse angle around the body's screen center so
+      // angular deltas are relative to that starting position.
+      ImVec2 bodyScreen;
+      if (projectWorldToViewport(viewer->getCamera(), viewportState,
+                                 poseGrabber.anchorWorld, bodyScreen)) {
+        poseGrabber.anchorScreenAngle =
+          std::atan2(io.MousePos.y - bodyScreen.y, io.MousePos.x - bodyScreen.x);
+      }
+    }
+    if (poseGrabber.dragging) {
+      // The picked axis is a WORLD axis (gizmo handles are world-aligned).
+      // Translate moves along that world axis; rotate applies a world-frame
+      // rotation around it as a pre-multiplication onto the anchor pose
+      // (which is the held pose captured at drag start).
+      glm::vec3 worldAxis(0.0f);
+      worldAxis[poseGrabber.axis] = 1.0f;
+      // anchorQuat vec4 layout is XYZW (matches the rest of the codebase).
+      // glm::quat constructor takes (W, X, Y, Z).
+      const glm::quat aq(poseGrabber.anchorQuat.w, poseGrabber.anchorQuat.x,
+                         poseGrabber.anchorQuat.y, poseGrabber.anchorQuat.z);
+
+      if (poseGrabber.mode == PoseGrabberGesture::Mode::Translate) {
+        ImVec2 originScreen, axisScreen;
+        const bool okA = projectWorldToViewport(viewer->getCamera(), viewportState,
+                                                poseGrabber.anchorWorld, originScreen);
+        const bool okB = projectWorldToViewport(viewer->getCamera(), viewportState,
+                                                poseGrabber.anchorWorld + worldAxis, axisScreen);
+        if (okA && okB) {
+          const float axDx = axisScreen.x - originScreen.x;
+          const float axDy = axisScreen.y - originScreen.y;
+          const float axLen2 = axDx * axDx + axDy * axDy;
+          if (axLen2 > 1e-3f) {
+            const float mDx = io.MousePos.x - poseGrabber.anchorMouse.x;
+            const float mDy = io.MousePos.y - poseGrabber.anchorMouse.y;
+            // Scalar projection of mouse drag onto the screen-axis direction;
+            // pixel distance / pixels-per-metre = world distance along worldAxis.
+            const float worldDelta = (mDx * axDx + mDy * axDy) / axLen2;
+            poseGrabber.currentTarget = poseGrabber.anchorWorld + worldAxis * worldDelta;
+          }
+        }
+      } else {
+        // Rotation: world-frame delta applied to the held (anchor) pose via
+        // pre-multiplication.  q_new = dq_world * q_anchor.  Pre-multiplication
+        // means dq rotates the body in the world frame — exactly what a
+        // world-aligned gizmo should do.
+        ImVec2 bodyScreen;
+        if (projectWorldToViewport(viewer->getCamera(), viewportState,
+                                   poseGrabber.anchorWorld, bodyScreen)) {
+          const float curAngle =
+            std::atan2(io.MousePos.y - bodyScreen.y, io.MousePos.x - bodyScreen.x);
+          float delta = curAngle - poseGrabber.anchorScreenAngle;
+          while (delta > 3.14159265f) delta -= 6.2831853f;
+          while (delta < -3.14159265f) delta += 6.2831853f;
+          // Screen +Y points down → "visually CCW" mouse motion is math CW.
+          const float screenSpaceDelta = -delta;
+          // If the picked world axis points toward the camera, screen-CCW =
+          // positive right-hand-rule rotation. Otherwise flip the sign.
+          const float axisDotView = glm::dot(worldAxis, viewer->getCamera().front);
+          const float sign = (axisDotView < 0.0f) ? +1.0f : -1.0f;
+          const float rotAngle = sign * screenSpaceDelta;
+          const glm::quat dq = glm::angleAxis(rotAngle, worldAxis);
+          // Pre-multiply: world-frame rotation applied to the held pose.
+          const glm::quat nq = glm::normalize(dq * aq);
+          // Pack glm::quat (W,X,Y,Z) back into XYZW vec4 storage.
+          poseGrabber.currentQuat = glm::vec4(nq.x, nq.y, nq.z, nq.w);
+          poseGrabber.currentTarget = poseGrabber.anchorWorld;
+        }
+      }
+
+      // Update the held pose so next frame's pre-render override paints the
+      // body at the dragged target. No CR_SET_POSE is queued during the drag —
+      // the server only sees the final pose when the gizmo is deactivated
+      // (handled in releasePoseHold above).
+      poseGrabber.heldPos = poseGrabber.currentTarget;
+      poseGrabber.heldQuat = poseGrabber.currentQuat;
+      poseGrabber.heldDirty = true;
+      if (requestedEntry && requestedEntry->visual) {
+        requestedEntry->visual->setPosition(poseGrabber.currentTarget);
+        requestedEntry->visual->setOrientation(poseGrabber.currentQuat);
+      }
+      // Keep the side panel's pose authoring widgets in sync so the user can
+      // see numeric values without round-tripping through the server.
+      controlPosePosition = poseGrabber.currentTarget;
+      controlPoseQuat = poseGrabber.currentQuat;
+      controlPoseTag = poseGrabber.tag;
+      controlPoseInitialized = true;
+
+      if (!io.MouseDown[ImGuiMouseButton_Left]) {
+        poseGrabber.dragging = false;
+        poseGrabber.axis = -1;
       }
     }
 
@@ -5175,6 +6084,7 @@ int main(int argc, char* argv[]) {
         mouseForce.index = requestedIndex;
         mouseForce.localBodyIdx = std::max(0, controlBodyIdx);
         mouseForce.applicationPoint = applicationPoint;
+        mouseForce.localApplicationPoint = visualWorldPointToLocal(*requestedEntry, applicationPoint);
         mouseForce.force = glm::vec3(0.0f);
         mouseForce.pressMouse = anchorScreen;
         mouseForce.currentMouse = io.MousePos;
@@ -5209,29 +6119,63 @@ int main(int argc, char* argv[]) {
     };
 
     if (mouseForce.active) {
-      mouseForce.currentMouse = io.MousePos;
-      const ImVec2 dragPixels(mouseForce.currentMouse.x - mouseForce.pressMouse.x,
-                              mouseForce.currentMouse.y - mouseForce.pressMouse.y);
-      mouseForce.force = mouseForceFromDragPixels(viewer->getCamera(), dragPixels, mouseForceScale);
-      controlForce = mouseForce.force;
-      const float dragLen = std::sqrt(dragPixels.x * dragPixels.x + dragPixels.y * dragPixels.y);
       const bool mouseButtonDown = io.MouseDown[ImGuiMouseButton_Left];
-      const bool shouldApplyMouseForce = mouseButtonDown && dragLen >= 4.0f &&
-        glm::length(mouseForce.force) > 1.0e-4f && client.isConnected();
-      if (shouldApplyMouseForce) {
-        queueOrUpdateMouseForce();
-        lastStatus = "mouse force applying";
-      } else {
-        cancelPendingMouseForce();
+      const VisualEntry* activeForceEntry = nullptr;
+      if (requestedEntry && requestedTag == mouseForce.tag && requestedIndex == mouseForce.index) {
+        activeForceEntry = requestedEntry;
       }
+
       if (!mouseButtonDown) {
         cancelPendingMouseForce();
         mouseForce = MouseForceGesture{};
+      } else if (!activeForceEntry) {
+        cancelPendingMouseForce();
+        mouseForce = MouseForceGesture{};
+        lastStatus = "mouse force target lost";
+      } else {
+        mouseForce.applicationPoint = visualLocalPointToWorld(
+          *activeForceEntry, mouseForce.localApplicationPoint);
+        ImVec2 anchorScreen = mouseForce.pressMouse;
+        if (projectWorldToViewport(viewer->getCamera(), viewportState,
+              mouseForce.applicationPoint, anchorScreen)) {
+          mouseForce.pressMouse = anchorScreen;
+        }
+        mouseForce.currentMouse = io.MousePos;
+        const ImVec2 dragPixels(mouseForce.currentMouse.x - mouseForce.pressMouse.x,
+                                mouseForce.currentMouse.y - mouseForce.pressMouse.y);
+        mouseForce.force = mouseForceFromDragPixels(viewer->getCamera(), dragPixels, mouseForceScale);
+        controlForce = mouseForce.force;
+        const float dragLen = std::sqrt(dragPixels.x * dragPixels.x + dragPixels.y * dragPixels.y);
+        const bool shouldApplyMouseForce = dragLen >= 4.0f &&
+          glm::length(mouseForce.force) > 1.0e-4f && client.isConnected();
+        if (shouldApplyMouseForce) {
+          queueOrUpdateMouseForce();
+          lastStatus = "mouse force applying";
+        } else {
+          cancelPendingMouseForce();
+        }
       }
     }
     drawMouseForcePreview(mouseForce, viewportState, viewer->getCamera());
     if (ruler.enabled) {
       drawRulerOverlay(ruler, viewportState, viewer->getCamera());
+      drawRulerCursorIcon(ruler, viewportState);
+    }
+    if (angle.enabled) {
+      drawAngleOverlay(angle, viewportState, viewer->getCamera());
+      drawAngleCursorIcon(angle, viewportState);
+    }
+    if (poseGrabberPickable || poseGrabber.dragging) {
+      // Gizmo display stays world-axis-aligned and follows the held position
+      // (or the in-progress drag target).
+      const glm::vec3 drawOriginWorld =
+        poseGrabber.dragging ? poseGrabber.currentTarget : gizmoOriginWorld;
+      GizmoScreenLayout draw =
+        computeGizmoLayout(viewer->getCamera(), viewportState, drawOriginWorld);
+      const int activeAxis = poseGrabber.dragging ? poseGrabber.axis : -1;
+      drawPoseGrabberOverlay(draw,
+                             poseGrabber.mode, activeAxis,
+                             gizmoHover.mode, gizmoHover.axis);
     }
 
     // Headless test harness uses --inspect-close-after-frames; surface per-frame
@@ -5373,6 +6317,29 @@ int main(int argc, char* argv[]) {
       if (drawIconTextButton(uiIcons, TcpViewerIconKind::Refresh, "Reset Camera", "view_reset_camera")) {
         requestResetCamera = true;
       }
+      {
+        const auto applyOrtho = [&](OrthoView v) {
+          glm::vec3 mn, mx;
+          if (!scene.computeSceneBounds(mn, mx)) {
+            mn = glm::vec3(-1.0f);
+            mx = glm::vec3(1.0f);
+          }
+          applyOrthoView(*viewer, v, mn, mx);
+        };
+        auto& cam = viewer->getCamera();
+        const bool isOrtho =
+          cam.getProjectionMode() == raisin::Camera::ProjectionMode::ORTHOGRAPHIC;
+        ImGui::TextDisabled("Orthographic views (%s)", isOrtho ? "ortho active" : "perspective");
+        if (ImGui::Button("Top"))    applyOrtho(OrthoView::Top);    ImGui::SameLine();
+        if (ImGui::Button("Bottom")) applyOrtho(OrthoView::Bottom); ImGui::SameLine();
+        if (ImGui::Button("Front"))  applyOrtho(OrthoView::Front);  ImGui::SameLine();
+        if (ImGui::Button("Back"))   applyOrtho(OrthoView::Back);
+        if (ImGui::Button("Left"))   applyOrtho(OrthoView::Left);   ImGui::SameLine();
+        if (ImGui::Button("Right"))  applyOrtho(OrthoView::Right);  ImGui::SameLine();
+        if (ImGui::Button(isOrtho ? "Perspective" : "Perspective (active)")) {
+          cam.setProjectionMode(raisin::Camera::ProjectionMode::PERSPECTIVE);
+        }
+      }
 
       ImGui::SeparatorText("Bookmarks");
       for (int i = 0; i < static_cast<int>(cameraBookmarks.size()); ++i) {
@@ -5404,7 +6371,7 @@ int main(int argc, char* argv[]) {
 
     const auto drawCaptureOptions = [&]() {
       ImGui::SeparatorText("Screenshots");
-      ImGui::SetNextItemWidth(360.0f);
+      ImGui::SetNextItemWidth(fontScaledTextControlWidth(28.0f));
       ImGui::InputText("##ScreenshotDirectory", screenshotDirBuf, sizeof(screenshotDirBuf));
       if (drawIconTextButton(uiIcons, TcpViewerIconKind::Camera, "Screenshot", "capture_screenshot")) {
         screenshotRequested = true;
@@ -5416,7 +6383,7 @@ int main(int argc, char* argv[]) {
       ImGui::EndDisabled();
 
       ImGui::SeparatorText("Session");
-      ImGui::SetNextItemWidth(360.0f);
+      ImGui::SetNextItemWidth(fontScaledTextControlWidth(28.0f));
       ImGui::InputText("##SessionFile", sessionPathBuf, sizeof(sessionPathBuf));
       if (!sessionRecorder.active()) {
         if (drawIconTextButton(uiIcons, TcpViewerIconKind::Save, "Start TCP Recording", "start_tcp_recording")) {
@@ -6040,7 +7007,7 @@ int main(int argc, char* argv[]) {
             }
 
             ImGui::TableNextColumn();
-            if (ImGui::Checkbox("All Transparent", &forceTransparent)) {
+            if (ImGui::Checkbox("X-ray (transparent)", &forceTransparent)) {
               scene.setForceTransparent(forceTransparent);
             }
 
@@ -6062,10 +7029,25 @@ int main(int argc, char* argv[]) {
             }
 
             ImGui::TableNextColumn();
+            ImGui::Checkbox("Show Body Frames", &showBodyFrames);
+
+            ImGui::TableNextColumn();
+            ImGui::Checkbox("Show COM Markers", &showComMarkers);
+
+            ImGui::TableNextColumn();
+            ImGui::Checkbox("Pose Grabber (drag axes)", &poseGrabber.enabled);
+
+            ImGui::TableNextColumn();
             ImGui::Checkbox("Show Contact Points", &showContactPoints);
 
             ImGui::TableNextColumn();
             ImGui::Checkbox("Show Contact Forces", &showContactForces);
+
+            ImGui::TableNextColumn();
+            ImGui::BeginDisabled(!showContactForces);
+            ImGui::Checkbox("Force Scale: Absolute", &contactForceAbsolute);
+            ImGui::EndDisabled();
+
             ImGui::EndTable();
           }
 
@@ -6152,18 +7134,20 @@ int main(int argc, char* argv[]) {
           }
           ImGui::PopStyleVar();
 
-          ImGui::SeparatorText("Resource dirs");
+          ImGui::SeparatorText("Resource directories");
           ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.15f, 0.55f));
           ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 6.0f);
           ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
           const ImGuiChildFlags resourceFlags = ImGuiChildFlags_Border |
                                                 ImGuiChildFlags_AutoResizeY |
                                                 ImGuiChildFlags_AlwaysUseWindowPadding;
+          const float buttonWidth = iconTextButtonSize("Add").x;
+          const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+          const float resourceDirsBoxWidth = fontScaledTextControlWidth(22.4f) + buttonWidth +
+                                             spacing + ImGui::GetStyle().WindowPadding.x * 2.0f;
           if (ImGui::BeginChild(
-                "##resource_dirs_box", ImVec2(sliderRowWidth, 0.0f), resourceFlags)) {
+                "##resource_dirs_box", ImVec2(resourceDirsBoxWidth, 0.0f), resourceFlags)) {
             const float rowWidth = ImGui::GetContentRegionAvail().x;
-            const float buttonWidth = iconTextButtonSize("Add").x;
-            const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
             const float inputWidth = std::max(0.0f, rowWidth - buttonWidth - spacing);
             ImGui::SetNextItemWidth(inputWidth);
             ImGui::InputTextWithHint(
@@ -6248,15 +7232,36 @@ int main(int argc, char* argv[]) {
             return objectLessByMode(lhs, rhs, objectSortMode);
           });
 
-          const float objectFilterWidth = 260.0f;
-          const float objectSortWidth = 110.0f;
-          const float objectListWidth = objectFilterWidth + style.ItemSpacing.x + objectSortWidth +
-                                        style.ItemInnerSpacing.x + ImGui::CalcTextSize("Sort").x;
+          float objectContentWidth = ImGui::CalcTextSize("No matching objects").x;
+          for (const auto& item : items) {
+            const std::string nameText = item.name.empty() ?
+              ("tag " + std::to_string(item.tag)) : item.name;
+            objectContentWidth = std::max(objectContentWidth,
+              ImGui::CalcTextSize(objectTypeLabel(item.objectTypeRaw)).x +
+              ImGui::CalcTextSize(": ").x + ImGui::CalcTextSize(nameText.c_str()).x);
+            if (groupObjectsByType) {
+              objectContentWidth = std::max(objectContentWidth,
+                ImGui::CalcTextSize(objectTypeLabel(item.objectTypeRaw)).x);
+            }
+          }
+          const float objectListPadding = style.FramePadding.x * 2.0f +
+                                          style.WindowPadding.x * 2.0f +
+                                          style.ScrollbarSize;
+          const float minObjectListWidth = std::round(ImGui::GetFontSize() * 16.0f);
+          const float maxObjectListWidth = std::max(minObjectListWidth,
+            std::min(displaySize.x * 0.32f, ImGui::GetFontSize() * 36.0f));
+          const float objectListWidth = std::clamp(
+            objectContentWidth + objectListPadding, minObjectListWidth, maxObjectListWidth);
+
+          constexpr const char* sortItems[] = {"Name", "Type", "Tag", "Index"};
+          const float objectSortWidth = comboWidthForTextItems(sortItems, IM_ARRAYSIZE(sortItems));
+          const float sortLabelWidth = style.ItemInnerSpacing.x + ImGui::CalcTextSize("Sort").x;
+          const float objectFilterWidth = std::max(ImGui::GetFontSize() * 8.0f,
+            objectListWidth - style.ItemSpacing.x - objectSortWidth - sortLabelWidth);
           ImGui::SetNextItemWidth(objectFilterWidth);
           ImGui::InputTextWithHint("##ObjectFilter", "filter name, type, tag", objectFilterBuf,
             sizeof(objectFilterBuf));
           ImGui::SameLine();
-          constexpr const char* sortItems[] = {"Name", "Type", "Tag", "Index"};
           ImGui::SetNextItemWidth(objectSortWidth);
           ImGui::Combo("Sort", &objectSortMode, sortItems, IM_ARRAYSIZE(sortItems));
           ImGui::Checkbox("Group by type", &groupObjectsByType);
@@ -6326,10 +7331,9 @@ int main(int argc, char* argv[]) {
           }
 
           ImGui::SeparatorText("Ruler");
-          ImGui::Checkbox("Ruler", &ruler.enabled);
+          ImGui::Checkbox("Measure (M)", &ruler.enabled);
           ImGui::SameLine();
-          ImGui::TextDisabled("next %s", (!ruler.hasA || (ruler.hasA && ruler.hasB) ||
-            ruler.nextPoint == 0) ? "A" : "B");
+          ImGui::TextDisabled("next %s", nextRulerPointLabel(ruler));
           ImGui::BeginDisabled(!hasSelected);
           if (drawIconTextButton(uiIcons, TcpViewerIconKind::Focus, "Set A", "ruler_set_a")) {
             setRulerEndpointFromSelection(0, selectedTag, selectedIndex, selectedEntry);
@@ -6647,6 +7651,13 @@ int main(int argc, char* argv[]) {
           ImGui::PlotLines("##DataTransferRate", transferRates.data(),
             static_cast<int>(transferRates.size()), 0, transferOverlay, 0.0f, graphMax,
             ImVec2(diagnosticsContentWidth, ImGui::GetFontSize() * 6.0f));
+          float updateRateHz = settings.tcpUpdateRateHz;
+          if (drawInlineLabelSliderFloat("diagnostics_update_rate", "Target",
+                &updateRateHz, kTcpUpdateRateMinHz, kTcpUpdateRateMaxHz, "%.0f Hz")) {
+            settings.tcpUpdateRateHz = sanitizeTcpUpdateRateHz(updateRateHz);
+            nextTcpUpdateRequestTime = now;
+            settingsDirty = true;
+          }
 
           ImGui::SeparatorText("Packets");
           ImGui::TextDisabled("Recent %zu packets | parse errors %d | RX %.1f KiB/s", packetSamples.size(),
@@ -6776,20 +7787,24 @@ int main(int argc, char* argv[]) {
     }
 
     if (selectedEntry) {
-      const ImVec2 detailsBasePos(displaySize.x - detailSize.x - 12.0f, 12.0f + menuBarHeight);
+      const float detailPanelWidth = std::round(
+        ImGui::GetFontSize() * (detailMinimized ? 9.5f : 18.0f));
+      const ImVec2 detailsBasePos(displaySize.x - detailPanelWidth - 12.0f,
+                                  12.0f + menuBarHeight);
       ImVec2 detailsPos = detailsBasePos;
       detailsPos.x += detailOffset.x;
       detailsPos.y += detailOffset.y;
       ImGui::SetNextWindowBgAlpha(0.5f);
       ImGui::SetNextWindowPos(detailsPos, ImGuiCond_Always);
-      const ImVec2 detailMinSize = detailMinimized ? ImVec2(160.0f, 0.0f) : detailSize;
-      ImGui::SetNextWindowSizeConstraints(detailMinSize, ImVec2(FLT_MAX, FLT_MAX));
+      const ImVec2 detailMinSize(detailPanelWidth, 0.0f);
+      const ImVec2 detailMaxSize(detailPanelWidth,
+        std::max(ImGui::GetFontSize() * 8.0f, displaySize.y - menuBarHeight - 24.0f));
+      ImGui::SetNextWindowSizeConstraints(detailMinSize, detailMaxSize);
       ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 10.0f));
       const ImGuiWindowFlags detailFlags =
         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
         ImGuiWindowFlags_NoNavFocus;
-      ImVec2 detailWindowSize(0.0f, 0.0f);
       if (ImGui::Begin("Selected Object##Overlay", nullptr, detailFlags)) {
         const ImGuiStyle& detailStyle = ImGui::GetStyle();
         const float detailToggleWidth =
@@ -6978,12 +7993,9 @@ int main(int argc, char* argv[]) {
             }
           }
         }
-        detailWindowSize = ImGui::GetWindowSize();
       }
       ImGui::End();
       ImGui::PopStyleVar();
-      detailSize.x = std::max(detailSize.x, detailWindowSize.x);
-      detailSize.y = std::max(detailSize.y, detailWindowSize.y);
     }
 
     // ----- Local AS inspector window — styled to match the left "Raisim TCP" panel -----
@@ -7154,6 +8166,61 @@ int main(int argc, char* argv[]) {
       }
       ImGui::End();
       ImGui::PopStyleVar(2);
+    }
+
+    if (showShortcutsHelp) {
+      // Match the rest of the floating overlays: 0.5 alpha background, no
+      // decoration, autosize. Centered on the main viewport; user closes via
+      // H / ? / Esc.
+      const float widthGuess = ImGui::GetFontSize() * 28.0f;
+      const ImGuiViewport* vp = ImGui::GetMainViewport();
+      ImGui::SetNextWindowBgAlpha(0.5f);
+      ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.5f,
+                                     vp->WorkPos.y + vp->WorkSize.y * 0.5f),
+                              ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+      ImGui::SetNextWindowSize(ImVec2(widthGuess, 0.0f), ImGuiCond_Appearing);
+      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 10.0f));
+      const ImGuiWindowFlags helpFlags =
+        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+        ImGuiWindowFlags_NoNavFocus;
+      if (ImGui::Begin("Keyboard Shortcuts##help", nullptr, helpFlags)) {
+        ImGui::TextColored(ImVec4(0.55f, 0.85f, 1.0f, 1.0f), "Keyboard Shortcuts");
+        ImGui::TextDisabled("Press H, ?, or Esc to close");
+        ImGui::Separator();
+        const auto row = [](const char* keys, const char* desc) {
+          ImGui::TableNextColumn();
+          ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.35f, 1.0f), "%s", keys);
+          ImGui::TableNextColumn();
+          ImGui::TextUnformatted(desc);
+        };
+        if (ImGui::BeginTable("##shortcuts", 2,
+              ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
+          ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed,
+                                   ImGui::GetFontSize() * 7.0f);
+          ImGui::TableSetupColumn("Action");
+          ImGui::TableHeadersRow();
+          row("F",       "Frame entire scene");
+          row("C",       "Frame selected object");
+          row("R",       "Reset camera");
+          row("M",       "Cycle measure tool: off -> ruler (2pt) -> angle (3pt) -> off");
+          row("G",       "Toggle pose grabber (drag XYZ axes on selected body)");
+          row("H / ?",   "Toggle this help");
+          row("Esc",     "Cancel measure tool / exit fullscreen / close help");
+          row("F11",     "Toggle fullscreen");
+          row("F12",     "Screenshot");
+          row("WASD",    "Move camera (when viewport has focus)");
+          row("Space / Shift", "Camera up / down");
+          row("Right-drag", "Orbit camera");
+          row("Middle-drag", "Pan camera");
+          row("Scroll", "Zoom / dolly");
+          row("Shift+Left-drag", "Apply mouse force to selected body");
+          row("Left-click (ruler/angle)", "Place a measurement point");
+          ImGui::EndTable();
+        }
+      }
+      ImGui::End();
+      ImGui::PopStyleVar();
     }
 
     ImGui::Render();

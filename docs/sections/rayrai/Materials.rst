@@ -129,6 +129,12 @@ linear. Normal maps require tangent data; glTF assets usually provide it, and ra
 generates or imports tangent data where possible. The PBR path is suitable for preview,
 data generation, and asset inspection; it is not an offline path tracer.
 
+Heightmap terrain uses a dedicated rough PBR material in both in-process and TCP
+viewer paths. Heightmap color maps are treated as terrain albedo, but the material
+keeps metallic at zero, roughness high, and planar reflection disabled even when
+``RenderQualitySettings.reflectiveGround`` is enabled. This keeps outdoor terrain
+from looking like a mirror while retaining sky/IBL fill and normal PBR lighting.
+
 The shipped PBR examples and tools are:
 
 * ``rayrai_pbr_material_grid``: PBR material coverage across a primitive grid

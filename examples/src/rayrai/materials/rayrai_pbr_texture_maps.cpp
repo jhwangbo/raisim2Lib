@@ -238,6 +238,12 @@ int main(int argc, char* argv[]) {
   quality.mainLightDiffuse = glm::vec3(1.55f);
   quality.mainLightSpecular = glm::vec3(0.02f);
   quality.mainLightDirection = glm::normalize(glm::vec3(-0.35f, -0.55f, -0.78f));
+  quality.fogDensity = 0.0f;
+  quality.heightFogEnabled = false;
+  quality.heightFogDensity = 0.0f;
+  quality.volumetricFogEnabled = false;
+  quality.volumetricFogDensity = 0.0f;
+  quality.volumetricLightingEnabled = false;
   quality.reflectiveGround = false;
   quality.shadowStrength = 0.22f;
   quality.depthOfFieldEnabled = false;
@@ -291,23 +297,24 @@ int main(int argc, char* argv[]) {
 
   // Khronos glTF Sample Assets. Together these exercise base color, normal,
   // emissive, metallic-roughness, roughness-only, and occlusion texture import.
+  constexpr float kPreviewTargetRadius = 0.82f;
   const std::vector<PbrAsset> assets = {
     {"flight_helmet", "rayrai/pbr/FlightHelmet/glTF/FlightHelmet.gltf",
-      1.0, -2.10, 0.00, 1.65, 0.10},
+      1.85, -2.10, 0.00, 1.65, 0.10},
     {"damaged_helmet", "rayrai/pbr/DamagedHelmet/glTF/DamagedHelmet.gltf",
-      0.48, -0.70, 0.00, 1.62, -0.05},
+      0.50, -0.70, 0.00, 1.62, -0.05},
     {"sci_fi_helmet", "rayrai/pbr/SciFiHelmet/glTF/SciFiHelmet.gltf",
-      0.42, 0.70, 0.00, 1.62, 0.10},
+      0.37, 0.70, 0.00, 1.62, 0.10},
     {"antique_camera", "rayrai/pbr/AntiqueCamera/glTF/AntiqueCamera.gltf",
-      0.12, 2.10, 0.00, 1.54, -0.15},
+      0.20, 2.10, 0.00, 1.54, -0.15},
     {"lantern", "rayrai/pbr/Lantern/glTF/Lantern.gltf",
-      0.060, -2.15, 0.00, -0.05, 0.12},
+      0.054, -2.15, 0.00, -0.05, 0.12},
     {"boombox", "rayrai/pbr/BoomBox/glTF/BoomBox.gltf",
-      46.0, -0.70, 0.00, 0.68, -0.10},
+      47.5, -0.70, 0.00, 0.68, -0.10},
     {"avocado", "rayrai/pbr/Avocado/glTF/Avocado.gltf",
-      15.0, 0.72, 0.00, 0.07, 0.05},
+      20.3, 0.72, 0.00, 0.07, 0.05},
     {"water_bottle", "rayrai/pbr/WaterBottle/glTF/WaterBottle.gltf",
-      5.6, 2.10, 0.00, 0.78, -0.06},
+      5.4, 2.10, 0.00, 0.78, -0.06},
   };
 
   std::vector<std::shared_ptr<raisin::Visuals>> visuals;
@@ -333,10 +340,6 @@ int main(int argc, char* argv[]) {
     {-2.85f, -0.02f, 0.70f}, {-0.95f, -0.02f, 0.70f},
     { 0.95f, -0.02f, 0.70f}, { 2.85f, -0.02f, 0.70f},
   }};
-  const std::array<float, 8> targetRadii = {{
-    0.86f, 0.86f, 0.86f, 0.84f,
-    0.80f, 0.86f, 0.82f, 0.86f,
-  }};
   const auto applyAssetLayout = [&]() {
     if (layoutApplied || viewer->pendingAsyncMeshLoadCount() != 0)
       return;
@@ -347,7 +350,7 @@ int main(int argc, char* argv[]) {
       float radius = 0.0f;
       if (visual && visual->approximateBounds(center, radius) && radius > 1.0e-5f) {
         const float normalizedScale =
-          static_cast<float>(assets[i].scale) * targetRadii[i] / radius;
+          static_cast<float>(assets[i].scale) * kPreviewTargetRadius / radius;
         visual->setMeshScale(normalizedScale, normalizedScale, normalizedScale);
       }
       centerImportedAssetAt(visual, previewCenters[i]);

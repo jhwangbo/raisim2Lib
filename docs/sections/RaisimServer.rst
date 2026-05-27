@@ -28,9 +28,11 @@ integration helper:
     server.integrateWorldThreadSafe();
   }
 
-``integrateWorldThreadSafe()`` locks the world mutex, applies any user
-interaction force coming from the visualizer, integrates the world, and
-unlocks the mutex.
+``integrateWorldThreadSafe()`` locks the world mutex, drains pending
+client requests, decides whether this call is allowed to advance the world
+(pause / step state), applies active client forces only on advancing ticks,
+runs any callback overload, integrates the world when allowed, and unlocks
+the mutex.
 
 Thread safety and lifecycle
 ===========================
@@ -119,10 +121,15 @@ so a headless server can drive its own loop:
   server.resumeSimulation();
   if (server.isSimulationPaused()) { /* … */ }
 
-Pending forces / pose-sets pushed by clients keep applying every tick
-even while paused. ``stepSimulation(N)`` queues N single-step integrations
-that drain one per ``integrateWorldThreadSafe()`` call; ``resumeSimulation()``
-clears any queued steps and resumes normal integration.
+Pose and generalized-coordinate requests are applied when the server drains
+client requests under the world mutex. Force and torque requests refresh an
+active client-force slot, held for 0.12 s of simulation time and applied on
+each integration tick until refreshed or expired. While paused, the slot can
+be refreshed but the force is not applied until a step or resume call allows
+``integrateWorldThreadSafe()`` to advance. ``stepSimulation(N)`` queues N
+single-step integrations that drain one per ``integrateWorldThreadSafe()``
+call; ``resumeSimulation()`` clears any queued steps and resumes normal
+integration.
 
 
 .. code-block:: cpp
@@ -138,8 +145,9 @@ Custom mutation under the world mutex
 -------------------------------------
 Examples that need to spawn / move / modify world objects every tick can pass
 a callback to ``integrateWorldThreadSafe()``. The callback runs inside the
-world mutex, after interaction and pending sim-control requests are applied,
-and before ``world_->integrate()`` is called:
+world mutex after pending sim-control requests are drained and active client
+forces are applied for advancing ticks. It runs before ``world_->integrate()``
+when the pause / step state allows the tick to advance:
 
 .. code-block:: cpp
 

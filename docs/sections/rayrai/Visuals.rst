@@ -143,6 +143,15 @@ The shared mesh handle returned by ``RayraiGlobalAsset::getMeshes`` and the
 ``raisin::MeshList = std::shared_ptr<std::vector<std::shared_ptr<OpenGLMesh>>>``.
 Prefer ``MeshList`` over the long nested type in new code.
 
+``Visuals::approximateBounds(center, radius)`` and
+``InstancedVisuals::approximateBounds(center, radius)`` expose the conservative
+world-space bounds that the renderer uses for culling, picking, shadow planning,
+and camera framing. Unlike ``approximateRadius()``, the center can differ from
+``getPosition()`` for offset meshes, generated heightmaps, articulated links,
+and deformables. Use ``setCustomBounds(localCenter, localRadius)`` when a
+programmatically deformed visual needs a tighter or more stable bound than its
+source mesh provides.
+
 Visual shadow casting, visibility range, and material overrides
 ================================================================
 ``raisin::Visuals`` exposes per-visual controls that go beyond position/colour
@@ -152,6 +161,9 @@ and are useful for authoring polished scenes:
   ``DoubleSided`` / ``ShadowsOnly``) — ``ShadowsOnly`` is useful for invisible
   proxy meshes that cast shadows for off-screen geometry; ``DoubleSided`` is
   intended for thin foliage cards.
+* ``setColorPassVisible(false)`` — hide a visual from color rendering without
+  changing the rest of its state. This is lower-level than ``ShadowsOnly`` and
+  is used internally for TCP mesh-batch proxy visuals.
 * ``setVisibilityRange(begin, end, beginMargin, endMargin,
   VisibilityRangeFadeMode)`` — ``Self`` fades the visual itself near the
   range bounds; ``Dependencies`` fades dependent LOD pairs at the same time.
@@ -177,10 +189,12 @@ and are useful for authoring polished scenes:
   meshes.
 
 ``raisin::InstancedVisuals`` mirrors many of these (``setCastsShadows``,
-``setMaxRenderedInstances``, ``setRenderedInstanceStride``,
-``setProjectedLodPolicy``, ``setDoubleBufferedInstanceUploads``,
-``setSortTransparentInstances``) so high-instance-count visuals can be tuned
-without affecting unrelated draws.
+``setUseMeshColor``, ``setMaxRenderedInstances``,
+``setRenderedInstanceStride``, ``setProjectedLodPolicy``,
+``setDoubleBufferedInstanceUploads``, ``setSortTransparentInstances``) so
+high-instance-count visuals can be tuned without affecting unrelated draws.
+For mesh instances, ``setUseMeshColor(true)`` preserves mesh-authored base
+colors or texture colors instead of forcing the per-instance blend colors.
 
 .. code-block:: cpp
 

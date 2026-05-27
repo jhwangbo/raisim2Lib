@@ -69,10 +69,12 @@ protocol header with feature bits before each request, and the server replies wi
 negotiated feature set. A viewer rejects newer unsupported protocol versions with a clear
 error instead of attempting to parse an incompatible stream.
 
-Current feature bits cover the explicit header and deformable delta streaming. Deformable
-objects send mesh topology during initialization or topology changes; ordinary update
-frames send vertex positions only. This keeps dynamic cloth/cube streaming cheaper while
-avoiding binary compression until network bandwidth is measured as a bottleneck.
+Current feature bits cover the explicit header, deformable delta streaming, and sim
+control. Deformable objects send mesh topology during initialization or topology
+changes; ordinary update frames send vertex positions only. This keeps dynamic
+cloth/cube streaming cheaper while avoiding binary compression until network bandwidth
+is measured as a bottleneck. Sim-control messages share the same feature-negotiated
+request path.
 
 The protocol constants live in ``rayrai/RaisimTcpCommon.hpp`` (namespace
 ``raisin::tcp_viewer``):
@@ -80,9 +82,9 @@ The protocol constants live in ``rayrai/RaisimTcpCommon.hpp`` (namespace
 * ``kDefaultPort`` — default ``RaisimServer`` port the viewer connects to.
 * ``kProtocolVersion`` — the current wire version. Mismatched versions cause
   the viewer to disconnect with a versioned-protocol error.
-* ``kProtocolFeatureExplicitHeader`` and ``kProtocolFeatureDeformableDelta`` —
-  the two currently-negotiated feature bits; ``kProtocolFeaturesSupported``
-  is the OR of all bits this build understands.
+* ``kProtocolFeatureExplicitHeader``, ``kProtocolFeatureDeformableDelta``,
+  and ``kProtocolFeatureSimControl`` — the currently-negotiated feature bits;
+  ``kProtocolFeaturesSupported`` is the OR of all bits this build understands.
 * ``kMaxMessageBytes`` — maximum accepted message size (default 64 MiB),
   overridable at build time via the
   ``RAISIM_TCP_VIEWER_MAX_MESSAGE_BYTES`` preprocessor define when very large

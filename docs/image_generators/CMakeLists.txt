@@ -100,8 +100,34 @@ else()
 endif()
 string(REPLACE ";" "${_doc_image_path_sep}" _doc_image_lib_dirs_str "${_doc_image_lib_dirs}")
 
+add_executable(doc_image_shader_warmup
+    "${CMAKE_CURRENT_SOURCE_DIR}/doc_image_shader_warmup.cpp")
+target_link_libraries(doc_image_shader_warmup PRIVATE rayrai raisim::raisim SDL2::SDL2)
+target_compile_features(doc_image_shader_warmup PRIVATE cxx_std_17)
+if(MSVC)
+  target_compile_definitions(doc_image_shader_warmup PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
+set(_doc_image_shader_warmup_stamp
+    "${CMAKE_CURRENT_BINARY_DIR}/doc_image_shader_warmup.stamp")
+set(_doc_image_shader_warmup_env
+    "${_doc_image_runtime_env_var}=${_doc_image_lib_dirs_str}$<$<BOOL:$ENV{${_doc_image_runtime_env_var}}>:${_doc_image_path_sep}$ENV{${_doc_image_runtime_env_var}}>")
+add_custom_command(
+    OUTPUT "${_doc_image_shader_warmup_stamp}"
+    COMMAND ${CMAKE_COMMAND} -E env
+            ${_doc_image_shader_warmup_env}
+            $<TARGET_FILE:doc_image_shader_warmup>
+    COMMAND ${CMAKE_COMMAND} -E touch "${_doc_image_shader_warmup_stamp}"
+    DEPENDS doc_image_shader_warmup
+            "${CMAKE_CURRENT_SOURCE_DIR}/doc_image_shader_warmup.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/doc_image_common.hpp"
+    WORKING_DIRECTORY "${RAISIM_DOC_IMAGE_OUTPUT_DIR}"
+    COMMENT "Prewarming rayrai shader cache for doc image generators"
+    VERBATIM)
+
 set(_rolling_frames_dir "${CMAKE_CURRENT_BINARY_DIR}/rolling_friction_frames")
-set(_previous_stamp "")
+set(_previous_stamp "${_doc_image_shader_warmup_stamp}")
+list(APPEND _doc_image_outputs "${_doc_image_shader_warmup_stamp}")
 foreach(_gen IN LISTS _doc_image_generators)
   add_executable(${_gen} "${CMAKE_CURRENT_SOURCE_DIR}/${_gen}.cpp")
   target_link_libraries(${_gen} PRIVATE rayrai raisim::raisim SDL2::SDL2)

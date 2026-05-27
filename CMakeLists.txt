@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-set(RAISIM_VERSION 2.2.0 CACHE STRING "Default raisim release version to download when raisim is missing.")
+set(RAISIM_VERSION 2.3.0 CACHE STRING "Default raisim release version to download when raisim is missing.")
 project(raisim VERSION ${RAISIM_VERSION} LANGUAGES CXX)
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 

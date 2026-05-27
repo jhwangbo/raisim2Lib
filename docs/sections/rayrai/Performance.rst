@@ -18,12 +18,19 @@ synchronization. The renderer keeps the main performance controls explicit:
 * Opaque RaiSim single-body primitives are internally batched on non-shadowed color
   renders. This helps high-throughput observation rendering while keeping shadowed
   rendering on the conservative per-object path.
+* TCP viewer scenes synthesize repeated articulated mesh visuals into internal
+  ``InstancedVisuals`` batches when mesh path, scale, color policy, and color match.
+  ``RemoteScene::tcpMeshBatchCount()`` and
+  ``tcpMeshBatchMeshColorCount()`` expose diagnostics for this path.
 * Use ``InstancedVisuals::setMaxRenderedInstances`` and
   ``PointCloud::setMaxRenderedPoints`` as simple LOD caps for debug overlays,
   particles, scans, or dense markers that do not need full density in every frame.
 * Keep non-visible debug geometry outside the camera frustum when possible. rayrai
   performs coarse frustum culling for RaiSim objects, custom visuals, instanced
   visuals, and point clouds, so off-camera content is skipped before draw submission.
+  Mesh-local bounds are used when available, so offset meshes, articulated links,
+  deformables, and heightmaps cull and frame from their rendered bounds rather
+  than only from the object origin.
 * If the world topology is stable, repeated ``updateObjectLists()`` calls are cheap:
   rayrai refreshes appearances without rebuilding the object cache unless objects
   were added or removed.
@@ -85,7 +92,16 @@ Cache statistics (per process, across all ``Shader::compile`` calls):
                 static_cast<unsigned long long>(s.coordinatedWaits));
     raisin::Shader::resetBinaryCacheStats();  // scope a measurement window
 
-Pre-warming for parallel RL: spawn one background thread, give it its own
+Pre-warming for parallel RL can be done with the installed/source-tree
+``rayrai_shader_prewarm`` utility, which creates an offscreen context and
+compiles every built-in shader into the persistent binary cache:
+
+.. code-block:: bash
+
+    rayrai_shader_prewarm --cache-dir /tmp/rayrai-cache --compile-threads 4 --multi-thread
+    rayrai_shader_prewarm --log-cache
+
+For an embedded application, spawn one background thread, give it its own
 offscreen GL context, call ``prewarmShadersForCurrentContext`` once. Worker
 threads that later construct their own ``RayraiWindow`` will find the heavy
 shaders already cached (or briefly block on a per-shader compile mutex if
