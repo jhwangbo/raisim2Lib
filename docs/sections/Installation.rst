@@ -191,5 +191,5 @@ For Blender-authored scenes, use the general exporter:
       -- --format glb --output /path/to/scene.glb
 
 The exporter writes renderable glTF/GLB scenes, keeps Z-up coordinates for
-RaiSim/rayrai, and emits ``*.rayrai_lights.json`` sidecars for Blender area
-lights.
+RaiSim/rayrai, and emits RayRai sidecars for Blender area lights and authored
+reflection probes: ``*.rayrai_lights.json`` and ``*.rayrai_probes.json``.

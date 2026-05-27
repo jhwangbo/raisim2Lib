@@ -2,115 +2,77 @@
 Visualizers
 #############################
 
-Several visualization options are available.
-For in-process rendering, Rayrai is the recommended option and runs inside the
-simulation process (no RaisimServer required). For server-based visualization,
-RaisimUnity and RaisimUnreal provide external viewers. A server-based visualizer
-is required to view simulations when using RaisimServer-based examples.
-This site provides documentation for Rayrai, RaisimUnity, and RaisimUnreal.
+Rayrai is the current supported visualization path for RaiSim. Older
+RaisimUnity and RaisimUnreal integrations are no longer shipped as supported
+workflows in the current binary distribution; see :doc:`LegacyIntegrations` for
+replacement paths when following old examples or links.
 
-Visualizer Selection Guide (Summary)
-***********************************************
+Current Workflows
+*****************
 
-* For in-process/offscreen rendering or UI embedding: Rayrai.
-* For a cross-platform, user-friendly solution: RaisimUnity.
-* For integrated GPUs on Linux: RaisimUnityOpenGL.
-* For maximum versatility, publication-quality visuals, or RL vision data: RaisimUnreal.
+.. list-table::
+   :header-rows: 1
+   :widths: 28 36 36
 
-Visualizer Selection Guide (Detailed)
-*********************************************
+   * - Workflow
+     - Use it when
+     - Main executable/API
+   * - ``RaisimServer`` + rayrai TCP viewer
+     - You want to inspect a running simulation from a separate viewer process.
+     - ``raisim::RaisimServer`` and ``rayrai_raisim_tcp_viewer``
+   * - In-process rayrai
+     - Rendering is part of your application, sensor pipeline, screenshot tool,
+       benchmark, or custom UI.
+     - ``raisin::RayraiWindow``
 
-Rayrai (In-Process/Offscreen)
-=============================
+``RaisimServer`` + rayrai TCP viewer
+====================================
 
-Rayrai is a lightweight C++ visualizer executing within the simulation process.
-It renders to an OpenGL texture and is architected for integration with custom UIs (ImGui, Qt, etc.) or headless pipelines.
+Start the simulation server in your application, then launch the viewer binary:
 
-*  In-process rendering (no RaisimServer required).
-*  Offscreen render targets via ``RayraiWindow``.
-*  Supports custom visuals, point clouds, coordinate frames, and object picking.
-*  Optimal for tooling, camera sensor simulation, and custom pipelines.
-*  Not a full-featured server visualizer (lacks built-in maps or UI tooling).
+.. code-block:: bash
 
-Build instructions are available in the Installation section. Detailed usage and API coverage are provided in the Rayrai section.
+   <raisim-install>/bin/rayrai_raisim_tcp_viewer
 
-RaisimUnity
-======================
+The TCP viewer receives world state from ``RaisimServer`` and renders it with
+rayrai. Use it for normal debugging, camera control, collision-body inspection,
+object selection, and server-based examples. The viewer is intentionally a
+visualization client: it does not write RGB/depth images back into RaiSim
+sensors.
 
-.. image:: ../image/raisimUnity4.png
-  :alt: raisimUnity
-  :width: 600
+In-process rayrai
+=================
 
-*  Binaries are included in the ``raisimUnity`` directory.
-*  User-friendly.
-*  Lower frame rate but reduced system resource consumption compared to RaisimUnreal.
-*  Executes as an independent process (via RaisimServer).
-*  Closed-source.
-*  Compatible with Linux, macOS, and Windows.
+Construct ``raisin::RayraiWindow`` directly when your code needs render targets,
+readback, custom visuals, or UI embedding:
 
-RaisimUnreal (Beta)
-=====================
+.. code-block:: cpp
 
-.. image:: ../image/raisimUnreal1.png
-  :alt: raisimUnity
-  :width: 600
+   auto world = std::make_shared<raisim::World>();
+   raisin::RayraiWindow viewer(world, 1280, 720);
+   viewer.update(1280, 720, false, 0, 0, false);
+   unsigned int colorTexture = viewer.getImageTexture();
 
-*  Binaries are provided via GitHub releases.
-*  Currently available **only on Windows and Linux**.
-*  The most feature-rich visualizer. Only RaisimUnreal supports maps (refer to the RaisimUnreal section).
-*  Utilizes multithreading for performance; however, it may **impede RL training or simulation speed**.
-*  User-friendly.
-*  Supports graphs and bar charts (see ``examples/map_atlas_charts.cpp``).
-*  Executes as an independent process (via RaisimServer).
-*  Closed-source.
+Use this workflow for RGB/depth sensor rendering, screenshots, glTF/USD asset
+inspection, PBR material previews, point clouds, picking, offscreen rendering,
+and custom ImGui/Qt tools.
 
+Rayrai feature coverage
+=======================
 
-RaiSimUnity vs. RaiSimUnreal Comparison
-======================================================
+The current rayrai renderer includes:
 
-The following comparison highlights differences between RaisimUnity and RaisimUnreal.
+* ``Fast``/``Balanced``/``High``/``Ultra`` render-quality presets.
+* PBR materials, glTF/GLB import, OpenUSD visual import, HDR image-based
+  lighting, reflection probes, planar reflections, and authored scene lights.
+* Weather and scene effects including time-of-day sky, fog/local fog volumes,
+  rain, snow, lightning diagnostics, wet/snow material response, projected
+  decals, and irradiance volumes.
+* RGB/depth sensor alignment, linear depth rendering, GPU LiDAR slices, point
+  clouds, coordinate frames, and camera frustums.
+* Capture and diagnostics helpers for supersampled screenshots, debug-pass
+  captures, render-pass timings, luminance/exposure analysis, and structured
+  JSON diagnostics.
 
-*  **Graphics Quality**
-
-   *  **RaisimUnity**: 7/10.
-   *  **RaisimUnreal**: 10/10 (Quality may be lower on Linux due to driver discrepancies).
-
-*  **Compatibility**
-
-   *  **RaisimUnity**: Includes an OpenGL variant to ensure compatibility with legacy or integrated GPUs lacking Vulkan support on Linux.
-   *  **RaisimUnreal**: Experimental support; reporting issues via GitHub is encouraged.
-
-*  **GPU Utilization (based on reference system benchmarks)**
-
-   *  **RaisimUnity**: 90%.
-   *  **RaisimUnreal**: 98% (Performance is significantly higher on Windows; Linux performance can be impacted by driver behavior and weather presets).
-
-*  **GPU Memory Usage (with RaiSim examples)**
-
-   *  **RaisimUnity**: ~2 GB.
-   *  **RaisimUnreal**: ~2 GB.
-
-*  **Mesh Loading Time**
-
-   *  **RaisimUnity**: Very fast.
-   *  **RaisimUnreal**: Considerably slower due to the lack of mesh instancing, resulting in redundant asset loading.
-
-*  **Support**
-
-   *  **RaisimUnity**: Actively supported and maintained.
-   *  **RaisimUnreal**: Development focus has shifted to RaisimUnreal.
-
-*  **Graphs (Time Series and Bar Charts)**
-
-   *  **RaisimUnity**: None.
-   *  **RaisimUnreal**: Uses Kantan Chart to visualize server-provided graphs; see ``examples/map_atlas_charts.cpp``.
-
-*  **Video Recording**
-
-   *  **RaisimUnity**: Functional on Linux.
-   *  **RaisimUnreal**: Functional on Linux and Windows.
-
-*  **Object Interactions**
-
-   * **RaisimUnity**: Unsupported.
-   * **RaisimUnreal**: Supports force application, distance measurement, and object lifecycle management.
+See :doc:`Rayrai` for API details and :doc:`Visualization` for the workflow
+boundary between the TCP viewer and in-process rendering.

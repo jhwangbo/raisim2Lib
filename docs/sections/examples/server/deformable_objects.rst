@@ -32,7 +32,7 @@ Run the installed executable:
    <raisim-install>/bin/deformable_objects
 
 On Windows, run ``deformable_objects.exe`` instead.
-This example uses RaisimServer. Start the rayrai TCP viewer and connect to port 8080. RaisimUnity and RaisimUnreal are no longer supported.
+This example uses RaisimServer. Start ``rayrai_raisim_tcp_viewer`` and connect to port 8080.
 
 Details
 =======
@@ -92,15 +92,14 @@ count.
 
 Visualization
 =============
-This example uses RaisimServer. Start the rayrai TCP viewer before running it:
+This example uses RaisimServer. Start ``rayrai_raisim_tcp_viewer`` before running it:
 
 .. code-block:: bash
 
 
-   cd $HOME/raisim2Lib
-   source ./raisim_env.sh
-   ./build/examples/rayrai_tcp_viewer
-   ./build/examples/deformable_objects
+   <raisim-install>/bin/rayrai_raisim_tcp_viewer
+   <raisim-install>/bin/deformable_objects
 
 The visualizer receives dynamic deformable topology and vertex updates through
 the server stream.
+

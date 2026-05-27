@@ -6,25 +6,20 @@ Overview
 ========
 Loads the Kinova arm, applies joint PD gains and targets, and runs it on the simple map. This example focuses on manipulator setup and joint-level control.
 
-Binary
-======
-Installed executable: ``map_kinova_arm``.
+Source Status
+=============
+Source file: ``examples/src/maps/map_kinova_arm.cpp``.
 
-Run
-====
-Run the installed executable:
+This page is excluded from the published docs, and the current examples CMake
+file does not register this source as an installed executable. Treat it as a
+source reference unless you register it in a local examples build.
 
-.. code-block:: bash
-
-   <raisim-install>/bin/map_kinova_arm
-
-On Windows, run ``map_kinova_arm.exe`` instead.
-This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
-
+For visualization, use ``rayrai_raisim_tcp_viewer`` with RaisimServer-based
+applications.
 
 Details
 =======
 - Loads the Kinova arm URDF on flat ground and applies joint PD gains/targets.
-- Uses the ``simple`` Unreal map for fast rendering.
+- Uses the ``simple`` server map for fast rendering.
 - Focuses the camera on the arm for a fixed-base articulation demo.
 

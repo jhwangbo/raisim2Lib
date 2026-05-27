@@ -64,17 +64,18 @@ int main(int argc, char* argv[]) {
 
   for (int i = 0;; i++) {
     RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
-    server.lockVisualizationServerMutex();
-    if (i % interval == 0 && j < numBalls) {
-      auto* ball = world.addSphere(0.1, 1.0);
-      ball->setPosition(0, -2, 0.8);
-      ball->setVelocity(0, 10, 0, 0, 0, 0);
-      ball->setAppearance("red");
-      j++;
-    }
-    server.applyInteractionForce();
-    world.integrate();
-    server.unlockVisualizationServerMutex();
+    // integrateWorldThreadSafe(callback) runs the callback inside the world mutex,
+    // after interaction / sim-control requests are applied, before world.integrate().
+    // The viewer can pause/step/apply-force this loop without the user code changing.
+    server.integrateWorldThreadSafe([&]() {
+      if (i % interval == 0 && j < numBalls) {
+        auto* ball = world.addSphere(0.1, 1.0);
+        ball->setPosition(0, -2, 0.8);
+        ball->setVelocity(0, 10, 0, 0, 0, 0);
+        ball->setAppearance("red");
+        j++;
+      }
+    });
   }
 
   server.killServer();

@@ -10,25 +10,20 @@ Screenshot
 ==========
 .. image:: ../../../image/map_atlas_chart.png
 
-Binary
-======
-Installed executable: ``map_atlas_charts``.
+Source Status
+=============
+Source file: ``examples/src/maps/map_atlas_charts.cpp``.
 
-Run
-====
-Run the installed executable:
+This page is excluded from the published docs, and the current examples CMake
+file does not register this source as an installed executable. Treat it as a
+source reference unless you register it in a local examples build.
 
-.. code-block:: bash
-
-   <raisim-install>/bin/map_atlas_charts
-
-On Windows, run ``map_atlas_charts.exe`` instead.
-This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
-
+For visualization, use ``rayrai_raisim_tcp_viewer`` with RaisimServer-based
+applications.
 
 Details
 =======
 - Spawns Atlas robots and initializes the base pose with zero joint torques.
 - Applies external force/torque each frame to perturb the robot.
-- Demonstrates time-series and bar chart overlays (Unreal visualization).
+- Demonstrates time-series and bar chart overlays in the visualizer.
 

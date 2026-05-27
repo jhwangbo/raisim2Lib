@@ -10,25 +10,20 @@ Screenshot
 ==========
 .. image:: ../../../image/map_lake1.png
 
-Binary
-======
-Installed executable: ``map_lake1_heightmap``.
+Source Status
+=============
+Source file: ``examples/src/maps/map_lake1_heightmap.cpp``.
 
-Run
-====
-Run the installed executable:
+This page is excluded from the published docs, and the current examples CMake
+file does not register this source as an installed executable. Treat it as a
+source reference unless you register it in a local examples build.
 
-.. code-block:: bash
-
-   <raisim-install>/bin/map_lake1_heightmap
-
-On Windows, run ``map_lake1_heightmap.exe`` instead.
-This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
-
+For visualization, use ``rayrai_raisim_tcp_viewer`` with RaisimServer-based
+applications.
 
 Details
 =======
 - Loads the lake1 heightmap PNG with scale/offset.
 - Spawns Aliengo with PD posture control at a low start height.
-- Sets the Unreal map to ``lake1`` and focuses on the robot.
+- Sets the server map name to ``lake1`` and focuses on the robot.
 

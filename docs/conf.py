@@ -19,7 +19,6 @@ exclude_patterns = [
     "sections/FeatureMap.rst",
     "sections/Performance.rst",
     "sections/Visualizers.rst",
-    "sections/examples/current/rayrai_benchmark.rst",
     "sections/examples/maps/*.rst",
     "sections/examples/server/island_sleep_benchmark.rst",
     "sections/examples/server/sensor_suite.rst",
@@ -63,6 +62,7 @@ autosectionlabel_maxdepth = 4
 html_show_sphinx = False
 html_logo = "image/logo.png"
 html_static_path = ["_static"]
+html_css_files = ["custom.css"]
 html_theme_options = {
     "logo_only": True,
 }

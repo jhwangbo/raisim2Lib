@@ -5,43 +5,25 @@ Executable target names are intentionally stable even when source files move.
 
 ## Running examples
 
-Build from the `raisim2Lib` root. Source `raisim_env.sh` first so the build and
-runtime environment can find both RaiSim and rayrai libraries:
+Build from the `raisim2Lib` root:
 
 ```bash
-source ./raisim_env.sh
 cmake -S . -B build-examples \
   -DRAISIM_EXAMPLE=ON \
-  -DRAISIM_PY=ON \
   -DRAISIM_CHECK_FOR_UPDATES=OFF
 cmake --build build-examples -j
+cd build-examples/examples
 ```
 
-`RAISIM_EXAMPLE` is enabled by default. `RAISIM_PY` is disabled by default, so
-enable it when you also want to build `raisimPy`.
-
-Most `server/*` examples publish to `raisim::RaisimServer`. Start the built
-`rayrai_tcp_viewer` in one sourced terminal:
-
-```bash
-source ./raisim_env.sh
-./build-examples/examples/rayrai_tcp_viewer
-```
-
-Run the server example in another sourced terminal:
-
-```bash
-source ./raisim_env.sh
-./build-examples/examples/primitive_grid
-```
-
+Most `server/*` examples publish to `raisim::RaisimServer`. Start
+`<raisim-install>/bin/rayrai_raisim_tcp_viewer` in another terminal to visualize them.
 Most `rayrai/*` examples create an in-process rayrai window and do not need the
 TCP viewer.
 
 ## Directory groups
 
-- `server/basics`: primitive objects, mesh objects, compound objects, dynamic
-  object addition, and YCB object loading.
+- `server/basics`: primitive objects, dense sphere-drop scenes, mesh objects,
+  compound objects, dynamic object addition, and YCB object loading.
 - `server/assets`: model import, mesh preprocessing, cache reuse, `addMesh`
   workflows, and mesh asset export.
 - `server/materials`: contact material effects such as restitution and static
@@ -62,6 +44,7 @@ TCP viewer.
 - `rayrai/sensors`: rayrai RGB camera, depth camera, lidar point cloud, and
   marker examples.
 - `rayrai/visuals`: custom visuals, instancing, and point cloud examples.
+- `rayrai/dynamics`: in-process rigid-body dynamics visualizations.
 - `rayrai/materials`: PBR and texture material examples.
 - `rayrai/assets`: mesh and asset-processing visualization examples, including
   visual-only glTF assets kept separate from collision meshes.
@@ -76,10 +59,13 @@ TCP viewer.
 ## Useful starting targets
 
 - `primitive_grid`: basic server-side simulation and visualization.
+- `sphere_drop`: drop 1000 dynamic spheres onto a ground plane.
 - `rayrai_basic_scene`: minimal in-process rayrai rendering.
 - `rayrai_complete_showcase`: broad rayrai feature overview.
 - `rayrai_depth_camera`: rayrai depth capture plus CPU depth-camera comparison.
 - `rayrai_rgb_camera`: in-process rayrai RGB capture.
+- `rayrai_rolling_spinning_friction`: rolling and spinning friction on a grid
+  of spheres and cylinders.
 - `deformable_objects`: cloth, mesh deformables, filled particles, struts,
   compliance, and elastic modulus.
 - `model_asset_pipeline`: mesh preprocessing and OBJ asset export.
@@ -89,7 +75,10 @@ TCP viewer.
   from a raised arbitrary configuration.
 - `anymal_standing_benchmark`: run the native ANYmal PD-standing benchmark and
   report simulation throughput plus average contacts.
-- `rayrai_coacd_mesh_approximation`: original mesh versus convexified mesh
+- `articulated_system_benchmark`: run standalone timing scenes for ANYmal,
+  Atlas, and chain articulated systems.
+- `dynamic_heightmap`: animate a heightmap and color map through RaisimServer.
+- `rayrai_coacd_mesh_approximation`: original mesh versus CoACD convex approximation mesh
   collision parts through `World::addMesh`.
 - `rayrai_visual_asset_support`: inspect realistic textured URDF assets while
   keeping visual and collision geometry separate.

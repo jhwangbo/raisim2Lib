@@ -1594,7 +1594,10 @@ void init_articulated_system(py::module_ &m) { // py::module &main_module) {
         /* set PD targets. It is effective only in the control mode "PD_PLUS_FEEDFORWARD_TORQUE". set any arbitrary
         number for unactuated degrees of freedom */
 
-        .def("setPdTarget", py::overload_cast<const Eigen::VectorXd &, const Eigen::VectorXd &>(&raisim::ArticulatedSystem::setPdTarget), R"mydelimiter(
+        .def("setPdTarget",
+             [](raisim::ArticulatedSystem &self, const NDArray &pos_targets, const NDArray &vel_targets) {
+                 self.setPdTarget(convert_np_to_vecdyn(pos_targets), convert_np_to_vecdyn(vel_targets));
+             }, R"mydelimiter(
 	    Set the PD targets. It is effective only in the control mode 'PD_PLUS_FEEDFORWARD_TORQUE'. Set any arbitrary
         number for unactuated degrees of freedom.
 
@@ -1605,7 +1608,10 @@ void init_articulated_system(py::module_ &m) { // py::module &main_module) {
 	    py::arg("pos_targets"), py::arg("vel_targets"))
 
 
-        .def("setPdGains", py::overload_cast<const Eigen::VectorXd &, const Eigen::VectorXd &>(&raisim::ArticulatedSystem::setPdGains), R"mydelimiter(
+        .def("setPdGains",
+             [](raisim::ArticulatedSystem &self, const NDArray &p_gains, const NDArray &d_gains) {
+                 self.setPdGains(convert_np_to_vecdyn(p_gains), convert_np_to_vecdyn(d_gains));
+             }, R"mydelimiter(
 	    Set the PD gains. It is effective only in the control mode 'PD_PLUS_FEEDFORWARD_TORQUE'. Set any arbitrary
         number for unactuated degrees of freedom.
 
@@ -1614,7 +1620,6 @@ void init_articulated_system(py::module_ &m) { // py::module &main_module) {
 	        d_gains (np.array[float[n]]): D gains.
 	    )mydelimiter",
 	    py::arg("p_gains"), py::arg("d_gains"))
-
 
 	    .def("setJointDamping", py::overload_cast<const Eigen::VectorXd &>(&raisim::ArticulatedSystem::setJointDamping), R"mydelimiter(
 	    Set the joint dampings (passive elements at the joints).

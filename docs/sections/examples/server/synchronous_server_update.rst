@@ -6,21 +6,16 @@ Overview
 ========
 Runs the RaisimServer in a manual socket loop and updates sensors only when the client requests them. This shows how to drive synchronous visualization and sensor updates.
 
-Binary
-======
-Installed executable: ``synchronous_server_update``.
+Source Status
+=============
+Source file: ``examples/src/server/synchronous_server_update.cpp``.
 
-Run
-====
-Run the installed executable:
+This page is excluded from the published docs, and the current examples CMake
+file does not register this source as an installed executable. Treat it as a
+source reference unless you register it in a local examples build.
 
-.. code-block:: bash
-
-   <raisim-install>/bin/synchronous_server_update
-
-On Windows, run ``synchronous_server_update.exe`` instead.
-This example uses RaisimServer. Start a visualizer client (RaisimUnity, RaisimUnreal, or the rayrai TCP viewer) and connect to port 8080.
-
+For visualization, use ``rayrai_raisim_tcp_viewer`` with RaisimServer-based
+applications.
 
 Details
 =======

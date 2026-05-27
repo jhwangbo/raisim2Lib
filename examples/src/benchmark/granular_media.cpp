@@ -184,7 +184,7 @@ int run_granular_media_example(int argc, char** argv) {
   int steps = 240;
   int resolution = 7;
   int layers = 7;
-  int substeps = 2;
+  int substeps = 8;
   int settleSteps = 500;
   int robotSettleSteps = 250;
   double radius = 0.022;

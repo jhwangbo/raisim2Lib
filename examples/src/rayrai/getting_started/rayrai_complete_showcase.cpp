@@ -143,7 +143,7 @@ int main(int argc, char* argv[]) {
 
   auto rairayWindow = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
   rairayWindow->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Balanced));
+    raisin::RayraiWindow::RenderQualityPreset::Fast));
   raisim_examples::setRayraiBackgroundColorRgb255(*rairayWindow, {77, 77, 77, 255});
 
   // --- Custom visuals (not part of raisim::World) ---

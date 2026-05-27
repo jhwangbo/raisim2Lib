@@ -58,8 +58,9 @@ Contacts, collision, and materials
      - ``raisim::Contact``, object contact accessors
      - :doc:`Contact`, :doc:`Object`
    * - Configure contact material behavior
-     - ``raisim::MaterialManager``, ``World::updateMaterialProp``,
-       default material properties
+     - ``raisim::MaterialManager``, ``World::setMaterialPairProp``,
+       ``World::updateMaterialProp``, default material properties,
+       rolling/spinning friction coefficients
      - :doc:`MaterialSystem`
    * - Change collision filtering or contact settings
      - object collision and contact-setting APIs
@@ -115,11 +116,16 @@ Visualization and tools
        ``rayrai_pbr_texture_maps``,
        ``rayrai_visual_asset_support``
      - :doc:`Examples`, :doc:`Rayrai`
+   * - Author and validate reusable scenes
+     - ``raisim_engine2``, ``raisim_engine2_headless``,
+       ``raisim_engine2_editor``, ``raisim_engine2::Document``
+     - :doc:`RaisimEngine2`, :doc:`Rayrai`
    * - Generate offscreen renderer checks
      - ``rayrai_feature_showcase``
      - :doc:`Examples`, :doc:`BuildAndTest`
    * - Benchmark rayrai
-     - ``rayrai_benchmark``
+     - ``rayrai_benchmark``, ``rayrai_complete_showcase_benchmark``,
+       ``rayrai_pbr_first_draw_benchmark``
      - :doc:`Examples`, :doc:`BuildAndTest`
    * - Tune simulation performance
      - benchmark runner, collision settings, sleeping islands, solver settings
