@@ -39,29 +39,24 @@ raisim_env.bat
 ```
 
 The Windows scripts prepend the installed RaiSim and rayrai `bin` and `lib` directories to `Path`.
+
 ## Build Examples With CMake
 
-From the repository root, configure and build the C++ examples:
+`RAISIM_EXAMPLE` is enabled by default, but the flag is shown explicitly in the commands below. Keep `RAISIM_CHECK_FOR_UPDATES=OFF` when you want to build against the package already present in this checkout; omit it to let CMake check for newer releases.
+
+### Linux build instructions
+
+From the repository root, source the environment script, configure, and build the C++ examples:
 
 ```bash
-cmake -S . -B build-examples \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DRAISIM_EXAMPLE=ON \
-  -DRAISIM_CHECK_FOR_UPDATES=OFF
+cd $HOME/raisim2Lib
+source ./raisim_env.sh
+export RAISIM_LOCAL_INSTALL_ROOT=$PWD
+cmake -S . -B build-examples -DCMAKE_BUILD_TYPE=Release -DRAISIM_EXAMPLE=ON -DRAISIM_CHECK_FOR_UPDATES=OFF
 cmake --build build-examples --parallel
 ```
 
-`RAISIM_EXAMPLE` is enabled by default, but the flag is shown explicitly. Keep `RAISIM_CHECK_FOR_UPDATES=OFF` when you want to build against the package already present in this checkout; omit it to let CMake check for newer releases.
-
-Before running source-built examples from the same checkout, source the environment script from the repository root:
-
-```bash
-source ./raisim_env.sh
-```
-
-On Windows, run `.\raisim_env.ps1` or `raisim_env.bat` before launching examples, and add `--config Release` to the build and install commands.
-
-The example executables are written to `build-examples/examples` on Linux/macOS and `build-examples/bin` on Windows:
+The source-built example executables are written to `build-examples/examples`:
 
 ```bash
 ./build-examples/examples/rayrai_tcp_viewer
@@ -75,6 +70,34 @@ cmake --install build-examples --prefix "$HOME/.local"
 ```
 
 The install target does not install source-built example executables; run those from the build tree. Downstream projects using this CMake-installed layout should pass `-DCMAKE_PREFIX_PATH=$HOME/.local`.
+
+### Windows build instructions
+
+From the repository root, run one of the Windows environment scripts, configure, and build the C++ examples:
+
+```powershell
+cd C:\raisim
+.\raisim_env.ps1
+cmake -S . -B build-examples -DRAISIM_EXAMPLE=ON -DRAISIM_CHECK_FOR_UPDATES=OFF
+cmake --build build-examples --config Release --parallel
+```
+
+Visual Studio and MSBuild are multi-config generators, so `CMAKE_BUILD_TYPE=Release` does not select the build configuration on Windows. Use exactly `--config Release` for the release runtime DLLs. If `rayrai_tcp_viewer.exe` reports a missing `SDL2d.dll`, the executable in `build-examples\bin` was built from a debug-flavored configuration and should be rebuilt with the command above.
+
+The source-built example executables are written to `build-examples\bin`:
+
+```powershell
+.\build-examples\bin\rayrai_tcp_viewer.exe
+.\build-examples\bin\primitive_grid.exe
+```
+
+Install headers, libraries, CMake package files, and bundled rayrai tools to a local prefix with:
+
+```powershell
+cmake --install build-examples --config Release --prefix C:\raisim-local
+```
+
+The install target does not install source-built example executables; run those from the build tree. Downstream projects using this CMake-installed layout should pass `-DCMAKE_PREFIX_PATH=C:\raisim-local`.
 
 ## Activation
 

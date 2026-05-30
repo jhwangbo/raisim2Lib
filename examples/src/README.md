@@ -15,6 +15,17 @@ cmake --build build-examples -j
 cd build-examples/examples
 ```
 
+On Windows with Visual Studio or MSBuild, select the release configuration in
+the build command and run examples from `build-examples\bin`:
+
+```powershell
+cmake --build build-examples --config Release --parallel
+cd build-examples\bin
+```
+
+If a source-built viewer asks for `SDL2d.dll`, it was built from a debug-flavored
+configuration; rebuild with `--config Release` to use the release SDL2 runtime.
+
 Most `server/*` examples publish to `raisim::RaisimServer`. Start
 `<raisim-install>/bin/rayrai_raisim_tcp_viewer` in another terminal to visualize them.
 Most `rayrai/*` examples create an in-process rayrai window and do not need the
