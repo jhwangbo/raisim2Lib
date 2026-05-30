@@ -32,6 +32,9 @@ if(WIN32)
             if(_runtime_dlls)
                 file(COPY ${_runtime_dlls} DESTINATION "${CMAKE_BINARY_DIR}/bin")
             endif()
+            if(EXISTS "${_source_dir}/openusd")
+                file(COPY "${_source_dir}/openusd" DESTINATION "${CMAKE_BINARY_DIR}/bin")
+            endif()
         endif()
     endfunction()
 
@@ -201,6 +204,22 @@ create_executable(wheeled_robot_force_control src/server/robots/wheeled_robot_fo
 create_executable(templated_tracked_robot src/server/robots/templated_tracked_robot.cpp)
 create_executable(minitaur_pd src/server/robots/minitaur_pd.cpp)
 create_executable(inverse_dynamics src/server/robots/inverse_dynamics.cpp)
+raisim_header_has("raisim/World.hpp" "loadUsdScene" _raisim_has_usd_scene_loading)
+set(_usd_scene_example_skip_reason "")
+if(NOT _raisim_has_usd_scene_loading)
+    set(_usd_scene_example_skip_reason "installed raisim package does not expose USD scene loading")
+endif()
+
+if(_usd_scene_example_skip_reason STREQUAL "")
+    create_executable(shadow_hand_usd_cube src/server/robots/shadow_hand_usd_cube.cpp)
+    create_executable(nvidia_usd_robots src/server/robots/nvidia_usd_robots.cpp)
+    set_target_properties(shadow_hand_usd_cube nvidia_usd_robots PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON)
+else()
+    message(STATUS "Skipping shadow_hand_usd_cube example: ${_usd_scene_example_skip_reason}")
+    message(STATUS "Skipping nvidia_usd_robots example: ${_usd_scene_example_skip_reason}")
+endif()
 raisim_header_has("raisim/object/granular/GranularSystem.hpp" "GranularSystem" _raisim_has_granular)
 
 # Dynamics and constraints.

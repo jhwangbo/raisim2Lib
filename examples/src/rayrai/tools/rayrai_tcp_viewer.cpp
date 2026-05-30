@@ -365,6 +365,8 @@ struct ProgramOptions {
   // Costs ~13 s at startup; makes every drag-drop after that ~30 ms. Default off so
   // empty-viewer launches stay fast.
   bool warmAtStartup = false;
+  bool renderQualitySet = false;
+  int renderQuality = 1;
   // --inspect-close-after-frames N: drive load → render N frames → close → render N → exit.
   // Headless reproducer for "close inspector segfaults" bug reports.
   int inspectCloseAfterFrames = -1;
@@ -853,6 +855,8 @@ bool parseCameraLookAtText(const std::string& value, glm::vec3& pos, glm::vec3& 
   return glm::length(target - pos) > 1e-4f;
 }
 
+int qualityIndexFromName(const std::string& rawValue, int fallback);
+
 void printUsage(const char* argv0) {
   std::cout
     << "Usage: " << (argv0 ? argv0 : "rayrai_tcp_viewer") << " [options]\n\n"
@@ -866,6 +870,7 @@ void printUsage(const char* argv0) {
     << "  --warm-at-startup           Also warm renderer content-frame init (~13s) so the first\n"
     << "                              drag-drop is instant. Off by default; empty-viewer startup\n"
     << "                              stays fast unless this flag is passed.\n"
+    << "  --render-quality NAME       fast, balanced, high, ultra, or custom\n"
     << "  --resource-dir PATH         Add a mesh/resource search directory; repeatable\n"
     << "  --window-size WxH           Initial window size, e.g. 1600x900\n"
     << "  --fullscreen                Start fullscreen desktop\n"
@@ -1030,6 +1035,18 @@ bool parseProgramOptions(int argc, char** argv, ProgramOptions& options) {
       options.preWarmShaders = false;
     } else if (arg == "--warm-at-startup") {
       options.warmAtStartup = true;
+    } else if (arg == "--render-quality" || arg == "--quality") {
+      const char* value = requireValue(arg.c_str());
+      if (!value) return false;
+      const int parsedQuality = qualityIndexFromName(value, -1);
+      if (parsedQuality < 0) {
+        std::cerr << "ERROR: invalid " << arg
+                  << " value: " << value
+                  << " (expected fast, balanced, high, ultra, custom, or 0..4)\n";
+        return false;
+      }
+      options.renderQuality = parsedQuality;
+      options.renderQualitySet = true;
     } else if (arg == "--inspect") {
       const char* value = requireValue("--inspect");
       if (!value) return false;
@@ -4727,6 +4744,11 @@ int main(int argc, char* argv[]) {
   loadViewerSettings(settings);
   if (options.updateRateHz > 0.0f) {
     settings.tcpUpdateRateHz = options.updateRateHz;
+    sanitizeViewerSettings(settings);
+  }
+  if (options.renderQualitySet) {
+    copyRenderDefaultsToSettings(settings, options.renderQuality);
+    settings.renderQualityUserSet = true;
     sanitizeViewerSettings(settings);
   }
   const GpuQualityRecommendation gpuQuality = recommendRenderQualityForCurrentGpu();
