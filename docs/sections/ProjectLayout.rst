@@ -39,7 +39,8 @@ Source Directories
      - Runtime resources such as robot models, meshes, textures, USD/glTF
        assets, and example data.
    * - ``prebuilt/openusd``
-     - OpenUSD runtime used by USD import support on supported platforms.
+     - Mandatory OpenUSD runtime used by USD mesh loading on supported
+       platforms.
    * - ``third_party``
      - Bundled third-party libraries built as part of the source tree.
    * - ``cmake``
