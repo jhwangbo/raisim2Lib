@@ -22,7 +22,9 @@ int main(int argc, char* argv[]) {
   // Resolve the binary directory directly from argv to avoid setFromArgv mangling
   // paths containing digits.
   std::string argv0 = argv[0];
-  std::string binaryDir = argv0.substr(0, argv0.find_last_of('/'));
+  const auto separator = argv0.find_last_of("/\\");
+  const std::string binaryDir =
+      separator == std::string::npos ? "." : argv0.substr(0, separator);
 
   raisim::World world;
   world.setTimeStep(0.003);
