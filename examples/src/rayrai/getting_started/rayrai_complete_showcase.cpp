@@ -120,7 +120,8 @@ int main(int argc, char* argv[]) {
   raisim::Mat<3, 3> inertia;
   inertia.setIdentity();
   const raisim::Vec<3> com = {0, 0, 0};
-  auto monkey = world->addMesh(monkeyFile, 1.0, inertia, com);
+  auto monkey = world->addMesh(monkeyFile, 1.0, inertia, com, 1.0, "",
+                               raisim::MeshCollisionMode::ORIGINAL_MESH);
   monkey->setPosition(6, 3, 8.0);
   monkey->setAppearance("1,1,1,0.3");
   monkey->setBodyType(raisim::BodyType::STATIC);

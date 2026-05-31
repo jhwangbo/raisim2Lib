@@ -1,6 +1,14 @@
 // Copyright (c) 2025 Raion Robotics Inc.
 // All rights reserved.
 
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
+
 #include <SDL.h>
 
 #include <glbinding/glbinding.h>
@@ -104,6 +112,25 @@ constexpr float kDefaultFontRasterizerDensity = 1.75f;
 constexpr float kUiScaleEpsilon = 0.01f;
 constexpr const char* kRobotoFontRelativePath = "rsc/fonts/roboto/Roboto-Medium.ttf";
 constexpr const char* kSessionMagic = "RAYRAI_TCP_VIEWER_SESSION_V1\n";
+constexpr float kDefaultMouseForceAccelPerPixel = 0.10f;
+constexpr float kMinMouseForceAccelPerPixel = 0.01f;
+constexpr float kMaxMouseForceAccelPerPixel = 5.0f;
+
+#if defined(_WIN32)
+bool ensureWinsockInitialized(std::string* error = nullptr) {
+  static const int startupResult = []() {
+    WSADATA data{};
+    return WSAStartup(MAKEWORD(2, 2), &data);
+  }();
+  if (startupResult != 0) {
+    if (error) {
+      *error = "WSAStartup failed with error: " + std::to_string(startupResult);
+    }
+    return false;
+  }
+  return true;
+}
+#endif
 
 using raisin::tcp_viewer::BufferReader;
 using raisin::tcp_viewer::ObjectListItem;
@@ -365,8 +392,6 @@ struct ProgramOptions {
   // Costs ~13 s at startup; makes every drag-drop after that ~30 ms. Default off so
   // empty-viewer launches stay fast.
   bool warmAtStartup = false;
-  bool renderQualitySet = false;
-  int renderQuality = 1;
   // --inspect-close-after-frames N: drive load → render N frames → close → render N → exit.
   // Headless reproducer for "close inspector segfaults" bug reports.
   int inspectCloseAfterFrames = -1;
@@ -855,8 +880,6 @@ bool parseCameraLookAtText(const std::string& value, glm::vec3& pos, glm::vec3& 
   return glm::length(target - pos) > 1e-4f;
 }
 
-int qualityIndexFromName(const std::string& rawValue, int fallback);
-
 void printUsage(const char* argv0) {
   std::cout
     << "Usage: " << (argv0 ? argv0 : "rayrai_tcp_viewer") << " [options]\n\n"
@@ -870,7 +893,6 @@ void printUsage(const char* argv0) {
     << "  --warm-at-startup           Also warm renderer content-frame init (~13s) so the first\n"
     << "                              drag-drop is instant. Off by default; empty-viewer startup\n"
     << "                              stays fast unless this flag is passed.\n"
-    << "  --render-quality NAME       fast, balanced, high, ultra, or custom\n"
     << "  --resource-dir PATH         Add a mesh/resource search directory; repeatable\n"
     << "  --window-size WxH           Initial window size, e.g. 1600x900\n"
     << "  --fullscreen                Start fullscreen desktop\n"
@@ -1035,18 +1057,6 @@ bool parseProgramOptions(int argc, char** argv, ProgramOptions& options) {
       options.preWarmShaders = false;
     } else if (arg == "--warm-at-startup") {
       options.warmAtStartup = true;
-    } else if (arg == "--render-quality" || arg == "--quality") {
-      const char* value = requireValue(arg.c_str());
-      if (!value) return false;
-      const int parsedQuality = qualityIndexFromName(value, -1);
-      if (parsedQuality < 0) {
-        std::cerr << "ERROR: invalid " << arg
-                  << " value: " << value
-                  << " (expected fast, balanced, high, ultra, custom, or 0..4)\n";
-        return false;
-      }
-      options.renderQuality = parsedQuality;
-      options.renderQualitySet = true;
     } else if (arg == "--inspect") {
       const char* value = requireValue("--inspect");
       if (!value) return false;
@@ -1199,21 +1209,34 @@ class DiscoveryBeaconReceiver {
   ~DiscoveryBeaconReceiver() { closeSocket(); }
 
   bool start(std::string& status) {
-#if defined(__linux__) || defined(__APPLE__)
-    if (socketFd_ >= 0) {
+#if defined(_WIN32) || defined(__linux__) || defined(__APPLE__)
+    if (socketFd_ != kInvalidSocket) {
       status = "LAN beacon listener active";
       return true;
     }
 
+#if defined(_WIN32)
+    std::string startupError;
+    if (!ensureWinsockInitialized(&startupError)) {
+      status = startupError;
+      return false;
+    }
+    socketFd_ = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (socketFd_ == INVALID_SOCKET) {
+      status = "LAN beacon listener unavailable: WSA error " + std::to_string(WSAGetLastError());
+      return false;
+    }
+#else
     socketFd_ = socket(AF_INET, SOCK_DGRAM, 0);
     if (socketFd_ < 0) {
       status = std::string("LAN beacon listener unavailable: ") + std::strerror(errno);
       return false;
     }
+#endif
 
     int opt = 1;
     setsockopt(socketFd_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&opt), sizeof(opt));
-#ifdef SO_REUSEPORT
+#if defined(SO_REUSEPORT)
     setsockopt(socketFd_, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast<char*>(&opt), sizeof(opt));
 #endif
 
@@ -1222,15 +1245,29 @@ class DiscoveryBeaconReceiver {
     address.sin_addr.s_addr = htonl(INADDR_ANY);
     address.sin_port = htons(kDiscoveryPort);
     if (bind(socketFd_, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0) {
+#if defined(_WIN32)
+      status = "LAN beacon listener bind failed: WSA error " + std::to_string(WSAGetLastError());
+#else
       status = std::string("LAN beacon listener bind failed: ") + std::strerror(errno);
+#endif
       closeSocket();
       return false;
     }
 
+#if defined(_WIN32)
+    u_long nonBlocking = 1;
+    if (ioctlsocket(socketFd_, FIONBIO, &nonBlocking) == SOCKET_ERROR) {
+      status = "LAN beacon listener nonblocking setup failed: WSA error " +
+               std::to_string(WSAGetLastError());
+      closeSocket();
+      return false;
+    }
+#else
     const int flags = fcntl(socketFd_, F_GETFL, 0);
     if (flags >= 0) {
       fcntl(socketFd_, F_SETFL, flags | O_NONBLOCK);
     }
+#endif
 
     status = "LAN beacon listener active";
     return true;
@@ -1241,8 +1278,8 @@ class DiscoveryBeaconReceiver {
   }
 
   bool poll() {
-#if defined(__linux__) || defined(__APPLE__)
-    if (socketFd_ < 0) {
+#if defined(_WIN32) || defined(__linux__) || defined(__APPLE__)
+    if (socketFd_ == kInvalidSocket) {
       return false;
     }
 
@@ -1251,6 +1288,18 @@ class DiscoveryBeaconReceiver {
     while (true) {
       char buffer[1024];
       sockaddr_in from{};
+#if defined(_WIN32)
+      int fromLen = sizeof(from);
+      const int count = recvfrom(socketFd_, buffer, static_cast<int>(sizeof(buffer) - 1), 0,
+                                 reinterpret_cast<sockaddr*>(&from), &fromLen);
+      if (count == SOCKET_ERROR) {
+        const int error = WSAGetLastError();
+        if (error == WSAEINTR) {
+          continue;
+        }
+        break;
+      }
+#else
       socklen_t fromLen = sizeof(from);
       const ssize_t count = recvfrom(socketFd_, buffer, sizeof(buffer) - 1, 0,
                                      reinterpret_cast<sockaddr*>(&from), &fromLen);
@@ -1260,6 +1309,7 @@ class DiscoveryBeaconReceiver {
         }
         break;
       }
+#endif
       if (count == 0) {
         break;
       }
@@ -1338,15 +1388,27 @@ class DiscoveryBeaconReceiver {
   };
 
   void closeSocket() {
-#if defined(__linux__) || defined(__APPLE__)
-    if (socketFd_ >= 0) {
+#if defined(_WIN32)
+    if (socketFd_ != kInvalidSocket) {
+      closesocket(socketFd_);
+      socketFd_ = kInvalidSocket;
+    }
+#elif defined(__linux__) || defined(__APPLE__)
+    if (socketFd_ != kInvalidSocket) {
       close(socketFd_);
-      socketFd_ = -1;
+      socketFd_ = kInvalidSocket;
     }
 #endif
   }
 
-  int socketFd_ = -1;
+#if defined(_WIN32)
+  using SocketHandle = SOCKET;
+  static constexpr SocketHandle kInvalidSocket = INVALID_SOCKET;
+#else
+  using SocketHandle = int;
+  static constexpr SocketHandle kInvalidSocket = -1;
+#endif
+  SocketHandle socketFd_ = kInvalidSocket;
   std::unordered_map<std::string, BeaconRecord> beacons_;
 };
 
@@ -2343,16 +2405,18 @@ glm::vec3 normalizedOr(const glm::vec3& value, const glm::vec3& fallback) {
 
 glm::vec3 mouseForceFromDragPixels(
   const glm::vec3& cameraRight, const glm::vec3& cameraUp, const ImVec2& dragPixels,
-  float newtonsPerPixel) {
-  const float scale = std::isfinite(newtonsPerPixel) ? std::max(0.0f, newtonsPerPixel) : 0.0f;
+  float accelerationPerPixel) {
+  const float scale = std::isfinite(accelerationPerPixel)
+      ? std::max(0.0f, accelerationPerPixel)
+      : 0.0f;
   const glm::vec3 right = normalizedOr(cameraRight, glm::vec3(1.0f, 0.0f, 0.0f));
   const glm::vec3 up = normalizedOr(cameraUp, glm::vec3(0.0f, 0.0f, 1.0f));
   return (right * dragPixels.x - up * dragPixels.y) * scale;
 }
 
 glm::vec3 mouseForceFromDragPixels(
-  const raisin::Camera& camera, const ImVec2& dragPixels, float newtonsPerPixel) {
-  return mouseForceFromDragPixels(camera.right, camera.up, dragPixels, newtonsPerPixel);
+  const raisin::Camera& camera, const ImVec2& dragPixels, float accelerationPerPixel) {
+  return mouseForceFromDragPixels(camera.right, camera.up, dragPixels, accelerationPerPixel);
 }
 
 glm::quat normalizedQuatFromWxyz(const glm::vec4& quat) {
@@ -2522,6 +2586,23 @@ bool isMouseWithinForceStartRadius(
   }
   const float radius = mouseForceStartRadiusPixels(camera, viewport, entry, applicationPoint);
   return screenDistancePixels(mousePos, anchorScreen) <= radius;
+}
+
+bool isShiftModifierHeld(const ImGuiIO& io) {
+  if (io.KeyShift || (io.KeyMods & ImGuiMod_Shift) != 0) {
+    return true;
+  }
+  return (SDL_GetModState() & KMOD_SHIFT) != KMOD_NONE;
+}
+
+bool shouldRequestMouseForceCapture(
+    bool mouseForceEnabled, bool shiftHeld, bool rulerEnabled, bool angleEnabled) {
+  return mouseForceEnabled && shiftHeld && !rulerEnabled && !angleEnabled;
+}
+
+bool shouldSuppressViewportForMouseForce(
+    bool mouseForceActive, bool shiftForceCaptureRequested, bool leftMouseDown) {
+  return mouseForceActive || (shiftForceCaptureRequested && leftMouseDown);
 }
 
 void drawMouseForcePreview(
@@ -4623,6 +4704,9 @@ void renderViewer(raisin::RayraiWindow& viewer, SDL_Window* window,
     viewportState->cursorX = cursorX;
     viewportState->cursorY = cursorY;
   }
+  if (!allowViewportInput) {
+    viewer.cancelViewportMouseDrag();
+  }
   viewer.update(fbW, fbH, allowViewportInput ? isHovered : false, cursorX, cursorY,
     allowClickSelection);
 
@@ -4744,11 +4828,6 @@ int main(int argc, char* argv[]) {
   loadViewerSettings(settings);
   if (options.updateRateHz > 0.0f) {
     settings.tcpUpdateRateHz = options.updateRateHz;
-    sanitizeViewerSettings(settings);
-  }
-  if (options.renderQualitySet) {
-    copyRenderDefaultsToSettings(settings, options.renderQuality);
-    settings.renderQualityUserSet = true;
     sanitizeViewerSettings(settings);
   }
   const GpuQualityRecommendation gpuQuality = recommendRenderQualityForCurrentGpu();
@@ -4967,7 +5046,7 @@ int main(int argc, char* argv[]) {
   uint32_t controlGcTag = 0;
   bool controlGcDirty = false;
   bool mouseForceEnabled = true;
-  float mouseForceScale = 1.0f;
+  float mouseForceScale = kDefaultMouseForceAccelPerPixel;
   MouseForceGesture mouseForce;
   RulerToolState ruler;
   AngleToolState angle;
@@ -5913,11 +5992,12 @@ int main(int argc, char* argv[]) {
     }
 
     const bool canQueueSimControl = client.isConnected() && scene.serverSupportsSimControl();
-    const bool mouseForceCanStart = !ruler.enabled && mouseForceEnabled && canQueueSimControl &&
-      requestedEntry && supportsTcpViewerForceControl(requestedEntry);
-    const bool mouseForceShortcutActive = mouseForceCanStart && io.KeyShift;
-    const bool mouseForceSuppressViewportInput = mouseForce.active ||
-      (mouseForceShortcutActive && io.MouseDown[ImGuiMouseButton_Left]);
+    const bool shiftForceModifierHeld = isShiftModifierHeld(io);
+    const bool shiftForceCaptureRequested =
+      shouldRequestMouseForceCapture(
+        mouseForceEnabled, shiftForceModifierHeld, ruler.enabled, angle.enabled);
+    const bool mouseForceSuppressViewportInput = shouldSuppressViewportForMouseForce(
+      mouseForce.active, shiftForceCaptureRequested, io.MouseDown[ImGuiMouseButton_Left]);
     // While the gizmo is being dragged, or while the user is left-pressing with
     // a selected body and the gizmo enabled, swallow viewport input so the
     // camera doesn't orbit/pan during gizmo manipulation.
@@ -5932,8 +6012,8 @@ int main(int argc, char* argv[]) {
     const bool allowViewportInput = !mouseForceSuppressViewportInput &&
                                     !rulerCapturesViewportInput &&
                                     !poseGrabberSuppressViewportInput;
-    const bool allowClickSelection = !mouseForce.active && !rulerCapturesViewportInput &&
-                                     !poseGrabber.dragging;
+    const bool allowClickSelection = !mouseForce.active && !shiftForceCaptureRequested &&
+                                     !rulerCapturesViewportInput && !poseGrabber.dragging;
     renderViewer(*viewer, window, allowViewportInput, allowClickSelection, &viewportState);
 
     if (ruler.enabled && !mouseForce.active && viewportState.hovered &&
@@ -5972,7 +6052,8 @@ int main(int argc, char* argv[]) {
     GizmoScreenLayout gizmoLayout;
     PoseGrabberHit gizmoHover;
     const bool poseGrabberPickable = poseGrabber.enabled && requestedEntry && !mouseForce.active &&
-                                     !ruler.enabled && !angle.enabled && canQueueSimControl;
+                                     !shiftForceCaptureRequested && !ruler.enabled &&
+                                     !angle.enabled && canQueueSimControl;
     // The gizmo lives at the user-controlled (held) pose, not the server's
     // pose. This keeps the handles attached to what the user actually sees.
     const glm::vec3 gizmoOriginWorld = (poseGrabber.heldActive && requestedEntry)
@@ -6096,18 +6177,79 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    if (!mouseForce.active && mouseForceShortcutActive && viewportState.hovered &&
+    struct MouseForceStartTarget {
+      uint32_t tag = 0;
+      int index = 0;
+      int localBodyIdx = 0;
+      const VisualEntry* entry = nullptr;
+      raisin::Visuals* visual = nullptr;
+      bool fromPick = false;
+    };
+    const auto resolveMouseForceStartTarget = [&]() {
+      MouseForceStartTarget target;
+      if (requestedEntry && supportsTcpViewerForceControl(requestedEntry)) {
+        target.tag = requestedTag;
+        target.index = requestedIndex;
+        target.localBodyIdx = std::max(0, controlBodyIdx);
+        target.entry = requestedEntry;
+        target.visual = viewer->getTargetVisual();
+      }
+
+      if (viewer && viewportState.hovered) {
+        if (auto* pickedVisual = viewer->pickTargetVisualAt(viewportState.cursorX, viewportState.cursorY)) {
+          uint32_t pickedTag = 0;
+          int pickedIndex = 0;
+          const VisualEntry* pickedEntry = nullptr;
+          if (scene.getVisualInfo(pickedVisual, pickedTag, pickedIndex, pickedEntry) &&
+              pickedEntry && supportsTcpViewerForceControl(pickedEntry) &&
+              !isContactEntry(pickedEntry)) {
+            target.tag = pickedTag;
+            target.index = pickedIndex;
+            target.localBodyIdx = pickedEntry->isArticulated
+              ? std::max(0, pickedEntry->localBodyIdx)
+              : 0;
+            target.entry = pickedEntry;
+            target.visual = pickedVisual;
+            target.fromPick = true;
+          }
+        }
+      }
+      return target;
+    };
+
+    if (!mouseForce.active && shiftForceCaptureRequested && viewportState.hovered &&
         ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-      const glm::vec3 applicationPoint = requestedEntry->lastPos + controlPointOffset;
-      ImVec2 anchorScreen;
-      if (isMouseWithinForceStartRadius(viewer->getCamera(), viewportState, *requestedEntry,
-            applicationPoint, io.MousePos, anchorScreen)) {
+      const MouseForceStartTarget forceTarget = resolveMouseForceStartTarget();
+      if (!canQueueSimControl) {
+        if (!client.isConnected()) {
+          lastStatus = "mouse force: disconnected";
+        } else if (!scene.serverSupportsSimControl()) {
+          lastStatus = "mouse force: server lacks sim control";
+        }
+      } else if (!forceTarget.entry) {
+        if (!requestedEntry) {
+          lastStatus = "mouse force: select a body";
+        } else {
+          lastStatus = "mouse force: unsupported object";
+        }
+      } else {
+        if (forceTarget.fromPick && forceTarget.visual) {
+          viewer->setTargetVisual(forceTarget.visual);
+        }
+        const glm::vec3 applicationPoint = forceTarget.entry->lastPos + controlPointOffset;
+        ImVec2 anchorScreen = io.MousePos;
+        ImVec2 applicationScreen;
+        if (isMouseWithinForceStartRadius(viewer->getCamera(), viewportState, *forceTarget.entry,
+            applicationPoint, io.MousePos, applicationScreen)) {
+          anchorScreen = applicationScreen;
+        }
         mouseForce.active = true;
-        mouseForce.tag = requestedTag;
-        mouseForce.index = requestedIndex;
-        mouseForce.localBodyIdx = std::max(0, controlBodyIdx);
+        mouseForce.tag = forceTarget.tag;
+        mouseForce.index = forceTarget.index;
+        mouseForce.localBodyIdx = std::max(0, forceTarget.localBodyIdx);
         mouseForce.applicationPoint = applicationPoint;
-        mouseForce.localApplicationPoint = visualWorldPointToLocal(*requestedEntry, applicationPoint);
+        mouseForce.localApplicationPoint =
+          visualWorldPointToLocal(*forceTarget.entry, applicationPoint);
         mouseForce.force = glm::vec3(0.0f);
         mouseForce.pressMouse = anchorScreen;
         mouseForce.currentMouse = io.MousePos;
@@ -6158,11 +6300,6 @@ int main(int argc, char* argv[]) {
       } else {
         mouseForce.applicationPoint = visualLocalPointToWorld(
           *activeForceEntry, mouseForce.localApplicationPoint);
-        ImVec2 anchorScreen = mouseForce.pressMouse;
-        if (projectWorldToViewport(viewer->getCamera(), viewportState,
-              mouseForce.applicationPoint, anchorScreen)) {
-          mouseForce.pressMouse = anchorScreen;
-        }
         mouseForce.currentMouse = io.MousePos;
         const ImVec2 dragPixels(mouseForce.currentMouse.x - mouseForce.pressMouse.x,
                                 mouseForce.currentMouse.y - mouseForce.pressMouse.y);
@@ -7493,8 +7630,8 @@ int main(int argc, char* argv[]) {
             ImGui::BeginDisabled(!canControlSim || !forceSupported);
             ImGui::Checkbox("Shift-drag force", &mouseForceEnabled);
             ImGui::BeginDisabled(!mouseForceEnabled);
-            drawInlineLabelSliderFloat("mouse_force_scale", "Mouse scale", &mouseForceScale,
-              0.05f, 50.0f, "%.2f N/px");
+            drawInlineLabelSliderFloat("mouse_force_scale", "Mouse accel", &mouseForceScale,
+              kMinMouseForceAccelPerPixel, kMaxMouseForceAccelPerPixel, "%.2f m/s^2/px");
             ImGui::EndDisabled();
             drawVec3Control("Force", "##selected_force", controlForce, 0.25f);
             drawVec3Control("Point offset", "##selected_force_offset", controlPointOffset, 0.01f);

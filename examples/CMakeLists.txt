@@ -105,65 +105,6 @@ function(create_rayrai_executable app_name file_name)
     target_link_libraries(${app_name} PRIVATE rayrai)
 endfunction()
 
-function(create_executable_if_exists app_name file_name)
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}")
-        create_executable(${app_name} ${file_name})
-    else()
-        message(STATUS "Skipping ${app_name} example: ${file_name} is not present")
-    endif()
-endfunction()
-
-
-function(rayrai_header_has header_path needle out_var)
-    set(${out_var} FALSE PARENT_SCOPE)
-    set(_rayrai_include_candidates "")
-    if(DEFINED RAYRAI_PREFIX)
-        list(APPEND _rayrai_include_candidates
-            "${RAYRAI_PREFIX}/include"
-            "${RAYRAI_PREFIX}/linux/include"
-            "${RAYRAI_PREFIX}/mac/include"
-            "${RAYRAI_PREFIX}/win32/include")
-    endif()
-    if(TARGET rayrai)
-        get_target_property(_rayrai_target_includes rayrai INTERFACE_INCLUDE_DIRECTORIES)
-        if(_rayrai_target_includes)
-            list(APPEND _rayrai_include_candidates ${_rayrai_target_includes})
-        endif()
-    endif()
-    foreach(_include_dir IN LISTS _rayrai_include_candidates)
-        if(EXISTS "${_include_dir}/${header_path}")
-            file(READ "${_include_dir}/${header_path}" _rayrai_header_contents)
-            if(_rayrai_header_contents MATCHES "${needle}")
-                set(${out_var} TRUE PARENT_SCOPE)
-                return()
-            endif()
-        endif()
-    endforeach()
-endfunction()
-
-function(raisim_header_has header_path needle out_var)
-    set(${out_var} FALSE PARENT_SCOPE)
-    set(_raisim_include_candidates "")
-    if(DEFINED RAISIM_PREFIX)
-        list(APPEND _raisim_include_candidates "${RAISIM_PREFIX}/include")
-    endif()
-    if(TARGET raisim::raisim)
-        get_target_property(_raisim_target_includes raisim::raisim INTERFACE_INCLUDE_DIRECTORIES)
-        if(_raisim_target_includes)
-            list(APPEND _raisim_include_candidates ${_raisim_target_includes})
-        endif()
-    endif()
-    foreach(_include_dir IN LISTS _raisim_include_candidates)
-        if(EXISTS "${_include_dir}/${header_path}")
-            file(READ "${_include_dir}/${header_path}" _raisim_header_contents)
-            if(_raisim_header_contents MATCHES "${needle}")
-                set(${out_var} TRUE PARENT_SCOPE)
-                return()
-            endif()
-        endif()
-    endforeach()
-endfunction()
-
 # server examples
 # Basics and object lifecycle.
 create_executable(primitive_grid src/server/basics/primitive_grid.cpp)
@@ -173,19 +114,7 @@ create_executable(compound_object src/server/basics/compound_object.cpp)
 create_executable(dynamic_object_addition src/server/basics/dynamic_object_addition.cpp)
 create_executable(ycb_objects src/server/basics/ycb_objects.cpp)
 
-# Asset import/export pipeline. This requires the asset-pipeline APIs added to
-# raisim::Mesh and raisim::World, so keep older installed packages buildable.
-if(DEFINED RAISIM_PREFIX
-   AND EXISTS "${RAISIM_PREFIX}/include/raisim/object/singleBodies/Mesh.hpp"
-   AND EXISTS "${RAISIM_PREFIX}/include/raisim/World.hpp")
-    file(READ "${RAISIM_PREFIX}/include/raisim/object/singleBodies/Mesh.hpp" _raisim_mesh_header)
-    file(READ "${RAISIM_PREFIX}/include/raisim/World.hpp" _raisim_world_header)
-    if(_raisim_mesh_header MATCHES "preprocessMesh" AND _raisim_world_header MATCHES "exportMeshAssetsToObj")
-        create_executable(model_asset_pipeline src/server/assets/model_asset_pipeline.cpp)
-    else()
-        message(STATUS "Skipping model_asset_pipeline example: installed raisim package does not expose asset-pipeline APIs")
-    endif()
-endif()
+create_executable(model_asset_pipeline src/server/assets/model_asset_pipeline.cpp)
 
 # Materials and terrain.
 create_executable(material_restitution src/server/materials/material_restitution.cpp)
@@ -204,23 +133,11 @@ create_executable(wheeled_robot_force_control src/server/robots/wheeled_robot_fo
 create_executable(templated_tracked_robot src/server/robots/templated_tracked_robot.cpp)
 create_executable(minitaur_pd src/server/robots/minitaur_pd.cpp)
 create_executable(inverse_dynamics src/server/robots/inverse_dynamics.cpp)
-raisim_header_has("raisim/World.hpp" "loadUsdScene" _raisim_has_usd_scene_loading)
-set(_usd_scene_example_skip_reason "")
-if(NOT _raisim_has_usd_scene_loading)
-    set(_usd_scene_example_skip_reason "installed raisim package does not expose USD scene loading")
-endif()
-
-if(_usd_scene_example_skip_reason STREQUAL "")
-    create_executable(shadow_hand_usd_cube src/server/robots/shadow_hand_usd_cube.cpp)
-    create_executable(nvidia_usd_robots src/server/robots/nvidia_usd_robots.cpp)
-    set_target_properties(shadow_hand_usd_cube nvidia_usd_robots PROPERTIES
-        CXX_STANDARD 20
-        CXX_STANDARD_REQUIRED ON)
-else()
-    message(STATUS "Skipping shadow_hand_usd_cube example: ${_usd_scene_example_skip_reason}")
-    message(STATUS "Skipping nvidia_usd_robots example: ${_usd_scene_example_skip_reason}")
-endif()
-raisim_header_has("raisim/object/granular/GranularSystem.hpp" "GranularSystem" _raisim_has_granular)
+create_executable(shadow_hand_usd_cube src/server/robots/shadow_hand_usd_cube.cpp)
+create_executable(nvidia_usd_robots src/server/robots/nvidia_usd_robots.cpp)
+set_target_properties(shadow_hand_usd_cube nvidia_usd_robots PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON)
 
 # Dynamics and constraints.
 create_executable(length_constraints_newtons_cradle src/server/dynamics/length_constraints_newtons_cradle.cpp)
@@ -236,20 +153,12 @@ create_executable(sim_control_demo src/server/sim_control_demo.cpp)
 # Performance and optional deformables.
 create_executable(object_lifecycle_stress src/server/performance/object_lifecycle_stress.cpp)
 create_executable(island_sleep_benchmark src/server/performance/island_sleep_benchmark.cpp)
-if(EXISTS "${RAISIM_PREFIX}/include/raisim/object/deformable/DeformableObject.hpp")
-    create_executable(deformable_objects src/server/deformable/deformable_objects.cpp)
-else()
-    message(STATUS "Skipping deformable_objects example: installed raisim package does not expose DeformableObject")
-endif()
+create_executable(deformable_objects src/server/deformable/deformable_objects.cpp)
 
 # benchmark examples
 create_executable(articulated_system_benchmark src/benchmark/articulated_system_benchmark.cpp)
 create_executable(anymal_standing_benchmark src/benchmark/anymal_standing_benchmark.cpp)
-if(_raisim_has_granular)
-    create_executable(granular_media src/benchmark/granular_media.cpp)
-else()
-    message(STATUS "Skipping granular_media example: installed raisim package does not expose GranularSystem")
-endif()
+create_executable(granular_media src/benchmark/granular_media.cpp)
 
 # xml reader
 create_executable(xml_world_loader src/xml/xml_world_loader.cpp)
@@ -258,14 +167,14 @@ create_executable(mjcf_gymnasium_hopper src/server/mjcf/mjcf_gymnasium_hopper.cp
 create_executable(mjcf_gymnasium_walker2d src/server/mjcf/mjcf_gymnasium_walker2d.cpp)
 create_executable(mjcf_gymnasium_humanoid src/server/mjcf/mjcf_gymnasium_humanoid.cpp)
 
-# World and terrain scenes. Some source distributions omit these heavier examples.
-create_executable_if_exists(mountain1_heightmap src/worlds/mountain1_heightmap.cpp)
-create_executable_if_exists(office1_scene src/worlds/office1_scene.cpp)
-create_executable_if_exists(lake1_heightmap src/worlds/lake1_heightmap.cpp)
-create_executable_if_exists(atlas src/worlds/atlas.cpp)
-create_executable_if_exists(anymal_pair src/worlds/anymal_pair.cpp)
-create_executable_if_exists(hill1_heightmap src/worlds/hill1_heightmap.cpp)
-create_executable_if_exists(kinova_arm src/worlds/kinova_arm.cpp)
+# World and terrain scenes.
+create_executable(mountain1_heightmap src/worlds/mountain1_heightmap.cpp)
+create_executable(office1_scene src/worlds/office1_scene.cpp)
+create_executable(lake1_heightmap src/worlds/lake1_heightmap.cpp)
+create_executable(atlas src/worlds/atlas.cpp)
+create_executable(anymal_pair src/worlds/anymal_pair.cpp)
+create_executable(hill1_heightmap src/worlds/hill1_heightmap.cpp)
+create_executable(kinova_arm src/worlds/kinova_arm.cpp)
 
 # rayrai examples
 # Entry points.
@@ -284,41 +193,18 @@ create_rayrai_executable(rayrai_instancing_grid src/rayrai/visuals/rayrai_instan
 create_rayrai_executable(rayrai_pointcloud_animation src/rayrai/visuals/rayrai_pointcloud_animation.cpp)
 
 # Dynamics.
-raisim_header_has("raisim/World.hpp" "spinningFriction" _raisim_has_rolling_spinning_friction)
-if(_raisim_has_rolling_spinning_friction)
-    create_rayrai_executable(rayrai_rolling_spinning_friction src/rayrai/dynamics/rayrai_rolling_spinning_friction.cpp)
-else()
-    message(STATUS "Skipping rayrai_rolling_spinning_friction example: installed raisim package does not expose rolling/spinning friction material APIs")
-endif()
+create_rayrai_executable(rayrai_rolling_spinning_friction src/rayrai/dynamics/rayrai_rolling_spinning_friction.cpp)
 
 # Materials and assets.
 create_rayrai_executable(rayrai_pbr_material_grid src/rayrai/materials/rayrai_pbr_material_grid.cpp)
 create_rayrai_executable(rayrai_pbr_texture_maps src/rayrai/materials/rayrai_pbr_texture_maps.cpp)
-rayrai_header_has("rayrai/Light.hpp" "SPOT" _rayrai_has_spot_lights)
-rayrai_header_has("rayrai/RenderQuality.hpp" "fxaaEnabled" _rayrai_has_fxaa_quality)
-rayrai_header_has("rayrai/RenderQuality.hpp" "depthOfFieldEnabled" _rayrai_has_quality_dof)
-if(_rayrai_has_spot_lights AND _rayrai_has_fxaa_quality AND _rayrai_has_quality_dof)
-    create_rayrai_executable(rayrai_quality_lighting src/rayrai/materials/rayrai_quality_lighting.cpp)
-else()
-    message(STATUS "Skipping rayrai_quality_lighting example: installed rayrai package does not expose spotlight/area-light, FXAA, and DoF quality APIs")
-endif()
+create_rayrai_executable(rayrai_quality_lighting src/rayrai/materials/rayrai_quality_lighting.cpp)
 create_rayrai_executable(rayrai_coacd_mesh_approximation src/rayrai/assets/rayrai_coacd_mesh_approximation.cpp)
 create_rayrai_executable(rayrai_visual_asset_support src/rayrai/assets/rayrai_visual_asset_support.cpp)
 
-# Runtime scene editing and collision detection features added after older binary packages.
-raisim_header_has("raisim/World.hpp" "cloneSingleBodyObject" _raisim_has_runtime_scene_editing)
-if(_raisim_has_runtime_scene_editing)
-    create_rayrai_executable(rayrai_runtime_scene_editing src/rayrai/runtime/rayrai_runtime_scene_editing.cpp)
-else()
-    message(STATUS "Skipping rayrai_runtime_scene_editing example: installed raisim package does not expose runtime scene editing APIs")
-endif()
-
-raisim_header_has("raisim/contact_engine/contact_engine.h" "sweptCcdEnabled" _raisim_has_swept_ccd)
-if(_raisim_has_swept_ccd)
-    create_rayrai_executable(rayrai_swept_ccd src/rayrai/collision/rayrai_swept_ccd.cpp)
-else()
-    message(STATUS "Skipping rayrai_swept_ccd example: installed raisim package does not expose swept CCD settings")
-endif()
+# Runtime scene editing and collision detection.
+create_rayrai_executable(rayrai_runtime_scene_editing src/rayrai/runtime/rayrai_runtime_scene_editing.cpp)
+create_rayrai_executable(rayrai_swept_ccd src/rayrai/collision/rayrai_swept_ccd.cpp)
 
 # Tools.
 create_rayrai_executable(rayrai_tcp_viewer src/rayrai/tools/rayrai_tcp_viewer.cpp)

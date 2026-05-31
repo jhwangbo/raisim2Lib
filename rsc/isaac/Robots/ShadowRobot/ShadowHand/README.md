@@ -9,6 +9,8 @@ Source:
 Downloaded files:
 - `shadow_hand.usd`
 - `shadow_hand_instanceable.usd`
+- `configuration/shadow_hand_robot_schema.usd`
+- `configuration/shadow_hand_instanceable_robot_schema.usd`
 
 NVIDIA's Isaac Sim robot asset documentation lists
 `ShadowRobot/ShadowHand/shadow_hand_instanceable.usd` as an Isaac Lab robot asset

@@ -73,6 +73,7 @@ Use this documentation in this order if you are new to RaiSim:
    sections/LoggingSystem
    sections/WorldSystem
    sections/WorldConfigurationFile
+   sections/RsceneFile
    sections/OpenUSD
    sections/RaisimServer
    sections/Object

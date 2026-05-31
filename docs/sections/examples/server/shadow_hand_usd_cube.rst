@@ -10,9 +10,12 @@ in-hand cube start pose. The linked RaiSim package is expected to expose USD
 scene loading; the constructor imports the USD Physics rigid bodies and joints
 as a RaiSim articulated system.
 
-The cube is a native RaiSim box for physics and a textured OBJ visual proxy for
-rendering, so the example does not redistribute the separate NVIDIA DexCube prop
-asset.
+The cube is a native RaiSim box. The example fails fast if the ShadowHand
+articulation, collision bodies, or visual meshes are not imported.
+
+.. image:: ../../../image/rayrai/rayrai_usd_shadow_hand_cube.png
+   :alt: ShadowHand USD collision geometry with a cube above the hand
+   :width: 100%
 
 Build Availability
 ==================
@@ -34,13 +37,7 @@ Run the installed executable:
 
 On Windows, run ``shadow_hand_usd_cube.exe`` instead.
 This example uses RaisimServer. Start ``rayrai_raisim_tcp_viewer`` and connect
-to port 8080.
-
-For a non-visual load test, run:
-
-.. code-block:: bash
-
-   <raisim-install>/bin/shadow_hand_usd_cube --headless-test
+to port 8080. The viewer remains interactive while the simulation runs.
 
 Details
 =======
@@ -48,11 +45,9 @@ Details
   the ``World`` constructor.
 - Uses RaiSim's bundled OpenUSD runtime directly; no Assimp USD importer or
   USD-specific build switch is required.
+- Throws an error if the imported scene does not contain an articulated system
+  named ``shadow_hand`` with collision bodies and visual meshes.
 - Places the ShadowHand base at ``(0, 0, 0.5)``.
-- Uses a primitive static proxy hand only if the first-pass importer finds no
-  supported primitive collision shapes.
-- Creates a dynamic cube at ``(0, -0.39, 0.6)``, matching the Isaac Lab Shadow
+- Drives the hand toward the imported nominal configuration with PD control.
+- Creates a dynamic cube at ``(0, -0.39, 1.05)``, matching the Isaac Lab Shadow
   Hand cube task's initial object pose.
-- Adds ``rsc/isaac/Props/Blocks/DexCube/dex_cube_textured.obj`` as a textured
-  visual mesh and synchronizes it to the dynamic cube each step.
-- Adds a translucent visual goal cube above the hand.

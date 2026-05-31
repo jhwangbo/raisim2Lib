@@ -54,7 +54,14 @@ set(_doc_image_generators
     doc_image_volumetric_fog
     doc_image_wet_snow
     doc_image_lights
-    doc_image_rolling_friction)
+    doc_image_rolling_friction
+    doc_image_usd_examples
+    doc_image_rscene_minimal
+    doc_image_rscene_warehouse
+    doc_image_rscene_terrain
+    doc_image_rscene_articulated
+    doc_image_rscene_atmosphere
+    doc_image_rscene_features)
 
 set(_doc_image_outputs "")
 set(_doc_image_targets "")
@@ -85,6 +92,11 @@ foreach(_dep_target rayrai raisim::raisim)
       if(_loc AND EXISTS "${_loc}")
         get_filename_component(_loc_dir "${_loc}" DIRECTORY)
         list(APPEND _doc_image_lib_dirs "${_loc_dir}")
+        foreach(_openusd_dir "${_loc_dir}/openusd" "${_loc_dir}/openusd/lib")
+          if(EXISTS "${_openusd_dir}")
+            list(APPEND _doc_image_lib_dirs "${_openusd_dir}")
+          endif()
+        endforeach()
       endif()
     endforeach()
   endif()

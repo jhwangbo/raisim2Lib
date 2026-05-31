@@ -1,3 +1,8 @@
+cmake_minimum_required(VERSION 3.18)
+project(raisim_docs LANGUAGES CXX)
+
+get_filename_component(RAISIM_DOCS_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+
 find_package(Doxygen REQUIRED)
 find_package(raisim CONFIG REQUIRED)
 
@@ -68,8 +73,8 @@ if(RAISIM_DOCS_RAISIM_INCLUDE_DIR)
   list(APPEND _RAISIM_INCLUDE_CANDIDATES "${RAISIM_DOCS_RAISIM_INCLUDE_DIR}")
 endif()
 list(APPEND _RAISIM_INCLUDE_CANDIDATES
-  "${PROJECT_SOURCE_DIR}/raisim/include/raisim"
-  "${PROJECT_SOURCE_DIR}/raisim/linux/include/raisim"
+  "${RAISIM_DOCS_REPO_ROOT}/raisim/include/raisim"
+  "${RAISIM_DOCS_REPO_ROOT}/raisim/linux/include/raisim"
 )
 foreach(_RAISIM_BASE_INCLUDE IN LISTS raisim_INCLUDE_DIRS)
   list(APPEND _RAISIM_INCLUDE_CANDIDATES "${_RAISIM_BASE_INCLUDE}/raisim")
@@ -88,8 +93,8 @@ if(RAISIM_DOCS_RAYRAI_INCLUDE_DIR)
   list(APPEND _RAYRAI_INCLUDE_CANDIDATES "${RAISIM_DOCS_RAYRAI_INCLUDE_DIR}")
 endif()
 list(APPEND _RAYRAI_INCLUDE_CANDIDATES
-  "${PROJECT_SOURCE_DIR}/rayrai/include/rayrai"
-  "${PROJECT_SOURCE_DIR}/rayrai/linux/include/rayrai"
+  "${RAISIM_DOCS_REPO_ROOT}/rayrai/include/rayrai"
+  "${RAISIM_DOCS_REPO_ROOT}/rayrai/linux/include/rayrai"
 )
 set(RAYRAI_INCLUDE_DIR "")
 foreach(_RAYRAI_CANDIDATE IN LISTS _RAYRAI_INCLUDE_CANDIDATES)
@@ -161,6 +166,7 @@ endif()
 
 add_custom_target(Sphinx ALL
         DEPENDS ${RAISIM_PUBLIC_HEADERS} doxygen_output ${_RAYRAI_DOC_IMAGE_DEPS}
+        COMMAND ${CMAKE_COMMAND} -E rm -rf ${SPHINX_BUILD}
         COMMAND ${SPHINX_EXECUTABLE} -b html -E -a
         # Tell Breathe where to find the Doxygen output
         -Dbreathe_projects.raisim=${DOXYGEN_OUTPUT_DIR}/xml

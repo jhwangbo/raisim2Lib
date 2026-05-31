@@ -76,7 +76,7 @@ The install target does not install source-built example executables; run those 
 From the repository root, run one of the Windows environment scripts, configure, and build the C++ examples:
 
 ```powershell
-cd C:\raisim
+cd C:\raisim2Lib
 .\raisim_env.ps1
 cmake -S . -B build-examples -DRAISIM_EXAMPLE=ON -DRAISIM_CHECK_FOR_UPDATES=OFF
 cmake --build build-examples --config Release --parallel

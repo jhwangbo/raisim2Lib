@@ -11,10 +11,12 @@
 #include <stb/stb_image_write.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <SDL.h>
@@ -104,6 +106,64 @@ class OffscreenContext {
   SDL_GLContext context_ = nullptr;
 };
 
+inline bool waitForSceneAssetsReady(raisin::RayraiWindow& renderer,
+                                    int width,
+                                    int height) {
+  // The first renderer update is what discovers raisim world objects and may
+  // enqueue mesh imports for articulated links. Require several quiet frames
+  // after that discovery pass so the capture cannot race a late async import.
+  constexpr int kMaxAssetPumpFrames = 900;
+  constexpr int kRequiredQuietFrames = 4;
+
+  int quietFrames = 0;
+  std::size_t maxPending = 0;
+  for (int frame = 0; frame < kMaxAssetPumpFrames; ++frame) {
+    const std::size_t pendingBefore = renderer.pendingAsyncMeshLoadCount();
+    maxPending = std::max(maxPending, pendingBefore);
+    std::size_t finalizedBefore = 0;
+    if (pendingBefore > 0)
+      finalizedBefore = renderer.pollAsyncMeshLoads(pendingBefore);
+
+    renderer.update(width, height, /*save=*/false, /*saveW=*/0, /*saveH=*/0,
+                    /*headless=*/true);
+
+    const std::size_t pendingAfterUpdate = renderer.pendingAsyncMeshLoadCount();
+    maxPending = std::max(maxPending, pendingAfterUpdate);
+    std::size_t finalizedAfter = 0;
+    if (pendingAfterUpdate > 0) {
+      finalizedAfter = renderer.pollAsyncMeshLoads(pendingAfterUpdate);
+      renderer.update(width, height, /*save=*/false, /*saveW=*/0, /*saveH=*/0,
+                      /*headless=*/true);
+    }
+
+    const std::size_t pendingAfter = renderer.pendingAsyncMeshLoadCount();
+    maxPending = std::max(maxPending, pendingAfter);
+    const bool quiet =
+        pendingBefore == 0 &&
+        pendingAfterUpdate == 0 &&
+        pendingAfter == 0 &&
+        finalizedBefore == 0 &&
+        finalizedAfter == 0;
+    if (quiet) {
+      if (++quietFrames >= kRequiredQuietFrames)
+        return true;
+    } else {
+      quietFrames = 0;
+      if (pendingAfter > 0 && finalizedAfter == 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+    }
+  }
+
+  std::fprintf(stderr,
+               "doc_image: %zu async mesh load(s) still pending after %d frames "
+               "(max observed pending: %zu); refusing to capture a partial scene\n",
+               renderer.pendingAsyncMeshLoadCount(),
+               kMaxAssetPumpFrames,
+               maxPending);
+  return false;
+}
+
 // Bake one frame into the renderer and write a supersampled PNG.
 inline bool captureScene(raisin::RayraiWindow& renderer, int width, int height,
                          const std::filesystem::path& outputPath,
@@ -121,6 +181,14 @@ inline bool captureScene(raisin::RayraiWindow& renderer, int width, int height,
   renderer.generateWeatherSkyEnvironment(/*envFaceSize=*/128,
                                          /*irradianceFaceSize=*/32,
                                          /*setAsBackground=*/true);
+
+  const bool previousAsyncMeshLoading = renderer.asyncMeshLoadingEnabled();
+  renderer.setAsyncMeshLoadingEnabled(false);
+  if (!waitForSceneAssetsReady(renderer, width, height)) {
+    renderer.setAsyncMeshLoadingEnabled(previousAsyncMeshLoading);
+    return false;
+  }
+
   // Warm the frame loop so deferred resources (shadow maps, IBL probes,
   // particle systems) are allocated and stabilized before the capture.
   for (int i = 0; i < 3; ++i) {
@@ -129,6 +197,7 @@ inline bool captureScene(raisin::RayraiWindow& renderer, int width, int height,
   }
   auto capture = renderer.captureSupersampledRgba(
       renderer.getCamera(), supersampleScale, overrides);
+  renderer.setAsyncMeshLoadingEnabled(previousAsyncMeshLoading);
   if (capture.rgba.empty()) {
     std::fprintf(stderr, "doc_image: captureSupersampledRgba returned empty buffer\n");
     return false;

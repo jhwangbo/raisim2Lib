@@ -192,7 +192,6 @@ Current Package Examples
 
    examples/current/example_anymal_contacts
    examples/current/example_atlas_contacts
-   examples/current/example_model_asset_pipeline
    examples/current/granular_media
 
 Benchmark Examples
@@ -215,8 +214,6 @@ Rayrai Tools And Examples
    examples/current/rayrai_benchmark
    examples/current/rayrai_complete_showcase_benchmark
    examples/current/rayrai_pbr_first_draw_benchmark
-   examples/current/example_rayrai_pbr_asset_inspector
-   examples/current/example_polyhaven_blue_wall
    examples/rayrai/rayrai_basic_scene
    examples/rayrai/rayrai_complete_showcase
    examples/rayrai/rayrai_blender_scene_import

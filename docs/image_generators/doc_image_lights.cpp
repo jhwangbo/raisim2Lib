@@ -24,10 +24,11 @@ int main(int argc, char** argv) {
   q.pbrToneMapping = true;
   doc_image::applyCommonSceneOptions(q, preset);
   q.addViewerFillLights = false;            // make the additional lights stand out
-  q.mainLightAmbient = glm::vec3(0.05f);    // dark ambient so spot lights pop
-  q.mainLightDiffuse = glm::vec3(0.25f);
+  q.mainLightAmbient = glm::vec3(0.10f);    // low ambient so spot lights pop, but
+                                            // enough that the scene isn't crushed
+  q.mainLightDiffuse = glm::vec3(0.35f);
   q.bloomEnabled = true;
-  q.bloomStrength = 0.18f;
+  q.bloomStrength = 0.28f;
   q.maxAdditionalLightsPerFrame = 6;
   q.maxPointShadowLights = 3;
   viewer.setRenderQualitySettings(q);
@@ -48,7 +49,7 @@ int main(int argc, char** argv) {
   warmSpot.type = raisin::LightType::SPOT;
   warmSpot.position = glm::vec3(-2.2f, -1.8f, 2.6f);
   warmSpot.direction = glm::normalize(glm::vec3(0.9f, 0.7f, -1.0f));
-  warmSpot.diffuse = glm::vec3(2.4f, 1.6f, 0.9f);
+  warmSpot.diffuse = glm::vec3(6.0f, 4.0f, 2.2f);
   warmSpot.spotInnerCos = std::cos(glm::radians(14.0f));
   warmSpot.spotOuterCos = std::cos(glm::radians(34.0f));
   warmSpot.castsShadows = true;
@@ -58,8 +59,8 @@ int main(int argc, char** argv) {
   raisin::RayraiWindow::AdditionalLight coolFill;
   coolFill.type = raisin::LightType::POINT;
   coolFill.position = glm::vec3(2.2f, -1.4f, 1.8f);
-  coolFill.diffuse = glm::vec3(0.40f, 0.62f, 1.10f);
-  coolFill.constant = 1.0f; coolFill.linear = 0.20f; coolFill.quadratic = 0.04f;
+  coolFill.diffuse = glm::vec3(1.4f, 2.2f, 3.8f);
+  coolFill.constant = 1.0f; coolFill.linear = 0.14f; coolFill.quadratic = 0.02f;
   viewer.addAdditionalLight(coolFill);
 
   // Soft area light from above behind the row, with shadows off.
@@ -67,7 +68,7 @@ int main(int argc, char** argv) {
   rim.type = raisin::LightType::AREA;
   rim.position = glm::vec3(0.0f, 1.6f, 2.4f);
   rim.direction = glm::normalize(glm::vec3(0.0f, -1.0f, -0.6f));
-  rim.diffuse = glm::vec3(0.55f, 0.92f, 0.55f);
+  rim.diffuse = glm::vec3(1.4f, 2.3f, 1.4f);
   rim.areaSize = glm::vec2(1.8f, 0.8f);
   rim.castsShadows = false;
   viewer.addAdditionalLight(rim);

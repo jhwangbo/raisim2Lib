@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <glbinding/gl/gl.h>
+#include <glm/gtc/quaternion.hpp>
 
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
@@ -185,19 +186,6 @@ std::string rotateHdrEnvironment(
   return rotateHdrEnvironment(hdrPath, rotation, cacheName);
 }
 
-void centerImportedAssetAt(const std::shared_ptr<raisin::Visuals>& visual, const glm::vec3& target) {
-  if (!visual)
-    return;
-
-  glm::vec3 center(0.0f);
-  float radius = 0.0f;
-  if (!visual->approximateBounds(center, radius))
-    return;
-
-  const glm::vec3 delta = target - center;
-  visual->setPosition(visual->getPosition() + delta);
-}
-
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -282,49 +270,71 @@ int main(int argc, char* argv[]) {
     std::string name;
     std::string path;
     double scale;
-    double x;
-    double y;
-    double z;
     double yaw;
+    glm::vec3 localCenter;
   };
-  const auto setUprightYaw = [](const std::shared_ptr<raisin::Visuals>& visual, double yaw) {
+  const auto uprightYawQuaternion = [](double yaw) {
     constexpr double kSqrtHalf = 0.7071067811865476;
     const double halfYaw = 0.5 * yaw;
     const double cy = std::cos(halfYaw);
     const double sy = std::sin(halfYaw);
-    visual->setOrientation(cy * kSqrtHalf, cy * kSqrtHalf, sy * kSqrtHalf, sy * kSqrtHalf);
+    return glm::quat(
+      static_cast<float>(cy * kSqrtHalf),
+      static_cast<float>(cy * kSqrtHalf),
+      static_cast<float>(sy * kSqrtHalf),
+      static_cast<float>(sy * kSqrtHalf));
   };
 
   // Khronos glTF Sample Assets. Together these exercise base color, normal,
   // emissive, metallic-roughness, roughness-only, and occlusion texture import.
-  constexpr float kPreviewTargetRadius = 0.82f;
+  // Scales normalize each asset's longest authored glTF extent to roughly the
+  // same preview size; localCenter keeps offset mesh origins centered in slots.
   const std::vector<PbrAsset> assets = {
     {"flight_helmet", "rayrai/pbr/FlightHelmet/glTF/FlightHelmet.gltf",
-      1.85, -2.10, 0.00, 1.65, 0.10},
+      1.75, 0.10, {-0.0203510f, 0.3579895f, 0.0142417f}},
     {"damaged_helmet", "rayrai/pbr/DamagedHelmet/glTF/DamagedHelmet.gltf",
-      0.50, -0.70, 0.00, 1.62, -0.05},
+      0.63, -0.05, {-0.0024816f, 0.0000105f, -0.1871549f}},
     {"sci_fi_helmet", "rayrai/pbr/SciFiHelmet/glTF/SciFiHelmet.gltf",
-      0.37, 0.70, 0.00, 1.62, 0.10},
+      0.43, 0.10, {0.0000000f, 0.0000001f, -0.0000005f}},
     {"antique_camera", "rayrai/pbr/AntiqueCamera/glTF/AntiqueCamera.gltf",
-      0.20, 2.10, 0.00, 1.54, -0.15},
+      0.17, -0.15, {-0.3272680f, 3.6036221f, -0.1976599f}},
     {"lantern", "rayrai/pbr/Lantern/glTF/Lantern.gltf",
-      0.054, -2.15, 0.00, -0.05, 0.12},
+      0.049, 0.12, {3.8231542f, 13.0160300f, 0.0000000f}},
     {"boombox", "rayrai/pbr/BoomBox/glTF/BoomBox.gltf",
-      47.5, -0.70, 0.00, 0.68, -0.10},
+      62.0, -0.10, {0.0000000f, 0.0000000f, 0.0000000f}},
     {"avocado", "rayrai/pbr/Avocado/glTF/Avocado.gltf",
-      20.3, 0.72, 0.00, 0.07, 0.05},
+      19.9, 0.05, {0.0000000f, 0.0314002f, -0.0000000f}},
     {"water_bottle", "rayrai/pbr/WaterBottle/glTF/WaterBottle.gltf",
-      5.4, 2.10, 0.00, 0.78, -0.06},
+      4.8, -0.06, {0.0000000f, 0.0000000f, 0.0000000f}},
+  };
+
+  const std::array<glm::vec3, 8> previewCenters = {{
+    {-2.85f, 0.02f, 2.10f}, {-0.95f, 0.02f, 2.10f},
+    { 0.95f, 0.02f, 2.10f}, { 2.85f, 0.02f, 2.10f},
+    {-2.85f, -0.02f, 0.70f}, {-0.95f, -0.02f, 0.70f},
+    { 0.95f, -0.02f, 0.70f}, { 2.85f, -0.02f, 0.70f},
+  }};
+
+  const auto setAssetPose = [&](const std::shared_ptr<raisin::Visuals>& visual,
+                                const PbrAsset& asset,
+                                const glm::vec3& previewCenter,
+                                double yaw) {
+    const glm::quat orientation = uprightYawQuaternion(yaw);
+    visual->setOrientation(
+      orientation.w, orientation.x, orientation.y, orientation.z);
+    const glm::vec3 centerOffset =
+      orientation * (asset.localCenter * static_cast<float>(asset.scale));
+    visual->setPosition(previewCenter - centerOffset);
   };
 
   std::vector<std::shared_ptr<raisin::Visuals>> visuals;
   visuals.reserve(assets.size());
-  for (const auto& asset : assets) {
+  for (size_t i = 0; i < assets.size(); ++i) {
+    const auto& asset = assets[i];
     const std::string meshPath = rayraiRscPath(argv[0], asset.path);
     auto visual = viewer->addVisualMesh(asset.name, meshPath,
       asset.scale, asset.scale, asset.scale, 1.0f, 1.0f, 1.0f, 1.0f);
-    visual->setPosition(asset.x, asset.y, asset.z);
-    setUprightYaw(visual, asset.yaw);
+    setAssetPose(visual, asset, previewCenters[i], asset.yaw);
     visual->setTwoSided(true);
     visual->setDetectable(true);
     if (environment != 0) {
@@ -332,31 +342,6 @@ int main(int argc, char* argv[]) {
     }
     visuals.push_back(visual);
   }
-
-  bool layoutApplied = false;
-  const std::array<glm::vec3, 8> previewCenters = {{
-    {-2.85f, 0.02f, 2.10f}, {-0.95f, 0.02f, 2.10f},
-    { 0.95f, 0.02f, 2.10f}, { 2.85f, 0.02f, 2.10f},
-    {-2.85f, -0.02f, 0.70f}, {-0.95f, -0.02f, 0.70f},
-    { 0.95f, -0.02f, 0.70f}, { 2.85f, -0.02f, 0.70f},
-  }};
-  const auto applyAssetLayout = [&]() {
-    if (layoutApplied || viewer->pendingAsyncMeshLoadCount() != 0)
-      return;
-
-    for (size_t i = 0; i < visuals.size(); ++i) {
-      auto& visual = visuals[i];
-      glm::vec3 center(0.0f);
-      float radius = 0.0f;
-      if (visual && visual->approximateBounds(center, radius) && radius > 1.0e-5f) {
-        const float normalizedScale =
-          static_cast<float>(assets[i].scale) * kPreviewTargetRadius / radius;
-        visual->setMeshScale(normalizedScale, normalizedScale, normalizedScale);
-      }
-      centerImportedAssetAt(visual, previewCenters[i]);
-    }
-    layoutApplied = true;
-  };
 
   auto& camera = viewer->getCamera();
   camera.target = {0.0f, 0.00f, 1.22f};
@@ -370,11 +355,10 @@ int main(int argc, char* argv[]) {
   auto renderOneFrame = [&]() {
     world->integrate();
     viewer->pollAsyncMeshLoads(8);
-    applyAssetLayout();
 
     const double t = world->getWorldTime();
     for (size_t i = 0; i < visuals.size(); ++i) {
-      setUprightYaw(visuals[i], assets[i].yaw + 0.18 * t);
+      setAssetPose(visuals[i], assets[i], previewCenters[i], assets[i].yaw + 0.18 * t);
     }
 
     app.beginFrame();
@@ -392,7 +376,6 @@ int main(int argc, char* argv[]) {
     while (viewer->pendingAsyncMeshLoadCount() != 0) {
       viewer->pollAsyncMeshLoads(std::numeric_limits<size_t>::max());
     }
-    applyAssetLayout();
     for (int i = 0; i < 3 && !app.quit; ++i) {
       renderOneFrame();
     }
