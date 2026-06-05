@@ -6,9 +6,10 @@ Python + C++ (nanobind) bindings for RaiSim gym environments, plus training scri
 C++/build:
 - CMake >= 3.10
 - A C++17 compiler
-- OpenMP
+- OpenMP on Linux/Windows. On macOS, OpenMP is used when available; otherwise the C++ vectorized environment builds with a serial fallback.
 - Eigen3 (already vendored at `thirdParty/Eigen3`)
 - raisim (provided in this repo under `raisim/`)
+- rayrai (provided in this repo under `rayrai/`; the exported CMake package supplies SDL2 and rendering dependencies)
 
 Python (runtime + training):
 - Python >= 3.9 (nanobind requirement)
@@ -37,6 +38,22 @@ From `raisimGymTorch/`:
 ```
 python setup.py develop
 ```
+
+On macOS, source the package environment before building so the runtime loader
+can find the downloaded or unpacked RaiSim and rayrai libraries:
+
+```
+cd ..
+source ./raisim_env.sh
+cd raisimGymTorch
+python setup.py develop
+```
+
+If `../raisim` or `../rayrai` is missing, the CMake configure step downloads
+the matching macOS release package automatically (`macos-arm64` on Apple
+Silicon, including Rosetta shells, and `macos-x86_64` on Intel when that asset
+is available). Install `libomp` if you want OpenMP parallelism on macOS;
+otherwise the build uses the serial fallback.
 
 Debug build:
 ```

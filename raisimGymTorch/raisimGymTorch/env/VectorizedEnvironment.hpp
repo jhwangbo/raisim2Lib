@@ -7,7 +7,15 @@
 #define SRC_RAISIMGYMVECENV_HPP
 
 #include "RaisimGymEnv.hpp"
+#ifdef RAISIMGYM_NO_OPENMP
+#ifndef RAISIMGYM_OPENMP_FALLBACK_HPP
+#define RAISIMGYM_OPENMP_FALLBACK_HPP
+inline void omp_set_num_threads(int) {}
+inline int omp_get_thread_num() { return 0; }
+#endif
+#else
 #include "omp.h"
+#endif
 #include "Yaml.hpp"
 
 namespace raisim {

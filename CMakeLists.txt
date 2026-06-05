@@ -1,4 +1,20 @@
 cmake_minimum_required(VERSION 3.18)
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+    execute_process(COMMAND sysctl -q hw.optional.arm64
+            OUTPUT_VARIABLE _raisim_sysctl_stdout
+            ERROR_VARIABLE _raisim_sysctl_stderr
+            RESULT_VARIABLE _raisim_sysctl_result
+            )
+    execute_process(COMMAND uname -m
+            OUTPUT_VARIABLE _raisim_uname_machine
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+    if((_raisim_sysctl_result EQUAL 0 AND _raisim_sysctl_stdout MATCHES "hw.optional.arm64: 1")
+            OR _raisim_uname_machine MATCHES "^(aarch64|arm64)$")
+        set(_raisim_apple_silicon TRUE)
+        set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "Build architecture for macOS packages." FORCE)
+    endif()
+endif()
 set(RAISIM_VERSION 2.4.0 CACHE STRING "Default raisim release version to download when raisim is missing.")
 project(raisim VERSION ${RAISIM_VERSION} LANGUAGES CXX)
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
@@ -15,6 +31,13 @@ option(RAISIM_CHECK_FOR_UPDATES "Check GitHub for newer raisim releases when con
 
 if(WIN32)
     set(_raisim_asset_platform "windows-x86")
+elseif(APPLE)
+    if(_raisim_apple_silicon
+            OR CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+        set(_raisim_asset_platform "macos-arm64")
+    else()
+        set(_raisim_asset_platform "macos-x86_64")
+    endif()
 elseif(UNIX AND NOT APPLE AND NOT ANDROID AND NOT WEBGL)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
         set(_raisim_asset_platform "linux-arm64")
@@ -32,12 +55,8 @@ if (UNIX AND NOT APPLE AND NOT ANDROID AND NOT WEBGL AND NOT WIN32)
         set(RAISIM_OS linux)
     endif ()
 elseif(APPLE)
-    execute_process(COMMAND sysctl -q hw.optional.arm64
-            OUTPUT_VARIABLE _sysctl_stdout
-            ERROR_VARIABLE _sysctl_stderr
-            RESULT_VARIABLE _sysctl_result
-            )
-    if(_sysctl_result EQUAL 0 AND _sysctl_stdout MATCHES "hw.optional.arm64: 1")
+    if(_raisim_apple_silicon
+            OR CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
         set(RAISIM_OS m1)
     else()
         set(RAISIM_OS mac)
