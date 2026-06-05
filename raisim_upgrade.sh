@@ -55,6 +55,13 @@ require_command() {
 
 detect_asset_platform() {
   case "$(uname -s)" in
+    Darwin)
+      if sysctl -q hw.optional.arm64 2>/dev/null | grep -q 'hw.optional.arm64: 1'; then
+        echo "macos-arm64"
+      else
+        echo "macos-x86_64"
+      fi
+      ;;
     Linux)
       case "$(uname -m)" in
         aarch64|arm64) echo "linux-arm64" ;;
@@ -62,7 +69,7 @@ detect_asset_platform() {
       esac
       ;;
     *)
-      echo "raisim_upgrade.sh only supports Linux release assets. Use raisim_upgrade.ps1 on Windows." >&2
+      echo "raisim_upgrade.sh only supports Linux and macOS release assets. Use raisim_upgrade.ps1 on Windows." >&2
       exit 1
       ;;
   esac

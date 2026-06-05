@@ -14,7 +14,7 @@ RaiSim is a physics engine for robotics and artificial intelligence research. Th
 
 ## Install
 
-Download the binary package for your platform and unpack it to an install location such as `$HOME/raisim2Lib` on Linux/macOS or `C:\raisim` on Windows. Keep the package directories together; examples and rayrai tools expect the bundled assets to remain next to the installed binaries.
+Download the binary package for your platform and unpack it to an install location such as `$HOME/raisim2Lib` on Linux/macOS or `C:\raisim` on Windows. Current macOS packages use `macos-arm64-<version>.zip` for Apple Silicon and `macos-x86_64-<version>.zip` for Intel. Keep the package directories together; examples and rayrai tools expect the bundled assets to remain next to the installed binaries.
 
 Set up the runtime environment before running examples or applications. From the unpacked package root:
 
@@ -62,6 +62,41 @@ The source-built example executables are written to `build-examples/examples`:
 ./build-examples/examples/rayrai_tcp_viewer
 ./build-examples/examples/primitive_grid
 ```
+
+Install headers, libraries, CMake package files, and bundled rayrai tools to a local prefix with:
+
+```bash
+cmake --install build-examples --prefix "$HOME/.local"
+```
+
+The install target does not install source-built example executables; run those from the build tree. Downstream projects using this CMake-installed layout should pass `-DCMAKE_PREFIX_PATH=$HOME/.local`.
+
+### macOS build instructions
+
+From the repository root, source the environment script, configure, and build the C++ examples:
+
+```bash
+cd $HOME/raisim2Lib
+source ./raisim_env.sh
+export RAISIM_LOCAL_INSTALL_ROOT=$PWD
+cmake -S . -B build-examples -DCMAKE_BUILD_TYPE=Release -DRAISIM_EXAMPLE=ON -DRAISIM_CHECK_FOR_UPDATES=OFF
+cmake --build build-examples --parallel
+```
+
+The source-built example executables are written to `build-examples/examples`:
+
+```bash
+./build-examples/examples/rayrai_tcp_viewer
+./build-examples/examples/primitive_grid
+```
+
+If `raisim/` or `rayrai/` is missing from the checkout, CMake downloads the matching macOS release asset automatically. You can also update an unpacked tree explicitly:
+
+```bash
+./raisim_upgrade.sh -y
+```
+
+Apple Silicon hosts select the `macos-arm64` package, even when CMake or the shell is running under Rosetta, and compile with the Apple M-series tuning flags used by the examples. Intel Macs select `macos-x86_64` when that release asset is available.
 
 Install headers, libraries, CMake package files, and bundled rayrai tools to a local prefix with:
 

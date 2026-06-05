@@ -4676,12 +4676,19 @@ void renderViewer(raisin::RayraiWindow& viewer, SDL_Window* window,
                   ViewerViewportState* viewportState = nullptr) {
   int fbW = 0;
   int fbH = 0;
+  int windowW = 0;
+  int windowH = 0;
   SDL_GL_GetDrawableSize(window, &fbW, &fbH);
+  SDL_GetWindowSize(window, &windowW, &windowH);
+  const int displayW = windowW > 0 ? windowW : fbW;
+  const int displayH = windowH > 0 ? windowH : fbH;
+  const float scaleX = displayW > 0 ? static_cast<float>(fbW) / static_cast<float>(displayW) : 1.0f;
+  const float scaleY = displayH > 0 ? static_cast<float>(fbH) / static_cast<float>(displayH) : 1.0f;
 
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
   ImGui::SetNextWindowPos(ImVec2(0, 0));
-  ImGui::SetNextWindowSize(ImVec2((float)fbW, (float)fbH));
+  ImGui::SetNextWindowSize(ImVec2((float)displayW, (float)displayH));
   ImGui::Begin("Viewer", nullptr,
     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
       ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings |
@@ -4692,14 +4699,18 @@ void renderViewer(raisin::RayraiWindow& viewer, SDL_Window* window,
   ImTextureID tex = (ImTextureID)(intptr_t)viewer.getImageTexture();
   ImVec2 windowPos = ImGui::GetCursorScreenPos();
   ImGuiIO& io = ImGui::GetIO();
-  ImGui::Image(tex, ImVec2((float)fbW, (float)fbH), ImVec2(0, 1), ImVec2(1, 0));
+  ImGui::Image(tex, ImVec2((float)displayW, (float)displayH), ImVec2(0, 1), ImVec2(1, 0));
 
   const bool isHovered = ImGui::IsItemHovered();
-  const int cursorX = static_cast<int>(io.MousePos.x - windowPos.x);
-  const int cursorY = static_cast<int>(io.MousePos.y - windowPos.y);
+  int cursorX = static_cast<int>((io.MousePos.x - windowPos.x) * scaleX);
+  int cursorY = static_cast<int>((io.MousePos.y - windowPos.y) * scaleY);
+  if (isHovered) {
+    cursorX = std::clamp(cursorX, 0, std::max(0, fbW - 1));
+    cursorY = std::clamp(cursorY, 0, std::max(0, fbH - 1));
+  }
   if (viewportState) {
     viewportState->origin = windowPos;
-    viewportState->size = ImVec2(static_cast<float>(fbW), static_cast<float>(fbH));
+    viewportState->size = ImVec2(static_cast<float>(displayW), static_cast<float>(displayH));
     viewportState->hovered = isHovered;
     viewportState->cursorX = cursorX;
     viewportState->cursorY = cursorY;

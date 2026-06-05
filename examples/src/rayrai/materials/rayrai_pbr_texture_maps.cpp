@@ -208,7 +208,7 @@ int main(int argc, char* argv[]) {
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
   auto quality = raisin::RayraiWindow::defaultRenderQualitySettings(
     raisin::RayraiWindow::RenderQualityPreset::Ultra);
-  quality.pbrExposure = 1.26f;
+  quality.pbrExposure = 0.82f;
   quality.pbrEnvironmentIntensity = 0.28f;
   quality.pbrEnvironmentMaxLod = 5.0f;
   quality.pbrKeyLightIntensity = 1.0f;
@@ -293,15 +293,15 @@ int main(int argc, char* argv[]) {
     {"flight_helmet", "rayrai/pbr/FlightHelmet/glTF/FlightHelmet.gltf",
       1.75, 0.10, {-0.0203510f, 0.3579895f, 0.0142417f}},
     {"damaged_helmet", "rayrai/pbr/DamagedHelmet/glTF/DamagedHelmet.gltf",
-      0.63, -0.05, {-0.0024816f, 0.0000105f, -0.1871549f}},
+      0.63, 1.55, {-0.0024816f, 0.0000105f, -0.1871549f}},
     {"sci_fi_helmet", "rayrai/pbr/SciFiHelmet/glTF/SciFiHelmet.gltf",
-      0.43, 0.10, {0.0000000f, 0.0000001f, -0.0000005f}},
+      0.43, 3.24, {0.0000000f, 0.0000001f, -0.0000005f}},
     {"antique_camera", "rayrai/pbr/AntiqueCamera/glTF/AntiqueCamera.gltf",
       0.17, -0.15, {-0.3272680f, 3.6036221f, -0.1976599f}},
     {"lantern", "rayrai/pbr/Lantern/glTF/Lantern.gltf",
       0.049, 0.12, {3.8231542f, 13.0160300f, 0.0000000f}},
     {"boombox", "rayrai/pbr/BoomBox/glTF/BoomBox.gltf",
-      62.0, -0.10, {0.0000000f, 0.0000000f, 0.0000000f}},
+      62.0, 3.04, {0.0000000f, 0.0000000f, 0.0000000f}},
     {"avocado", "rayrai/pbr/Avocado/glTF/Avocado.gltf",
       19.9, 0.05, {0.0000000f, 0.0314002f, -0.0000000f}},
     {"water_bottle", "rayrai/pbr/WaterBottle/glTF/WaterBottle.gltf",
