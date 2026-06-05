@@ -4766,9 +4766,12 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+  auto setContextVersion = [](int major, int minor) {
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor);
+  };
+  setContextVersion(4, 3);
 
   SDL_Window* window = SDL_CreateWindow("Rayrai Raisim TCP Viewer", SDL_WINDOWPOS_CENTERED,
     SDL_WINDOWPOS_CENTERED, options.windowWidth, options.windowHeight,
@@ -4785,6 +4788,11 @@ int main(int argc, char* argv[]) {
   }
 
   SDL_GLContext context = SDL_GL_CreateContext(window);
+  if (!context) {
+    SDL_ClearError();
+    setContextVersion(3, 3);
+    context = SDL_GL_CreateContext(window);
+  }
   if (!context) {
     std::cerr << "FATAL ERROR: Failed to create OpenGL context: " << SDL_GetError() << "\n";
     SDL_DestroyWindow(window);
