@@ -15,7 +15,7 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
         set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "Build architecture for macOS packages." FORCE)
     endif()
 endif()
-set(RAISIM_VERSION 2.4.0 CACHE STRING "Default raisim release version to download when raisim is missing.")
+set(RAISIM_VERSION 2.4.1 CACHE STRING "Default raisim release version to download when raisim is missing.")
 project(raisim VERSION ${RAISIM_VERSION} LANGUAGES CXX)
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
