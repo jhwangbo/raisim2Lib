@@ -336,7 +336,8 @@ void init_world(py::module_ &m) {
       .def("waitForMessageToClient", &raisim::RaisimServer::waitForMessageToClient, py::arg("seconds"))
       .def("launchServer", &raisim::RaisimServer::launchServer, py::arg("port") = 8080)
       .def("killServer", &raisim::RaisimServer::killServer)
-      .def("integrateWorldThreadSafe", &raisim::RaisimServer::integrateWorldThreadSafe)
+      .def("integrateWorldThreadSafe",
+           static_cast<void (raisim::RaisimServer::*)()>(&raisim::RaisimServer::integrateWorldThreadSafe))
       .def("applyInteractionForce", &raisim::RaisimServer::applyInteractionForce)
       .def("lockVisualizationServerMutex", &raisim::RaisimServer::lockVisualizationServerMutex)
       .def("unlockVisualizationServerMutex", &raisim::RaisimServer::unlockVisualizationServerMutex)
