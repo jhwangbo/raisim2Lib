@@ -988,6 +988,13 @@ bool readEnvBool(const char* name, bool defaultValue) {
   return true;
 }
 
+bool shouldQuitForInitialServerWait(double waitForServerSeconds, bool replayMode,
+                                    bool connected, bool everConnected,
+                                    double wallElapsedSeconds) {
+  return waitForServerSeconds > 0.0 && !replayMode && !connected && !everConnected &&
+         wallElapsedSeconds >= waitForServerSeconds;
+}
+
 float readEnvFloatClamped(const char* name, float defaultValue, float minValue, float maxValue) {
   const char* rawValue = std::getenv(name);
   if (!rawValue || !*rawValue) {
@@ -3787,6 +3794,7 @@ int main(int argc, char* argv[]) {
   bool awaitingResponse = false;
   bool awaitingSensorAck = false;
   bool autoConnect = defaultAutoConnect;
+  bool everConnected = false;
 
   // Sim control: queue of requests flushed onto the next update frame.
   std::vector<raisin::tcp_viewer::SimControlRequest> pendingControlRequests;
@@ -4035,6 +4043,7 @@ int main(int argc, char* argv[]) {
       lastStatus = "waiting for scene";
       awaitingResponse = false;
       awaitingSensorAck = false;
+      everConnected = true;
       std::snprintf(host, sizeof(host), "%s", endpoint.host.c_str());
       port = endpoint.port;
       std::snprintf(portBuf, sizeof(portBuf), "%d", port);
@@ -4057,7 +4066,7 @@ int main(int argc, char* argv[]) {
     const bool disconnectRequested = scene.consumeDisconnectRequested();
     bool ok = parsedOk && !disconnectRequested;
     if (disconnectRequested) {
-      lastStatus = fromReplay ? "replay protocol disconnect" : "protocol error (disconnect)";
+      lastStatus = fromReplay ? "replay protocol disconnect" : "server disconnected";
     } else if (!parsedOk) {
       lastStatus = fromReplay ? "replay parse error" : "parse error (dropped update)";
       stats.parseErrors++;
@@ -4320,8 +4329,8 @@ int main(int argc, char* argv[]) {
     if (options.exitAfterSeconds > 0.0 && wallElapsed >= options.exitAfterSeconds) {
       quit = true;
     }
-    if (options.waitForServerSeconds > 0.0 && !replayMode && !client.isConnected() &&
-        wallElapsed >= options.waitForServerSeconds) {
+    if (shouldQuitForInitialServerWait(options.waitForServerSeconds, replayMode,
+        client.isConnected(), everConnected, wallElapsed)) {
       lastStatus = "wait-for-server timed out";
       quit = true;
     }
@@ -4531,6 +4540,10 @@ int main(int argc, char* argv[]) {
         awaitingResponse = false;
         awaitingSensorAck = false;
         client.disconnect();
+        viewer->setTargetVisual(nullptr);
+        mouseForce = {};
+        poseGrabber = {};
+        pendingControlRequests.clear();
         clearSceneState();
       }
     }
