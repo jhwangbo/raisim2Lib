@@ -103,14 +103,12 @@ Environment Setup
 
         cmake -S . -B build \
           -DCMAKE_BUILD_TYPE=Release \
-          -DRAISIM_EXAMPLE=ON \
-          -DRAISIM_CHECK_FOR_UPDATES=OFF
+          -DRAISIM_EXAMPLE=ON
         cmake --build build -j
 
-    ``RAISIM_EXAMPLE`` is enabled by default. Keep
-    ``RAISIM_CHECK_FOR_UPDATES=OFF`` when you want to use the package already
-    present in the checkout. If ``raisim/`` or ``rayrai/`` is missing, CMake
-    downloads the matching macOS release asset automatically.
+    ``RAISIM_EXAMPLE`` is enabled by default. If ``raisim/`` is missing or its
+    version differs from ``RAISIM_VERSION``, CMake downloads the pinned release
+    asset and replaces both ``raisim/`` and ``rayrai/``.
 
     You can also update an unpacked macOS tree explicitly:
 
@@ -150,8 +148,8 @@ Use this command sequence when you want examples and ``raisimPy`` from the local
     cmake --build build -j
 
 On macOS, prefer adding ``-DCMAKE_BUILD_TYPE=Release`` to the configure command
-for local example builds. If the checkout does not already contain ``raisim/``
-and ``rayrai/``, the configure step downloads the matching macOS package.
+for local example builds. If ``raisim/`` is missing or its version differs from
+``RAISIM_VERSION``, the configure step downloads the pinned macOS package.
 
 Installation is optional for running examples from the build tree. If you do
 install, choose a prefix you can write to instead of relying on CMake's default

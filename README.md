@@ -42,7 +42,7 @@ The Windows scripts prepend the installed RaiSim and rayrai `bin` and `lib` dire
 
 ## Build Examples With CMake
 
-`RAISIM_EXAMPLE` is enabled by default, but the flag is shown explicitly in the commands below. Keep `RAISIM_CHECK_FOR_UPDATES=OFF` when you want to build against the package already present in this checkout; omit it to let CMake check for newer releases.
+`RAISIM_EXAMPLE` is enabled by default, but the flag is shown explicitly in the commands below. CMake downloads `RAISIM_VERSION` when the package in this checkout is missing or has a different version.
 
 ### Linux build instructions
 
@@ -52,7 +52,7 @@ From the repository root, source the environment script, configure, and build th
 cd $HOME/raisim2Lib
 source ./raisim_env.sh
 export RAISIM_LOCAL_INSTALL_ROOT=$PWD
-cmake -S . -B build-examples -DCMAKE_BUILD_TYPE=Release -DRAISIM_EXAMPLE=ON -DRAISIM_CHECK_FOR_UPDATES=OFF
+cmake -S . -B build-examples -DCMAKE_BUILD_TYPE=Release -DRAISIM_EXAMPLE=ON
 cmake --build build-examples --parallel
 ```
 
@@ -79,7 +79,7 @@ From the repository root, source the environment script, configure, and build th
 cd $HOME/raisim2Lib
 source ./raisim_env.sh
 export RAISIM_LOCAL_INSTALL_ROOT=$PWD
-cmake -S . -B build-examples -DCMAKE_BUILD_TYPE=Release -DRAISIM_EXAMPLE=ON -DRAISIM_CHECK_FOR_UPDATES=OFF
+cmake -S . -B build-examples -DCMAKE_BUILD_TYPE=Release -DRAISIM_EXAMPLE=ON
 cmake --build build-examples --parallel
 ```
 
@@ -113,7 +113,7 @@ From the repository root, run one of the Windows environment scripts, configure,
 ```powershell
 cd C:\raisim2Lib
 .\raisim_env.ps1
-cmake -S . -B build-examples -DRAISIM_EXAMPLE=ON -DRAISIM_CHECK_FOR_UPDATES=OFF
+cmake -S . -B build-examples -DRAISIM_EXAMPLE=ON
 cmake --build build-examples --config Release --parallel
 ```
 
