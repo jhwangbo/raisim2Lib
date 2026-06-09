@@ -51,12 +51,15 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-#define STB_IMAGE_WRITE_STATIC
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb/stb_image_write.h"
 #include "stb/stb_image.h"
 
+#include "TcpViewerDiscovery.hpp"
+#include "TcpViewerScreenshot.hpp"
+#include "TcpViewerSession.hpp"
+#include "TcpViewerSettings.hpp"
+
 #include "rayrai/RayraiWindow.hpp"
+#include "rayrai/TextureBindingCache.hpp"
 #include "rayrai/Visuals.hpp"
 #include "rayrai/OpenGLMesh.hpp"
 #include "rayrai/CoordinateFrame.hpp"
@@ -86,22 +89,15 @@ namespace
 // ourselves by requesting a graceful shutdown.
 std::atomic<bool> gSignalQuit{false};
 
-constexpr float kTcpUpdateRateDefaultHz = 60.0f;
-constexpr float kTcpUpdateRateMinHz = 15.0f;
-constexpr float kTcpUpdateRateMaxHz = 120.0f;
-
 void handleSignalQuit(int /*sig*/) {
   gSignalQuit.store(true, std::memory_order_relaxed);
 }
 
 constexpr int kDefaultPort = raisin::tcp_viewer::kDefaultPort;
-constexpr int kDiscoveryPort = 59312;
-constexpr const char* kDiscoveryMagic = "RAISIM_TCP_DISCOVERY_V1";
 constexpr int kConnectTimeoutMs = 2000;
 constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
 constexpr float kRadToDeg = 180.0f / 3.14159265358979323846f;
 constexpr auto kAutoConnectInterval = std::chrono::seconds(3);
-constexpr auto kDiscoveryBeaconTimeout = std::chrono::seconds(8);
 constexpr auto kOverlayAutoCollapseDelay = std::chrono::milliseconds(3500);
 constexpr auto kSettingsSaveDebounce = std::chrono::milliseconds(750);
 constexpr int kTransferRateGraphBuckets = 60;
@@ -111,41 +107,52 @@ constexpr float kFontScale = 0.75f;
 constexpr float kDefaultFontRasterizerDensity = 1.75f;
 constexpr float kUiScaleEpsilon = 0.01f;
 constexpr const char* kRobotoFontRelativePath = "rsc/fonts/roboto/Roboto-Medium.ttf";
-constexpr const char* kSessionMagic = "RAYRAI_TCP_VIEWER_SESSION_V1\n";
 constexpr float kDefaultMouseForceAccelPerPixel = 0.10f;
 constexpr float kMinMouseForceAccelPerPixel = 0.01f;
 constexpr float kMaxMouseForceAccelPerPixel = 5.0f;
 
-#if defined(_WIN32)
-bool ensureWinsockInitialized(std::string* error = nullptr) {
-  static const int startupResult = []() {
-    WSADATA data{};
-    return WSAStartup(MAKEWORD(2, 2), &data);
-  }();
-  if (startupResult != 0) {
-    if (error) {
-      *error = "WSAStartup failed with error: " + std::to_string(startupResult);
-    }
-    return false;
-  }
-  return true;
-}
-#endif
-
 using raisin::tcp_viewer::BufferReader;
+using raisin::tcp_viewer::ConnectionEntry;
+using raisin::tcp_viewer::DiscoveredServer;
+using raisin::tcp_viewer::DiscoveryBeaconReceiver;
 using raisin::tcp_viewer::ObjectListItem;
 using raisin::tcp_viewer::PendingSensorUpdate;
+using raisin::tcp_viewer::RecordedFrame;
 using raisin::tcp_viewer::RemoteScene;
 using raisin::tcp_viewer::SelectedObjectInfo;
+using raisin::tcp_viewer::SessionRecorder;
+using raisin::tcp_viewer::ViewerSettings;
+using raisin::tcp_viewer::cloudQualityName;
+using raisin::tcp_viewer::consumeTcpUpdateSlot;
+using raisin::tcp_viewer::colorModeName;
+using raisin::tcp_viewer::formatConnectionLabel;
+using raisin::tcp_viewer::formatEndpointHost;
+using raisin::tcp_viewer::highFidelityPbrAllowedForQuality;
+using raisin::tcp_viewer::kSessionMagic;
+using raisin::tcp_viewer::kTcpUpdateRateDefaultHz;
+using raisin::tcp_viewer::kTcpUpdateRateMaxHz;
+using raisin::tcp_viewer::kTcpUpdateRateMinHz;
+using raisin::tcp_viewer::isCompatibleDiscoveryVersion;
+using raisin::tcp_viewer::loadViewerSettings;
+using raisin::tcp_viewer::loadSessionFile;
+using raisin::tcp_viewer::normalizeConnectionEndpoint;
+using raisin::tcp_viewer::parseConnectionLabel;
+using raisin::tcp_viewer::parseDiscoveryBeacon;
+using raisin::tcp_viewer::parsePortStrict;
+using raisin::tcp_viewer::qualityName;
+using raisin::tcp_viewer::recordConnection;
+using raisin::tcp_viewer::recordResourceDir;
+using raisin::tcp_viewer::sanitizeViewerSettings;
+using raisin::tcp_viewer::saveViewerTexturePng;
+using raisin::tcp_viewer::saveViewerSettings;
 using raisin::tcp_viewer::sendSensorUpdate;
 using raisin::tcp_viewer::sendUpdateRequest;
+using raisin::tcp_viewer::sanitizeTcpUpdateRateHz;
 using raisin::tcp_viewer::TcpClient;
+using raisin::tcp_viewer::tcpUpdatePeriodForHz;
+using raisin::tcp_viewer::timestampedCapturePath;
 using raisin::tcp_viewer::VisualEntry;
-
-struct ConnectionEntry {
-  std::string host;
-  int port = kDefaultPort;
-};
+using raisin::tcp_viewer::weatherDefaultEnabledForQuality;
 
 struct ServerEntry {
   ConnectionEntry endpoint;
@@ -235,123 +242,6 @@ struct AngleToolState {
   std::string aLabel;
   std::string bLabel;
   std::string cLabel;
-};
-
-struct ViewerSettings {
-  int renderQuality = 1;
-  bool renderQualityUserSet = false;
-  glm::vec4 backgroundColorRgb255{20.0f, 20.0f, 30.0f, 255.0f};
-  glm::vec3 mainLightAmbient{0.42f, 0.42f, 0.42f};
-  glm::vec3 mainLightDiffuse{1.0f, 1.0f, 1.0f};
-  glm::vec3 mainLightSpecular{0.22f, 0.22f, 0.22f};
-  float cameraSpeed = 5.0f;
-  float cameraFovDeg = 45.0f;
-  float cameraNear = 0.01f;
-  float cameraFar = 1000.0f;
-  float lightYawDeg = 0.0f;
-  float lightPitchDeg = -30.0f;
-  float lightStrength = 1.0f;
-  float ambientStrength = 1.0f;
-  bool shadowsEnabled = true;
-  int shadowResolution = 2048;
-  float shadowBias = 0.0008f;
-  float shadowStrength = 0.6f;
-  float shadowPcfRadius = 1.25f;
-  float shadowOrthoHalfSize = 12.5f;
-  float shadowNear = 0.1f;
-  float shadowFar = 55.0f;
-  float shadowCenterOffset = 10.0f;
-  float fogDensity = 0.01f;
-  float gamma = 1.0f;
-  int colorMode = static_cast<int>(raisin::RayraiWindow::ViewerColorMode::FastLinear);
-  bool fxaaEnabled = false;
-  bool bloomEnabled = false;
-  float bloomThreshold = 0.82f;
-  float bloomStrength = 0.18f;
-  float bloomRadius = 4.0f;
-  float bloomKnee = 0.22f;
-  int bloomQuality = 1;
-  bool screenSpaceAoEnabled = false;
-  float screenSpaceAoRadius = 2.0f;
-  float screenSpaceAoStrength = 0.0f;
-  float screenSpaceAoBias = 0.02f;
-  bool opaqueDepthPrepass = false;
-  bool depthOfFieldEnabled = false;
-  float depthOfFieldFocusDistance = 1.0f;
-  float depthOfFieldFocusRange = 10.0f;
-  float depthOfFieldMaxRadius = 1.25f;
-  bool highFidelityPbr = false;
-  bool pbrToneMapping = false;
-  float pbrExposure = 1.0f;
-  float pbrEnvironmentMaxLod = 0.0f;
-  float pbrEnvironmentIntensity = 1.0f;
-  float pbrKeyLightIntensity = 1.0f;
-  bool skyEnabled = true;
-  float skySunStrength = 1.8f;
-  float skySunSize = 0.015f;
-  bool skyWeatherEnabled = false;
-  int skyWeatherPreset = 0;
-  int skyWeatherQuality = 2;
-  int skyWeatherSeed = 1;
-  float skyTimeOfDayHours = 13.0f;
-  float skyLatitude = 37.0f;
-  float skyLongitude = 127.0f;
-  int skyYear = 2026;
-  int skyMonth = 5;
-  int skyDay = 8;
-  float skyWindDirectionDeg = 14.0f;
-  float skyWindSpeed = 1.5f;
-  float skyCloudCoverage = 0.05f;
-  float skyCloudDensity = 0.05f;
-  float skyCloudAltitudeMeters = 850.0f;
-  float skyCloudThicknessMeters = 180.0f;
-  float skyCloudShadowStrength = 0.04f;
-  float skyCloudScale = 0.18f;
-  float skyCloudAnimationSpeed = 0.0f;
-  // skyCloudQuality: 0 = Auto (driven by render preset + weather),
-  //                  1 = Off, 2 = Texture (cheap 2D), 3 = Volumetric (raymarched).
-  int skyCloudQuality = 0;
-  float skyPrecipitationRate = 0.0f;
-  float skyRainOcclusionStrength = 0.0f;
-  float skySnowCoverage = 0.0f;
-  float skyHumidity = 0.35f;
-  float skyWetness = 0.0f;
-  bool skyWetnessAccumulationEnabled = true;
-  float skyWetnessAccumulationRate = 0.35f;
-  float skyWetnessDryingRate = 0.10f;
-  float skyLightningRate = 0.0f;
-  float skyFogDensity = 0.0f;
-  float skyVisibilityMeters = 10000.0f;
-  glm::vec3 skyFogColor{0.72f, 0.80f, 0.90f};
-  float skyFogAnisotropy = 0.0f;
-  float skyAirTurbidity = 2.0f;
-  float skyGroundAlbedo = 0.35f;
-  bool skyUseExplicitSunAngles = false;
-  float skySunAzimuthDeg = 180.0f;
-  float skySunElevationDeg = 42.0f;
-  float skyMoonSize = 0.014f;
-  bool skyLensDropletsEnabled = false;
-  float skyLensDropletStrength = 1.0f;
-  bool reflectiveGround = true;
-  float reflectiveGroundRoughness = 0.24f;
-  float reflectiveGroundMetallic = 0.0f;
-  int shadowedLightBudget = 1;
-  int maxPointShadowLights = 4;
-  float additionalShadowResolutionScale = 0.5f;
-  float pointShadowResolutionScale = 0.5f;
-  int minAdditionalShadowResolution = 256;
-  bool updateShadowsEveryFrame = true;
-  int maxAdditionalLightsPerFrame = 8;
-  float minAdditionalLightInfluence = 0.0f;
-  bool autoSelectImportedShadowLight = false;
-  bool sortTransparentInstances = false;
-  bool addViewerFillLights = true;
-  float uiScale = 1.0f;
-  bool uiScaleUserSet = false;
-  bool showCollapsedLogo = true;
-  float tcpUpdateRateHz = kTcpUpdateRateDefaultHz;
-  std::vector<ConnectionEntry> recentConnections;
-  std::vector<std::string> resourceDirs;
 };
 
 struct ProgramOptions {
@@ -532,11 +422,6 @@ struct AssetDiagnostic {
   std::string meshPath;
   std::string resourceDir;
   bool resolved = false;
-};
-
-struct RecordedFrame {
-  uint64_t timeMicros = 0;
-  std::vector<char> payload;
 };
 
 std::string toLowerAscii(std::string value);
@@ -745,92 +630,6 @@ bool parseFloatListStrict(const char* value, float* values, size_t count) {
     ++cursor;
   }
   return *cursor == '\0';
-}
-
-bool parsePortStrict(const std::string& value, int& port) {
-  long parsed = 0;
-  if (!parseLongStrict(value.c_str(), 10, parsed) || parsed <= 0 || parsed > 65535) {
-    return false;
-  }
-  port = static_cast<int>(parsed);
-  return true;
-}
-
-std::string normalizeConnectionHost(const std::string& value) {
-  std::string host = trimAscii(value);
-  if (host.size() >= 2 && host.front() == '[' && host.back() == ']') {
-    host = trimAscii(host.substr(1, host.size() - 2));
-  }
-  if (host.empty()) {
-    return {};
-  }
-  const bool hasInvalidChar = std::any_of(host.begin(), host.end(), [](unsigned char c) {
-    return std::iscntrl(c) || std::isspace(c);
-  });
-  return hasInvalidChar ? std::string{} : host;
-}
-
-bool normalizeConnectionEndpoint(const std::string& host, int port, ConnectionEntry& entry) {
-  if (port <= 0 || port > 65535) {
-    return false;
-  }
-  const std::string normalizedHost = normalizeConnectionHost(host);
-  if (normalizedHost.empty()) {
-    return false;
-  }
-  entry.host = normalizedHost;
-  entry.port = port;
-  return true;
-}
-
-std::string formatEndpointHost(const std::string& host) {
-  if (host.find(':') != std::string::npos &&
-      !(host.size() >= 2 && host.front() == '[' && host.back() == ']')) {
-    return "[" + host + "]";
-  }
-  return host;
-}
-
-std::string formatConnectionLabel(const ConnectionEntry& entry) {
-  if (entry.host.empty()) {
-    return {};
-  }
-  return formatEndpointHost(entry.host) + ":" + std::to_string(entry.port);
-}
-
-bool parseConnectionLabel(const std::string& value, ConnectionEntry& entry) {
-  const std::string trimmed = trimAscii(value);
-  if (trimmed.empty()) {
-    return false;
-  }
-
-  std::string hostPart;
-  std::string portPart;
-  if (trimmed.front() == '[') {
-    const auto close = trimmed.find(']');
-    if (close == std::string::npos || close + 2 > trimmed.size() || trimmed[close + 1] != ':') {
-      return false;
-    }
-    hostPart = trimmed.substr(1, close - 1);
-    portPart = trimmed.substr(close + 2);
-  } else {
-    const auto sep = trimmed.rfind(':');
-    if (sep == std::string::npos || sep == 0 || sep + 1 >= trimmed.size()) {
-      return false;
-    }
-    hostPart = trimmed.substr(0, sep);
-    if (hostPart.find(':') != std::string::npos) {
-      return false;
-    }
-    portPart = trimmed.substr(sep + 1);
-  }
-
-  int parsedPort = 0;
-  if (!parsePortStrict(trimAscii(portPart), parsedPort)) {
-    return false;
-  }
-
-  return normalizeConnectionEndpoint(hostPart, parsedPort, entry);
 }
 
 bool parseWindowSize(const std::string& value, int& width, int& height) {
@@ -1136,281 +935,29 @@ void sortServerEntries(std::vector<ServerEntry>& servers) {
   });
 }
 
-bool isCompatibleDiscoveryVersion(int version) {
-  return version == raisin::tcp_viewer::kProtocolVersion;
+ServerEntry serverEntryFromDiscovered(const DiscoveredServer& discovered) {
+  ServerEntry server;
+  server.endpoint.host = discovered.endpointHost;
+  server.endpoint.port = discovered.endpointPort;
+  server.bindHost = discovered.bindHost;
+  server.process = discovered.process;
+  server.protocol = discovered.protocol;
+  server.metadata = discovered.metadata;
+  server.remoteBeacon = discovered.remoteBeacon;
+  server.lastSeen = discovered.lastSeen;
+  return server;
 }
 
-bool parseDiscoveryBeacon(const std::string& payload, int& port, int& version,
-                          std::string& hostname,
-                          std::unordered_map<std::string, std::string>& metadata) {
-  std::istringstream input(payload);
-  std::string magic;
-  std::string portToken;
-  if (!(input >> magic >> portToken)) {
-    return false;
+std::vector<ServerEntry> serverEntriesFromDiscovered(
+  const std::vector<DiscoveredServer>& discoveredServers) {
+  std::vector<ServerEntry> entries;
+  entries.reserve(discoveredServers.size());
+  for (const auto& discovered : discoveredServers) {
+    entries.push_back(serverEntryFromDiscovered(discovered));
   }
-  int parsedPort = 0;
-  if (magic != kDiscoveryMagic || !parsePortStrict(portToken, parsedPort)) {
-    return false;
-  }
-
-  metadata.clear();
-  std::vector<std::string> legacyHostTokens;
-  std::vector<std::string> tokens;
-  std::string token;
-  while (input >> token) {
-    tokens.push_back(std::move(token));
-  }
-
-  version = 0;
-  size_t firstMetadataToken = 0;
-  if (!tokens.empty()) {
-    long parsedVersion = 0;
-    if (parseLongStrict(tokens.front().c_str(), 10, parsedVersion)) {
-      if (parsedVersion < 0 || parsedVersion > std::numeric_limits<int>::max()) {
-        return false;
-      }
-      version = static_cast<int>(parsedVersion);
-      firstMetadataToken = 1;
-    }
-  }
-
-  for (size_t i = firstMetadataToken; i < tokens.size(); ++i) {
-    const std::string& token = tokens[i];
-    const auto eq = token.find('=');
-    if (eq == std::string::npos || eq == 0) {
-      legacyHostTokens.push_back(token);
-      continue;
-    }
-    std::string key = token.substr(0, eq);
-    std::string value = token.substr(eq + 1);
-    metadata[key] = value;
-  }
-
-  const auto hostIt = metadata.find("hostname");
-  if (hostIt != metadata.end() && !hostIt->second.empty()) {
-    hostname = hostIt->second;
-  } else if (!legacyHostTokens.empty()) {
-    hostname.clear();
-    for (const auto& part : legacyHostTokens) {
-      if (!hostname.empty()) hostname += " ";
-      hostname += part;
-    }
-  } else {
-    hostname.clear();
-  }
-
-  port = parsedPort;
-  return true;
+  sortServerEntries(entries);
+  return entries;
 }
-
-class DiscoveryBeaconReceiver {
- public:
-  ~DiscoveryBeaconReceiver() { closeSocket(); }
-
-  bool start(std::string& status) {
-#if defined(_WIN32) || defined(__linux__) || defined(__APPLE__)
-    if (socketFd_ != kInvalidSocket) {
-      status = "LAN beacon listener active";
-      return true;
-    }
-
-#if defined(_WIN32)
-    std::string startupError;
-    if (!ensureWinsockInitialized(&startupError)) {
-      status = startupError;
-      return false;
-    }
-    socketFd_ = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (socketFd_ == INVALID_SOCKET) {
-      status = "LAN beacon listener unavailable: WSA error " + std::to_string(WSAGetLastError());
-      return false;
-    }
-#else
-    socketFd_ = socket(AF_INET, SOCK_DGRAM, 0);
-    if (socketFd_ < 0) {
-      status = std::string("LAN beacon listener unavailable: ") + std::strerror(errno);
-      return false;
-    }
-#endif
-
-    int opt = 1;
-    setsockopt(socketFd_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&opt), sizeof(opt));
-#if defined(SO_REUSEPORT)
-    setsockopt(socketFd_, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast<char*>(&opt), sizeof(opt));
-#endif
-
-    sockaddr_in address{};
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = htonl(INADDR_ANY);
-    address.sin_port = htons(kDiscoveryPort);
-    if (bind(socketFd_, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0) {
-#if defined(_WIN32)
-      status = "LAN beacon listener bind failed: WSA error " + std::to_string(WSAGetLastError());
-#else
-      status = std::string("LAN beacon listener bind failed: ") + std::strerror(errno);
-#endif
-      closeSocket();
-      return false;
-    }
-
-#if defined(_WIN32)
-    u_long nonBlocking = 1;
-    if (ioctlsocket(socketFd_, FIONBIO, &nonBlocking) == SOCKET_ERROR) {
-      status = "LAN beacon listener nonblocking setup failed: WSA error " +
-               std::to_string(WSAGetLastError());
-      closeSocket();
-      return false;
-    }
-#else
-    const int flags = fcntl(socketFd_, F_GETFL, 0);
-    if (flags >= 0) {
-      fcntl(socketFd_, F_SETFL, flags | O_NONBLOCK);
-    }
-#endif
-
-    status = "LAN beacon listener active";
-    return true;
-#else
-    status = "LAN beacon listener unavailable on this platform";
-    return false;
-#endif
-  }
-
-  bool poll() {
-#if defined(_WIN32) || defined(__linux__) || defined(__APPLE__)
-    if (socketFd_ == kInvalidSocket) {
-      return false;
-    }
-
-    bool changed = false;
-    const auto now = std::chrono::steady_clock::now();
-    while (true) {
-      char buffer[1024];
-      sockaddr_in from{};
-#if defined(_WIN32)
-      int fromLen = sizeof(from);
-      const int count = recvfrom(socketFd_, buffer, static_cast<int>(sizeof(buffer) - 1), 0,
-                                 reinterpret_cast<sockaddr*>(&from), &fromLen);
-      if (count == SOCKET_ERROR) {
-        const int error = WSAGetLastError();
-        if (error == WSAEINTR) {
-          continue;
-        }
-        break;
-      }
-#else
-      socklen_t fromLen = sizeof(from);
-      const ssize_t count = recvfrom(socketFd_, buffer, sizeof(buffer) - 1, 0,
-                                     reinterpret_cast<sockaddr*>(&from), &fromLen);
-      if (count < 0) {
-        if (errno == EINTR) {
-          continue;
-        }
-        break;
-      }
-#endif
-      if (count == 0) {
-        break;
-      }
-      buffer[count] = '\0';
-
-      char sourceHost[INET_ADDRSTRLEN]{};
-      if (!inet_ntop(AF_INET, &from.sin_addr, sourceHost, sizeof(sourceHost))) {
-        continue;
-      }
-
-      int port = 0;
-      int version = 0;
-      std::string hostname;
-      std::unordered_map<std::string, std::string> metadata;
-      if (!parseDiscoveryBeacon(buffer, port, version, hostname, metadata) ||
-          !isCompatibleDiscoveryVersion(version)) {
-        continue;
-      }
-
-      const std::string source = sourceHost;
-      const std::string key = source + ":" + std::to_string(port);
-      auto& record = beacons_[key];
-      const bool isNew = record.server.endpoint.host.empty();
-      ServerEntry updated;
-      updated.endpoint.host = source;
-      updated.endpoint.port = port;
-      updated.bindHost = source;
-      updated.protocol = "raisim beacon";
-      updated.metadata = metadata;
-      updated.remoteBeacon = true;
-      updated.lastSeen = now;
-      const auto exeIt = metadata.find("exe");
-      const std::string serverName =
-        exeIt != metadata.end() && !exeIt->second.empty() ? exeIt->second : "RaisimServer";
-      updated.process = hostname.empty() ? serverName : serverName + " on " + hostname;
-      if (version > 0) {
-        updated.process += " (protocol " + std::to_string(version) + ")";
-      }
-      changed = changed || isNew ||
-                record.server.endpoint.host != updated.endpoint.host ||
-                record.server.endpoint.port != updated.endpoint.port ||
-                record.server.process != updated.process ||
-                record.server.metadata != updated.metadata;
-      record.server = updated;
-      record.lastSeen = now;
-    }
-
-    for (auto it = beacons_.begin(); it != beacons_.end();) {
-      if (now - it->second.lastSeen > kDiscoveryBeaconTimeout) {
-        it = beacons_.erase(it);
-        changed = true;
-      } else {
-        ++it;
-      }
-    }
-    return changed;
-#else
-    return false;
-#endif
-  }
-
-  std::vector<ServerEntry> servers() const {
-    std::vector<ServerEntry> entries;
-    entries.reserve(beacons_.size());
-    for (const auto& item : beacons_) {
-      entries.push_back(item.second.server);
-    }
-    sortServerEntries(entries);
-    return entries;
-  }
-
- private:
-  struct BeaconRecord {
-    ServerEntry server;
-    std::chrono::steady_clock::time_point lastSeen;
-  };
-
-  void closeSocket() {
-#if defined(_WIN32)
-    if (socketFd_ != kInvalidSocket) {
-      closesocket(socketFd_);
-      socketFd_ = kInvalidSocket;
-    }
-#elif defined(__linux__) || defined(__APPLE__)
-    if (socketFd_ != kInvalidSocket) {
-      close(socketFd_);
-      socketFd_ = kInvalidSocket;
-    }
-#endif
-  }
-
-#if defined(_WIN32)
-  using SocketHandle = SOCKET;
-  static constexpr SocketHandle kInvalidSocket = INVALID_SOCKET;
-#else
-  using SocketHandle = int;
-  static constexpr SocketHandle kInvalidSocket = -1;
-#endif
-  SocketHandle socketFd_ = kInvalidSocket;
-  std::unordered_map<std::string, BeaconRecord> beacons_;
-};
 
 std::string formatServerLabel(const ServerEntry& server) {
   std::string label = formatConnectionLabel(ConnectionEntry{server.bindHost, server.endpoint.port});
@@ -1441,20 +988,11 @@ bool readEnvBool(const char* name, bool defaultValue) {
   return true;
 }
 
-bool parseBoolValue(const std::string& rawValue, bool fallback) {
-  const std::string value = toLowerAscii(trimAscii(rawValue));
-  if (value == "true" || value == "yes" || value == "on" || value == "1") {
-    return true;
-  }
-  if (value == "false" || value == "no" || value == "off" || value == "0") {
-    return false;
-  }
-  return fallback;
-}
-
-float parseFloatValue(const std::string& rawValue, float fallback) {
-  float parsed = fallback;
-  return parseFloatStrict(rawValue.c_str(), parsed) ? parsed : fallback;
+bool shouldQuitForInitialServerWait(double waitForServerSeconds, bool replayMode,
+                                    bool connected, bool everConnected,
+                                    double wallElapsedSeconds) {
+  return waitForServerSeconds > 0.0 && !replayMode && !connected && !everConnected &&
+         wallElapsedSeconds >= waitForServerSeconds;
 }
 
 float readEnvFloatClamped(const char* name, float defaultValue, float minValue, float maxValue) {
@@ -1467,64 +1005,6 @@ float readEnvFloatClamped(const char* name, float defaultValue, float minValue, 
     return defaultValue;
   }
   return std::clamp(parsed, minValue, maxValue);
-}
-
-int parseIntValue(const std::string& rawValue, int fallback) {
-  long parsed = 0;
-  if (!parseLongStrict(rawValue.c_str(), 10, parsed) ||
-      parsed < std::numeric_limits<int>::min() || parsed > std::numeric_limits<int>::max()) {
-    return fallback;
-  }
-  return static_cast<int>(parsed);
-}
-
-glm::vec3 parseVec3Value(const std::string& rawValue, const glm::vec3& fallback) {
-  glm::vec3 parsed = fallback;
-  return parseVec3Text(rawValue, parsed) ? parsed : fallback;
-}
-
-glm::vec4 parseVec4Value(const std::string& rawValue, const glm::vec4& fallback) {
-  glm::vec4 parsed = fallback;
-  return parseVec4Text(rawValue, parsed) ? parsed : fallback;
-}
-
-const char* qualityName(int quality) {
-  static constexpr const char* kNames[] = {"Fast", "Balanced", "High", "Ultra", "Custom"};
-  return kNames[std::clamp(quality, 0, 4)];
-}
-
-const char* colorModeName(int colorMode) {
-  static constexpr const char* kNames[] = {"Fast Linear", "ACES Approx", "Unreal Preview"};
-  return kNames[std::clamp(colorMode, 0, 2)];
-}
-
-int qualityIndexFromName(const std::string& rawValue, int fallback) {
-  const std::string value = toLowerAscii(trimAscii(rawValue));
-  if (value == "fast" || value == "0") return 0;
-  if (value == "balanced" || value == "balance" || value == "1") return 1;
-  if (value == "high" || value == "2") return 2;
-  if (value == "ultra" || value == "3") return 3;
-  if (value == "custom" || value == "4") return 4;
-  return fallback;
-}
-
-int cloudQualityIndexFromName(const std::string& rawValue, int fallback) {
-  const std::string value = toLowerAscii(trimAscii(rawValue));
-  if (value == "auto" || value == "0") return 0;
-  if (value == "off" || value == "none" || value == "1") return 1;
-  if (value == "texture" || value == "2d" || value == "fast" || value == "2") return 2;
-  if (value == "volumetric" || value == "3d" || value == "ultra" || value == "3") return 3;
-  return fallback;
-}
-
-const char* cloudQualityName(int index) {
-  switch (std::clamp(index, 0, 3)) {
-    case 0: return "auto";
-    case 1: return "off";
-    case 2: return "texture";
-    case 3: return "volumetric";
-  }
-  return "auto";
 }
 
 struct GpuQualityInfo {
@@ -1644,55 +1124,6 @@ GpuQualityRecommendation recommendRenderQualityForCurrentGpu() {
   return recommendation;
 }
 
-int colorModeIndexFromName(const std::string& rawValue, int fallback) {
-  const std::string value = toLowerAscii(trimAscii(rawValue));
-  if (value == "fast_linear" || value == "fast linear" || value == "linear" || value == "0") return 0;
-  if (value == "aces_approx" || value == "aces approx" || value == "aces" || value == "1") return 1;
-  if (value == "unreal_preview" || value == "unreal preview" || value == "unreal" || value == "2") return 2;
-  return fallback;
-}
-
-const char* weatherPresetName(int preset) {
-  static constexpr const char* kNames[] = {
-    "Clear", "Hazy", "Overcast", "Fog", "Rain", "Heavy Rain",
-    "Snow", "Storm", "Night Clear", "Night Rain", "Custom"};
-  return kNames[std::clamp(preset, 0, 10)];
-}
-
-const char* weatherQualityName(int quality) {
-  static constexpr const char* kNames[] = {"Low", "Medium", "High", "Ultra"};
-  return kNames[std::clamp(quality, 0, 3)];
-}
-
-int weatherPresetIndexFromName(const std::string& rawValue, int fallback) {
-  const std::string value = toLowerAscii(trimAscii(rawValue));
-  if (value == "clear" || value == "0") return 0;
-  if (value == "hazy" || value == "1") return 1;
-  if (value == "overcast" || value == "2") return 2;
-  if (value == "fog" || value == "3") return 3;
-  if (value == "rain" || value == "4") return 4;
-  if (value == "heavy_rain" || value == "heavy rain" || value == "5") return 5;
-  if (value == "snow" || value == "6") return 6;
-  if (value == "storm" || value == "7") return 7;
-  if (value == "night_clear" || value == "night clear" || value == "8") return 8;
-  if (value == "night_rain" || value == "night rain" || value == "9") return 9;
-  if (value == "custom" || value == "10") return 10;
-  return fallback;
-}
-
-int weatherQualityIndexFromName(const std::string& rawValue, int fallback) {
-  const std::string value = toLowerAscii(trimAscii(rawValue));
-  if (value == "low" || value == "0") return 0;
-  if (value == "medium" || value == "1") return 1;
-  if (value == "high" || value == "2") return 2;
-  if (value == "ultra" || value == "3") return 3;
-  return fallback;
-}
-
-void recordConnection(
-  std::vector<ConnectionEntry>& connections, const std::string& host, int port);
-void recordResourceDir(std::vector<std::string>& dirs, const std::string& path);
-
 raisin::RayraiWindow::RenderQualityPreset qualityPresetFromIndex(int quality) {
   switch (std::clamp(quality, 0, 4)) {
     case 0: return raisin::RayraiWindow::RenderQualityPreset::Fast;
@@ -1754,454 +1185,6 @@ float windDirectionDegreesFromVector(const glm::vec3& direction) {
   return normalizedDegrees(std::atan2(direction.y, direction.x) * kRadToDeg);
 }
 
-bool weatherDefaultEnabledForQuality(int quality) {
-  const int clampedQuality = std::clamp(quality, 0, 4);
-  return clampedQuality >= 2;
-}
-
-bool highFidelityPbrAllowedForQuality(int quality) {
-  const int clampedQuality = std::clamp(quality, 0, 4);
-  return clampedQuality >= 2;
-}
-
-template <typename T>
-T clampValue(T value, T minValue, T maxValue) {
-  return std::clamp(value, minValue, maxValue);
-}
-
-glm::vec3 clampVec3(const glm::vec3& value, float minValue, float maxValue) {
-  return glm::vec3(
-    clampValue(value.x, minValue, maxValue),
-    clampValue(value.y, minValue, maxValue),
-    clampValue(value.z, minValue, maxValue));
-}
-
-glm::vec4 clampVec4(const glm::vec4& value, float minValue, float maxValue) {
-  return glm::vec4(
-    clampValue(value.x, minValue, maxValue),
-    clampValue(value.y, minValue, maxValue),
-    clampValue(value.z, minValue, maxValue),
-    clampValue(value.w, minValue, maxValue));
-}
-
-float sanitizeTcpUpdateRateHz(float value) {
-  if (!std::isfinite(value)) {
-    return kTcpUpdateRateDefaultHz;
-  }
-  return clampValue(value, kTcpUpdateRateMinHz, kTcpUpdateRateMaxHz);
-}
-
-std::chrono::steady_clock::duration tcpUpdatePeriodForHz(float rateHz) {
-  const double seconds = 1.0 / static_cast<double>(sanitizeTcpUpdateRateHz(rateHz));
-  return std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-    std::chrono::duration<double>(seconds));
-}
-
-bool consumeTcpUpdateSlot(std::chrono::steady_clock::time_point now,
-                          std::chrono::steady_clock::time_point& nextRequestTime,
-                          float rateHz) {
-  if (now < nextRequestTime) {
-    return false;
-  }
-  nextRequestTime = now + tcpUpdatePeriodForHz(rateHz);
-  return true;
-}
-
-void sanitizeViewerSettings(ViewerSettings& settings) {
-  settings.renderQuality = clampValue(settings.renderQuality, 0, 4);
-  settings.backgroundColorRgb255 = clampVec4(settings.backgroundColorRgb255, 0.0f, 255.0f);
-  settings.mainLightAmbient = clampVec3(settings.mainLightAmbient, 0.0f, 4.0f);
-  settings.mainLightDiffuse = clampVec3(settings.mainLightDiffuse, 0.0f, 4.0f);
-  settings.mainLightSpecular = clampVec3(settings.mainLightSpecular, 0.0f, 4.0f);
-  settings.cameraSpeed = clampValue(settings.cameraSpeed, 0.1f, 30.0f);
-  settings.cameraFovDeg = clampValue(settings.cameraFovDeg, 20.0f, 100.0f);
-  settings.cameraNear = clampValue(settings.cameraNear, 0.001f, 1.0f);
-  settings.cameraFar = clampValue(settings.cameraFar, 10.0f, 5000.0f);
-  if (settings.cameraFar <= settings.cameraNear) {
-    settings.cameraFar = std::min(5000.0f, std::max(10.0f, settings.cameraNear * 10.0f));
-  }
-  settings.lightYawDeg = clampValue(settings.lightYawDeg, -180.0f, 180.0f);
-  settings.lightPitchDeg = clampValue(settings.lightPitchDeg, -89.0f, 89.0f);
-  settings.lightStrength = clampValue(settings.lightStrength, 0.0f, 2.0f);
-  settings.ambientStrength = clampValue(settings.ambientStrength, 0.0f, 2.0f);
-  settings.shadowResolution = clampValue(settings.shadowResolution, 64, 8192);
-  settings.shadowBias = clampValue(settings.shadowBias, 0.0f, 0.01f);
-  settings.shadowStrength = clampValue(settings.shadowStrength, 0.0f, 1.0f);
-  settings.shadowPcfRadius = clampValue(settings.shadowPcfRadius, 0.0f, 4.0f);
-  settings.shadowOrthoHalfSize = clampValue(settings.shadowOrthoHalfSize, 1.0f, 100.0f);
-  settings.shadowNear = clampValue(settings.shadowNear, 0.01f, 10.0f);
-  settings.shadowFar = clampValue(settings.shadowFar, 1.0f, 250.0f);
-  if (settings.shadowFar <= settings.shadowNear) {
-    settings.shadowFar = std::min(250.0f, settings.shadowNear + 1.0f);
-  }
-  settings.shadowCenterOffset = clampValue(settings.shadowCenterOffset, 0.0f, 80.0f);
-  settings.fogDensity = clampValue(settings.fogDensity, 0.0f, 0.08f);
-  settings.gamma = clampValue(settings.gamma, 0.5f, 2.5f);
-  settings.colorMode = clampValue(settings.colorMode, 0, 2);
-  settings.bloomThreshold = clampValue(settings.bloomThreshold, 0.0f, 4.0f);
-  settings.bloomStrength = clampValue(settings.bloomStrength, 0.0f, 2.0f);
-  settings.bloomRadius = clampValue(settings.bloomRadius, 0.0f, 12.0f);
-  settings.bloomKnee = clampValue(settings.bloomKnee, 0.0f, 1.0f);
-  settings.bloomQuality = clampValue(settings.bloomQuality, 0, 3);
-  settings.screenSpaceAoRadius = clampValue(settings.screenSpaceAoRadius, 0.05f, 10.0f);
-  settings.screenSpaceAoStrength = clampValue(settings.screenSpaceAoStrength, 0.0f, 4.0f);
-  settings.screenSpaceAoBias = clampValue(settings.screenSpaceAoBias, 0.0f, 0.25f);
-  settings.depthOfFieldFocusDistance = clampValue(settings.depthOfFieldFocusDistance, 0.05f, 30.0f);
-  settings.depthOfFieldFocusRange = clampValue(settings.depthOfFieldFocusRange, 1.0f, 100.0f);
-  settings.depthOfFieldMaxRadius = clampValue(settings.depthOfFieldMaxRadius, 0.0f, 8.0f);
-  settings.pbrExposure = clampValue(settings.pbrExposure, 0.1f, 4.0f);
-  settings.pbrEnvironmentMaxLod = clampValue(settings.pbrEnvironmentMaxLod, 0.0f, 12.0f);
-  settings.pbrEnvironmentIntensity = clampValue(settings.pbrEnvironmentIntensity, 0.0f, 4.0f);
-  settings.pbrKeyLightIntensity = clampValue(settings.pbrKeyLightIntensity, 0.0f, 4.0f);
-  if (!highFidelityPbrAllowedForQuality(settings.renderQuality)) {
-    settings.highFidelityPbr = false;
-  }
-  settings.skySunStrength = clampValue(settings.skySunStrength, 0.0f, 8.0f);
-  settings.skySunSize = clampValue(settings.skySunSize, 0.001f, 0.08f);
-  if (!weatherDefaultEnabledForQuality(settings.renderQuality)) {
-    settings.skyWeatherEnabled = false;
-  }
-  settings.skyWeatherPreset = clampValue(settings.skyWeatherPreset, 0, 10);
-  settings.skyWeatherQuality = clampValue(settings.skyWeatherQuality, 0, 3);
-  settings.skyWeatherSeed = clampValue(settings.skyWeatherSeed, 1, 1000000);
-  settings.skyTimeOfDayHours = clampValue(settings.skyTimeOfDayHours, 0.0f, 24.0f);
-  settings.skyLatitude = clampValue(settings.skyLatitude, -89.9f, 89.9f);
-  settings.skyLongitude = clampValue(settings.skyLongitude, -180.0f, 180.0f);
-  settings.skyYear = clampValue(settings.skyYear, 1900, 2500);
-  settings.skyMonth = clampValue(settings.skyMonth, 1, 12);
-  settings.skyDay = clampValue(settings.skyDay, 1, 31);
-  settings.skyWindDirectionDeg = normalizedDegrees(settings.skyWindDirectionDeg);
-  settings.skyWindSpeed = clampValue(settings.skyWindSpeed, 0.0f, 80.0f);
-  settings.skyCloudCoverage = clampValue(settings.skyCloudCoverage, 0.0f, 1.0f);
-  settings.skyCloudDensity = clampValue(settings.skyCloudDensity, 0.0f, 1.0f);
-  settings.skyCloudAltitudeMeters = clampValue(settings.skyCloudAltitudeMeters, 20.0f, 12000.0f);
-  settings.skyCloudThicknessMeters = clampValue(settings.skyCloudThicknessMeters, 1.0f, 4000.0f);
-  settings.skyCloudShadowStrength = clampValue(settings.skyCloudShadowStrength, 0.0f, 1.0f);
-  settings.skyCloudScale = clampValue(settings.skyCloudScale, 0.01f, 2.0f);
-  settings.skyCloudAnimationSpeed = clampValue(settings.skyCloudAnimationSpeed, 0.0f, 200.0f);
-  settings.skyCloudQuality = clampValue(settings.skyCloudQuality, 0, 3);
-  settings.skyPrecipitationRate = clampValue(settings.skyPrecipitationRate, 0.0f, 1.0f);
-  settings.skyRainOcclusionStrength = clampValue(settings.skyRainOcclusionStrength, 0.0f, 1.0f);
-  settings.skySnowCoverage = clampValue(settings.skySnowCoverage, 0.0f, 1.0f);
-  settings.skyHumidity = clampValue(settings.skyHumidity, 0.0f, 1.0f);
-  settings.skyWetness = clampValue(settings.skyWetness, 0.0f, 1.0f);
-  settings.skyWetnessAccumulationRate = clampValue(settings.skyWetnessAccumulationRate, 0.0f, 4.0f);
-  settings.skyWetnessDryingRate = clampValue(settings.skyWetnessDryingRate, 0.0f, 4.0f);
-  settings.skyLightningRate = clampValue(settings.skyLightningRate, 0.0f, 16.0f);
-  settings.skyFogDensity = clampValue(settings.skyFogDensity, 0.0f, 1.0f);
-  settings.skyVisibilityMeters = clampValue(settings.skyVisibilityMeters, 1.0f, 100000.0f);
-  settings.skyFogColor = clampVec3(settings.skyFogColor, 0.0f, 4.0f);
-  settings.skyFogAnisotropy = clampValue(settings.skyFogAnisotropy, -0.85f, 0.85f);
-  settings.skyAirTurbidity = clampValue(settings.skyAirTurbidity, 1.0f, 12.0f);
-  settings.skyGroundAlbedo = clampValue(settings.skyGroundAlbedo, 0.0f, 1.0f);
-  settings.skySunAzimuthDeg = normalizedDegrees(settings.skySunAzimuthDeg);
-  settings.skySunElevationDeg = clampValue(settings.skySunElevationDeg, -8.0f, 89.0f);
-  settings.skyMoonSize = clampValue(settings.skyMoonSize, 0.001f, 0.08f);
-  settings.skyLensDropletStrength = clampValue(settings.skyLensDropletStrength, 0.0f, 1.0f);
-  settings.reflectiveGroundRoughness = clampValue(settings.reflectiveGroundRoughness, 0.02f, 1.0f);
-  settings.reflectiveGroundMetallic = clampValue(settings.reflectiveGroundMetallic, 0.0f, 1.0f);
-  settings.shadowedLightBudget = clampValue(settings.shadowedLightBudget, 0, 8);
-  settings.maxPointShadowLights = clampValue(settings.maxPointShadowLights, 0, 8);
-  settings.additionalShadowResolutionScale = clampValue(settings.additionalShadowResolutionScale, 0.05f, 2.0f);
-  settings.pointShadowResolutionScale = clampValue(settings.pointShadowResolutionScale, 0.05f, 2.0f);
-  settings.minAdditionalShadowResolution = clampValue(settings.minAdditionalShadowResolution, 64, 2048);
-  settings.maxAdditionalLightsPerFrame = clampValue(settings.maxAdditionalLightsPerFrame, 0, 16);
-  settings.minAdditionalLightInfluence = clampValue(settings.minAdditionalLightInfluence, 0.0f, 1.0f);
-  settings.uiScale = clampValue(settings.uiScale, 0.8f, 2.6f);
-  settings.tcpUpdateRateHz = sanitizeTcpUpdateRateHz(settings.tcpUpdateRateHz);
-}
-
-std::filesystem::path settingsFilePath() {
-  const char* home = std::getenv("HOME");
-  if (home && *home) {
-    return std::filesystem::path(home) / ".rayrai" / "settings.yaml";
-  }
-  return std::filesystem::current_path() / ".rayrai" / "settings.yaml";
-}
-
-// Forward decl so the parser below can propagate preset cloud values when
-// sky_weather_preset is set via TCP / settings file.
-void copyWeatherPresetToSettings(ViewerSettings& settings, int preset);
-
-void loadViewerSettings(ViewerSettings& settings) {
-  std::ifstream input(settingsFilePath());
-  if (!input) {
-    return;
-  }
-
-  std::string line;
-  while (std::getline(input, line)) {
-    const auto comment = line.find('#');
-    if (comment != std::string::npos) {
-      line.resize(comment);
-    }
-    const auto sep = line.find(':');
-    if (sep == std::string::npos) {
-      continue;
-    }
-    const std::string key = trimAscii(line.substr(0, sep));
-    const std::string value = trimAscii(line.substr(sep + 1));
-    if (key == "render_quality") settings.renderQuality = qualityIndexFromName(value, settings.renderQuality);
-    else if (key == "render_quality_user_set") settings.renderQualityUserSet = parseBoolValue(value, settings.renderQualityUserSet);
-    else if (key == "background_color_rgb255") settings.backgroundColorRgb255 = parseVec4Value(value, settings.backgroundColorRgb255);
-    else if (key == "main_light_ambient") settings.mainLightAmbient = parseVec3Value(value, settings.mainLightAmbient);
-    else if (key == "main_light_diffuse") settings.mainLightDiffuse = parseVec3Value(value, settings.mainLightDiffuse);
-    else if (key == "main_light_specular") settings.mainLightSpecular = parseVec3Value(value, settings.mainLightSpecular);
-    else if (key == "camera_speed") settings.cameraSpeed = parseFloatValue(value, settings.cameraSpeed);
-    else if (key == "camera_fov_deg") settings.cameraFovDeg = parseFloatValue(value, settings.cameraFovDeg);
-    else if (key == "camera_near") settings.cameraNear = parseFloatValue(value, settings.cameraNear);
-    else if (key == "camera_far") settings.cameraFar = parseFloatValue(value, settings.cameraFar);
-    else if (key == "light_yaw_deg") settings.lightYawDeg = parseFloatValue(value, settings.lightYawDeg);
-    else if (key == "light_pitch_deg") settings.lightPitchDeg = parseFloatValue(value, settings.lightPitchDeg);
-    else if (key == "light_strength") settings.lightStrength = parseFloatValue(value, settings.lightStrength);
-    else if (key == "ambient_strength") settings.ambientStrength = parseFloatValue(value, settings.ambientStrength);
-    else if (key == "shadows_enabled") settings.shadowsEnabled = parseBoolValue(value, settings.shadowsEnabled);
-    else if (key == "shadow_resolution") settings.shadowResolution = parseIntValue(value, settings.shadowResolution);
-    else if (key == "shadow_bias") settings.shadowBias = parseFloatValue(value, settings.shadowBias);
-    else if (key == "shadow_strength") settings.shadowStrength = parseFloatValue(value, settings.shadowStrength);
-    else if (key == "shadow_pcf_radius") settings.shadowPcfRadius = parseFloatValue(value, settings.shadowPcfRadius);
-    else if (key == "shadow_ortho_half_size") settings.shadowOrthoHalfSize = parseFloatValue(value, settings.shadowOrthoHalfSize);
-    else if (key == "shadow_near") settings.shadowNear = parseFloatValue(value, settings.shadowNear);
-    else if (key == "shadow_far") settings.shadowFar = parseFloatValue(value, settings.shadowFar);
-    else if (key == "shadow_center_offset") settings.shadowCenterOffset = parseFloatValue(value, settings.shadowCenterOffset);
-    else if (key == "fog_density") settings.fogDensity = parseFloatValue(value, settings.fogDensity);
-    else if (key == "gamma") settings.gamma = parseFloatValue(value, settings.gamma);
-    else if (key == "color_mode") settings.colorMode = colorModeIndexFromName(value, settings.colorMode);
-    else if (key == "fxaa_enabled") settings.fxaaEnabled = parseBoolValue(value, settings.fxaaEnabled);
-    else if (key == "bloom_enabled") settings.bloomEnabled = parseBoolValue(value, settings.bloomEnabled);
-    else if (key == "bloom_threshold") settings.bloomThreshold = parseFloatValue(value, settings.bloomThreshold);
-    else if (key == "bloom_strength") settings.bloomStrength = parseFloatValue(value, settings.bloomStrength);
-    else if (key == "bloom_radius") settings.bloomRadius = parseFloatValue(value, settings.bloomRadius);
-    else if (key == "bloom_knee") settings.bloomKnee = parseFloatValue(value, settings.bloomKnee);
-    else if (key == "bloom_quality") settings.bloomQuality = parseIntValue(value, settings.bloomQuality);
-    else if (key == "screen_space_ao_enabled") settings.screenSpaceAoEnabled = parseBoolValue(value, settings.screenSpaceAoEnabled);
-    else if (key == "screen_space_ao_radius") settings.screenSpaceAoRadius = parseFloatValue(value, settings.screenSpaceAoRadius);
-    else if (key == "screen_space_ao_strength") settings.screenSpaceAoStrength = parseFloatValue(value, settings.screenSpaceAoStrength);
-    else if (key == "screen_space_ao_bias") settings.screenSpaceAoBias = parseFloatValue(value, settings.screenSpaceAoBias);
-    else if (key == "opaque_depth_prepass") settings.opaqueDepthPrepass = parseBoolValue(value, settings.opaqueDepthPrepass);
-    else if (key == "depth_of_field_enabled") settings.depthOfFieldEnabled = parseBoolValue(value, settings.depthOfFieldEnabled);
-    else if (key == "depth_of_field_focus_distance") settings.depthOfFieldFocusDistance = parseFloatValue(value, settings.depthOfFieldFocusDistance);
-    else if (key == "depth_of_field_focus_range") settings.depthOfFieldFocusRange = parseFloatValue(value, settings.depthOfFieldFocusRange);
-    else if (key == "depth_of_field_max_radius") settings.depthOfFieldMaxRadius = parseFloatValue(value, settings.depthOfFieldMaxRadius);
-    else if (key == "high_fidelity_pbr") settings.highFidelityPbr = parseBoolValue(value, settings.highFidelityPbr);
-    else if (key == "pbr_tone_mapping") settings.pbrToneMapping = parseBoolValue(value, settings.pbrToneMapping);
-    else if (key == "pbr_exposure") settings.pbrExposure = parseFloatValue(value, settings.pbrExposure);
-    else if (key == "pbr_environment_max_lod") settings.pbrEnvironmentMaxLod = parseFloatValue(value, settings.pbrEnvironmentMaxLod);
-    else if (key == "pbr_environment_intensity") settings.pbrEnvironmentIntensity = parseFloatValue(value, settings.pbrEnvironmentIntensity);
-    else if (key == "pbr_key_light_intensity") settings.pbrKeyLightIntensity = parseFloatValue(value, settings.pbrKeyLightIntensity);
-    else if (key == "sky_enabled") settings.skyEnabled = parseBoolValue(value, settings.skyEnabled);
-    else if (key == "sky_sun_strength") settings.skySunStrength = parseFloatValue(value, settings.skySunStrength);
-    else if (key == "sky_sun_size") settings.skySunSize = parseFloatValue(value, settings.skySunSize);
-    else if (key == "sky_weather_enabled") settings.skyWeatherEnabled = parseBoolValue(value, settings.skyWeatherEnabled);
-    else if (key == "sky_weather_preset") settings.skyWeatherPreset = weatherPresetIndexFromName(value, settings.skyWeatherPreset);
-    else if (key == "sky_weather_quality") settings.skyWeatherQuality = weatherQualityIndexFromName(value, settings.skyWeatherQuality);
-    else if (key == "sky_weather_seed") settings.skyWeatherSeed = parseIntValue(value, settings.skyWeatherSeed);
-    else if (key == "sky_time_of_day_hours") settings.skyTimeOfDayHours = parseFloatValue(value, settings.skyTimeOfDayHours);
-    else if (key == "sky_latitude") settings.skyLatitude = parseFloatValue(value, settings.skyLatitude);
-    else if (key == "sky_longitude") settings.skyLongitude = parseFloatValue(value, settings.skyLongitude);
-    else if (key == "sky_year") settings.skyYear = parseIntValue(value, settings.skyYear);
-    else if (key == "sky_month") settings.skyMonth = parseIntValue(value, settings.skyMonth);
-    else if (key == "sky_day") settings.skyDay = parseIntValue(value, settings.skyDay);
-    else if (key == "sky_wind_direction_deg") settings.skyWindDirectionDeg = parseFloatValue(value, settings.skyWindDirectionDeg);
-    else if (key == "sky_wind_speed") settings.skyWindSpeed = parseFloatValue(value, settings.skyWindSpeed);
-    else if (key == "sky_cloud_coverage") settings.skyCloudCoverage = parseFloatValue(value, settings.skyCloudCoverage);
-    else if (key == "sky_cloud_density") settings.skyCloudDensity = parseFloatValue(value, settings.skyCloudDensity);
-    else if (key == "sky_cloud_altitude_m") settings.skyCloudAltitudeMeters = parseFloatValue(value, settings.skyCloudAltitudeMeters);
-    else if (key == "sky_cloud_thickness_m") settings.skyCloudThicknessMeters = parseFloatValue(value, settings.skyCloudThicknessMeters);
-    else if (key == "sky_cloud_shadow_strength") settings.skyCloudShadowStrength = parseFloatValue(value, settings.skyCloudShadowStrength);
-    else if (key == "sky_cloud_scale") settings.skyCloudScale = parseFloatValue(value, settings.skyCloudScale);
-    else if (key == "sky_cloud_animation_speed") settings.skyCloudAnimationSpeed = parseFloatValue(value, settings.skyCloudAnimationSpeed);
-    else if (key == "sky_cloud_quality") settings.skyCloudQuality = cloudQualityIndexFromName(value, settings.skyCloudQuality);
-    else if (key == "sky_precipitation_rate") settings.skyPrecipitationRate = parseFloatValue(value, settings.skyPrecipitationRate);
-    else if (key == "sky_rain_occlusion_strength") settings.skyRainOcclusionStrength = parseFloatValue(value, settings.skyRainOcclusionStrength);
-    else if (key == "sky_snow_coverage") settings.skySnowCoverage = parseFloatValue(value, settings.skySnowCoverage);
-    else if (key == "sky_humidity") settings.skyHumidity = parseFloatValue(value, settings.skyHumidity);
-    else if (key == "sky_wetness") settings.skyWetness = parseFloatValue(value, settings.skyWetness);
-    else if (key == "sky_wetness_accumulation") settings.skyWetnessAccumulationEnabled = parseBoolValue(value, settings.skyWetnessAccumulationEnabled);
-    else if (key == "sky_wetness_accumulation_rate") settings.skyWetnessAccumulationRate = parseFloatValue(value, settings.skyWetnessAccumulationRate);
-    else if (key == "sky_wetness_drying_rate") settings.skyWetnessDryingRate = parseFloatValue(value, settings.skyWetnessDryingRate);
-    else if (key == "sky_lightning_rate") settings.skyLightningRate = parseFloatValue(value, settings.skyLightningRate);
-    else if (key == "sky_fog_density") settings.skyFogDensity = parseFloatValue(value, settings.skyFogDensity);
-    else if (key == "sky_visibility_m") settings.skyVisibilityMeters = parseFloatValue(value, settings.skyVisibilityMeters);
-    else if (key == "sky_fog_color") settings.skyFogColor = parseVec3Value(value, settings.skyFogColor);
-    else if (key == "sky_fog_anisotropy") settings.skyFogAnisotropy = parseFloatValue(value, settings.skyFogAnisotropy);
-    else if (key == "sky_air_turbidity") settings.skyAirTurbidity = parseFloatValue(value, settings.skyAirTurbidity);
-    else if (key == "sky_ground_albedo") settings.skyGroundAlbedo = parseFloatValue(value, settings.skyGroundAlbedo);
-    else if (key == "sky_use_explicit_sun_angles") settings.skyUseExplicitSunAngles = parseBoolValue(value, settings.skyUseExplicitSunAngles);
-    else if (key == "sky_sun_azimuth_deg") settings.skySunAzimuthDeg = parseFloatValue(value, settings.skySunAzimuthDeg);
-    else if (key == "sky_sun_elevation_deg") settings.skySunElevationDeg = parseFloatValue(value, settings.skySunElevationDeg);
-    else if (key == "sky_moon_size") settings.skyMoonSize = parseFloatValue(value, settings.skyMoonSize);
-    else if (key == "sky_lens_droplets_enabled") settings.skyLensDropletsEnabled = parseBoolValue(value, settings.skyLensDropletsEnabled);
-    else if (key == "sky_lens_droplet_strength") settings.skyLensDropletStrength = parseFloatValue(value, settings.skyLensDropletStrength);
-    else if (key == "reflective_ground") settings.reflectiveGround = parseBoolValue(value, settings.reflectiveGround);
-    else if (key == "reflective_ground_roughness") settings.reflectiveGroundRoughness = parseFloatValue(value, settings.reflectiveGroundRoughness);
-    else if (key == "reflective_ground_metallic") settings.reflectiveGroundMetallic = parseFloatValue(value, settings.reflectiveGroundMetallic);
-    else if (key == "shadowed_light_budget") settings.shadowedLightBudget = parseIntValue(value, settings.shadowedLightBudget);
-    else if (key == "max_point_shadow_lights") settings.maxPointShadowLights = parseIntValue(value, settings.maxPointShadowLights);
-    else if (key == "additional_shadow_resolution_scale") settings.additionalShadowResolutionScale = parseFloatValue(value, settings.additionalShadowResolutionScale);
-    else if (key == "point_shadow_resolution_scale") settings.pointShadowResolutionScale = parseFloatValue(value, settings.pointShadowResolutionScale);
-    else if (key == "min_additional_shadow_resolution") settings.minAdditionalShadowResolution = parseIntValue(value, settings.minAdditionalShadowResolution);
-    else if (key == "update_shadows_every_frame") settings.updateShadowsEveryFrame = parseBoolValue(value, settings.updateShadowsEveryFrame);
-    else if (key == "max_additional_lights_per_frame") settings.maxAdditionalLightsPerFrame = parseIntValue(value, settings.maxAdditionalLightsPerFrame);
-    else if (key == "min_additional_light_influence") settings.minAdditionalLightInfluence = parseFloatValue(value, settings.minAdditionalLightInfluence);
-    else if (key == "auto_select_imported_shadow_light") settings.autoSelectImportedShadowLight = parseBoolValue(value, settings.autoSelectImportedShadowLight);
-    else if (key == "sort_transparent_instances") settings.sortTransparentInstances = parseBoolValue(value, settings.sortTransparentInstances);
-    else if (key == "add_viewer_fill_lights") settings.addViewerFillLights = parseBoolValue(value, settings.addViewerFillLights);
-    else if (key == "ui_scale") settings.uiScale = parseFloatValue(value, settings.uiScale);
-    else if (key == "ui_scale_user_set") settings.uiScaleUserSet = parseBoolValue(value, settings.uiScaleUserSet);
-    else if (key == "show_collapsed_logo") settings.showCollapsedLogo = parseBoolValue(value, settings.showCollapsedLogo);
-    else if (key == "tcp_update_rate_hz") settings.tcpUpdateRateHz = parseFloatValue(value, settings.tcpUpdateRateHz);
-    else if (key == "recent_connection") {
-      ConnectionEntry entry;
-      if (parseConnectionLabel(value, entry)) {
-        recordConnection(settings.recentConnections, entry.host, entry.port);
-      }
-    }
-    else if (key == "resource_dir") {
-      if (!value.empty()) {
-        recordResourceDir(settings.resourceDirs, value);
-      }
-    }
-  }
-  sanitizeViewerSettings(settings);
-}
-
-void saveViewerSettings(const ViewerSettings& settings) {
-  const std::filesystem::path path = settingsFilePath();
-  std::error_code ec;
-  std::filesystem::create_directories(path.parent_path(), ec);
-  std::ofstream output(path);
-  if (!output) {
-    std::cerr << "WARN: Failed to write " << path << "\n";
-    return;
-  }
-
-  output << "# rayrai TCP viewer settings\n";
-  output << std::boolalpha << std::setprecision(6);
-  output << "render_quality: " << qualityName(settings.renderQuality) << "\n";
-  output << "render_quality_user_set: " << settings.renderQualityUserSet << "\n";
-  output << "background_color_rgb255: " << settings.backgroundColorRgb255.r << ", "
-         << settings.backgroundColorRgb255.g << ", " << settings.backgroundColorRgb255.b << ", "
-         << settings.backgroundColorRgb255.a << "\n";
-  output << "main_light_ambient: " << settings.mainLightAmbient.r << ", "
-         << settings.mainLightAmbient.g << ", " << settings.mainLightAmbient.b << "\n";
-  output << "main_light_diffuse: " << settings.mainLightDiffuse.r << ", "
-         << settings.mainLightDiffuse.g << ", " << settings.mainLightDiffuse.b << "\n";
-  output << "main_light_specular: " << settings.mainLightSpecular.r << ", "
-         << settings.mainLightSpecular.g << ", " << settings.mainLightSpecular.b << "\n";
-  output << "camera_speed: " << settings.cameraSpeed << "\n";
-  output << "camera_fov_deg: " << settings.cameraFovDeg << "\n";
-  output << "camera_near: " << settings.cameraNear << "\n";
-  output << "camera_far: " << settings.cameraFar << "\n";
-  output << "light_yaw_deg: " << settings.lightYawDeg << "\n";
-  output << "light_pitch_deg: " << settings.lightPitchDeg << "\n";
-  output << "light_strength: " << settings.lightStrength << "\n";
-  output << "ambient_strength: " << settings.ambientStrength << "\n";
-  output << "shadows_enabled: " << settings.shadowsEnabled << "\n";
-  output << "shadow_resolution: " << settings.shadowResolution << "\n";
-  output << "shadow_bias: " << settings.shadowBias << "\n";
-  output << "shadow_strength: " << settings.shadowStrength << "\n";
-  output << "shadow_pcf_radius: " << settings.shadowPcfRadius << "\n";
-  output << "shadow_ortho_half_size: " << settings.shadowOrthoHalfSize << "\n";
-  output << "shadow_near: " << settings.shadowNear << "\n";
-  output << "shadow_far: " << settings.shadowFar << "\n";
-  output << "shadow_center_offset: " << settings.shadowCenterOffset << "\n";
-  output << "fog_density: " << settings.fogDensity << "\n";
-  output << "gamma: " << settings.gamma << "\n";
-  output << "color_mode: " << colorModeName(settings.colorMode) << "\n";
-  output << "fxaa_enabled: " << settings.fxaaEnabled << "\n";
-  output << "bloom_enabled: " << settings.bloomEnabled << "\n";
-  output << "bloom_threshold: " << settings.bloomThreshold << "\n";
-  output << "bloom_strength: " << settings.bloomStrength << "\n";
-  output << "bloom_radius: " << settings.bloomRadius << "\n";
-  output << "bloom_knee: " << settings.bloomKnee << "\n";
-  output << "bloom_quality: " << settings.bloomQuality << "\n";
-  output << "screen_space_ao_enabled: " << settings.screenSpaceAoEnabled << "\n";
-  output << "screen_space_ao_radius: " << settings.screenSpaceAoRadius << "\n";
-  output << "screen_space_ao_strength: " << settings.screenSpaceAoStrength << "\n";
-  output << "screen_space_ao_bias: " << settings.screenSpaceAoBias << "\n";
-  output << "opaque_depth_prepass: " << settings.opaqueDepthPrepass << "\n";
-  output << "depth_of_field_enabled: " << settings.depthOfFieldEnabled << "\n";
-  output << "depth_of_field_focus_distance: " << settings.depthOfFieldFocusDistance << "\n";
-  output << "depth_of_field_focus_range: " << settings.depthOfFieldFocusRange << "\n";
-  output << "depth_of_field_max_radius: " << settings.depthOfFieldMaxRadius << "\n";
-  output << "high_fidelity_pbr: " << settings.highFidelityPbr << "\n";
-  output << "pbr_tone_mapping: " << settings.pbrToneMapping << "\n";
-  output << "pbr_exposure: " << settings.pbrExposure << "\n";
-  output << "pbr_environment_max_lod: " << settings.pbrEnvironmentMaxLod << "\n";
-  output << "pbr_environment_intensity: " << settings.pbrEnvironmentIntensity << "\n";
-  output << "pbr_key_light_intensity: " << settings.pbrKeyLightIntensity << "\n";
-  output << "sky_enabled: " << settings.skyEnabled << "\n";
-  output << "sky_sun_strength: " << settings.skySunStrength << "\n";
-  output << "sky_sun_size: " << settings.skySunSize << "\n";
-  output << "sky_weather_enabled: " << settings.skyWeatherEnabled << "\n";
-  output << "sky_weather_preset: " << weatherPresetName(settings.skyWeatherPreset) << "\n";
-  output << "sky_weather_quality: " << weatherQualityName(settings.skyWeatherQuality) << "\n";
-  output << "sky_weather_seed: " << settings.skyWeatherSeed << "\n";
-  output << "sky_time_of_day_hours: " << settings.skyTimeOfDayHours << "\n";
-  output << "sky_latitude: " << settings.skyLatitude << "\n";
-  output << "sky_longitude: " << settings.skyLongitude << "\n";
-  output << "sky_year: " << settings.skyYear << "\n";
-  output << "sky_month: " << settings.skyMonth << "\n";
-  output << "sky_day: " << settings.skyDay << "\n";
-  output << "sky_wind_direction_deg: " << settings.skyWindDirectionDeg << "\n";
-  output << "sky_wind_speed: " << settings.skyWindSpeed << "\n";
-  output << "sky_cloud_coverage: " << settings.skyCloudCoverage << "\n";
-  output << "sky_cloud_density: " << settings.skyCloudDensity << "\n";
-  output << "sky_cloud_altitude_m: " << settings.skyCloudAltitudeMeters << "\n";
-  output << "sky_cloud_thickness_m: " << settings.skyCloudThicknessMeters << "\n";
-  output << "sky_cloud_shadow_strength: " << settings.skyCloudShadowStrength << "\n";
-  output << "sky_cloud_scale: " << settings.skyCloudScale << "\n";
-  output << "sky_cloud_animation_speed: " << settings.skyCloudAnimationSpeed << "\n";
-  output << "sky_cloud_quality: " << cloudQualityName(settings.skyCloudQuality) << "\n";
-  output << "sky_precipitation_rate: " << settings.skyPrecipitationRate << "\n";
-  output << "sky_rain_occlusion_strength: " << settings.skyRainOcclusionStrength << "\n";
-  output << "sky_snow_coverage: " << settings.skySnowCoverage << "\n";
-  output << "sky_humidity: " << settings.skyHumidity << "\n";
-  output << "sky_wetness: " << settings.skyWetness << "\n";
-  output << "sky_wetness_accumulation: " << settings.skyWetnessAccumulationEnabled << "\n";
-  output << "sky_wetness_accumulation_rate: " << settings.skyWetnessAccumulationRate << "\n";
-  output << "sky_wetness_drying_rate: " << settings.skyWetnessDryingRate << "\n";
-  output << "sky_lightning_rate: " << settings.skyLightningRate << "\n";
-  output << "sky_fog_density: " << settings.skyFogDensity << "\n";
-  output << "sky_visibility_m: " << settings.skyVisibilityMeters << "\n";
-  output << "sky_fog_color: " << settings.skyFogColor.r << ", "
-         << settings.skyFogColor.g << ", " << settings.skyFogColor.b << "\n";
-  output << "sky_fog_anisotropy: " << settings.skyFogAnisotropy << "\n";
-  output << "sky_air_turbidity: " << settings.skyAirTurbidity << "\n";
-  output << "sky_ground_albedo: " << settings.skyGroundAlbedo << "\n";
-  output << "sky_use_explicit_sun_angles: " << settings.skyUseExplicitSunAngles << "\n";
-  output << "sky_sun_azimuth_deg: " << settings.skySunAzimuthDeg << "\n";
-  output << "sky_sun_elevation_deg: " << settings.skySunElevationDeg << "\n";
-  output << "sky_moon_size: " << settings.skyMoonSize << "\n";
-  output << "sky_lens_droplets_enabled: " << settings.skyLensDropletsEnabled << "\n";
-  output << "sky_lens_droplet_strength: " << settings.skyLensDropletStrength << "\n";
-  output << "reflective_ground: " << settings.reflectiveGround << "\n";
-  output << "reflective_ground_roughness: " << settings.reflectiveGroundRoughness << "\n";
-  output << "reflective_ground_metallic: " << settings.reflectiveGroundMetallic << "\n";
-  output << "shadowed_light_budget: " << settings.shadowedLightBudget << "\n";
-  output << "max_point_shadow_lights: " << settings.maxPointShadowLights << "\n";
-  output << "additional_shadow_resolution_scale: " << settings.additionalShadowResolutionScale << "\n";
-  output << "point_shadow_resolution_scale: " << settings.pointShadowResolutionScale << "\n";
-  output << "min_additional_shadow_resolution: " << settings.minAdditionalShadowResolution << "\n";
-  output << "update_shadows_every_frame: " << settings.updateShadowsEveryFrame << "\n";
-  output << "max_additional_lights_per_frame: " << settings.maxAdditionalLightsPerFrame << "\n";
-  output << "min_additional_light_influence: " << settings.minAdditionalLightInfluence << "\n";
-  output << "auto_select_imported_shadow_light: " << settings.autoSelectImportedShadowLight << "\n";
-  output << "sort_transparent_instances: " << settings.sortTransparentInstances << "\n";
-  output << "add_viewer_fill_lights: " << settings.addViewerFillLights << "\n";
-  output << "ui_scale: " << settings.uiScale << "\n";
-  output << "ui_scale_user_set: " << settings.uiScaleUserSet << "\n";
-  output << "show_collapsed_logo: " << settings.showCollapsedLogo << "\n";
-  output << "tcp_update_rate_hz: " << settings.tcpUpdateRateHz << "\n";
-  for (const auto& entry : settings.recentConnections) {
-    output << "recent_connection: " << formatConnectionLabel(entry) << "\n";
-  }
-  for (const auto& dir : settings.resourceDirs) {
-    output << "resource_dir: " << dir << "\n";
-  }
-}
-
 std::string findRobotoFontPath(const std::filesystem::path& binaryDir) {
   if (const char* envPath = std::getenv("RAYRAI_TCP_VIEWER_FONT")) {
     if (*envPath && std::filesystem::exists(envPath)) {
@@ -2258,35 +1241,6 @@ bool isContactEntry(const VisualEntry* entry) {
 
 bool isContactItem(const ObjectListItem& item) {
   return isContactLabel(item.name);
-}
-
-void recordConnection(
-  std::vector<ConnectionEntry>& connections, const std::string& host, int port) {
-  ConnectionEntry normalized;
-  if (!normalizeConnectionEndpoint(host, port, normalized)) {
-    return;
-  }
-  connections.erase(
-    std::remove_if(connections.begin(), connections.end(),
-      [&](const ConnectionEntry& entry) {
-        return entry.host == normalized.host && entry.port == normalized.port;
-      }),
-    connections.end());
-  connections.insert(connections.begin(), normalized);
-  if (connections.size() > 8) {
-    connections.resize(8);
-  }
-}
-
-void recordResourceDir(std::vector<std::string>& dirs, const std::string& path) {
-  if (path.empty()) {
-    return;
-  }
-  dirs.erase(std::remove(dirs.begin(), dirs.end(), path), dirs.end());
-  dirs.insert(dirs.begin(), path);
-  if (dirs.size() > 24) {
-    dirs.resize(24);
-  }
 }
 
 glm::vec3 lightDirectionFromYawPitch(float yawDeg, float pitchDeg) {
@@ -3056,68 +2010,6 @@ void drawAngleCursorIcon(const AngleToolState& angle, const ViewerViewportState&
   drawList->AddText(labelPos, armColor, label);
 }
 
-void flipRows(std::vector<unsigned char>& rgba, int width, int height) {
-  const size_t stride = static_cast<size_t>(width) * 4u;
-  std::vector<unsigned char> row(stride);
-  for (int y = 0; y < height / 2; ++y) {
-    auto* top = rgba.data() + static_cast<size_t>(y) * stride;
-    auto* bottom = rgba.data() + static_cast<size_t>(height - 1 - y) * stride;
-    std::memcpy(row.data(), top, stride);
-    std::memcpy(top, bottom, stride);
-    std::memcpy(bottom, row.data(), stride);
-  }
-}
-
-std::filesystem::path timestampedCapturePath(const std::filesystem::path& dir, const char* prefix) {
-  const auto now = std::chrono::system_clock::now();
-  const std::time_t raw = std::chrono::system_clock::to_time_t(now);
-  std::tm tm{};
-#if defined(_WIN32)
-  localtime_s(&tm, &raw);
-#else
-  localtime_r(&raw, &tm);
-#endif
-  std::ostringstream name;
-  name << (prefix ? prefix : "rayrai") << "_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".png";
-  return dir / name.str();
-}
-
-bool saveViewerTexturePng(raisin::RayraiWindow& viewer, const std::filesystem::path& path, std::string& status) {
-  auto& camera = viewer.getCamera();
-  const int width = camera.rtWidth();
-  const int height = camera.rtHeight();
-  if (width <= 0 || height <= 0) {
-    status = "capture failed: invalid render target";
-    return false;
-  }
-
-  std::error_code ec;
-  if (!path.parent_path().empty()) {
-    std::filesystem::create_directories(path.parent_path(), ec);
-    if (ec) {
-      status = "capture failed: cannot create directory";
-      return false;
-    }
-  }
-
-  std::vector<unsigned char> rgba(static_cast<size_t>(width) * static_cast<size_t>(height) * 4u);
-  gl::GLint previousPackAlignment = 4;
-  gl::glGetIntegerv(gl::GL_PACK_ALIGNMENT, &previousPackAlignment);
-  gl::glBindTexture(gl::GL_TEXTURE_2D, camera.getFinalTexture());
-  gl::glPixelStorei(gl::GL_PACK_ALIGNMENT, 1);
-  gl::glGetTexImage(gl::GL_TEXTURE_2D, 0, gl::GL_RGBA, gl::GL_UNSIGNED_BYTE, rgba.data());
-  gl::glPixelStorei(gl::GL_PACK_ALIGNMENT, previousPackAlignment);
-  gl::glBindTexture(gl::GL_TEXTURE_2D, 0);
-  flipRows(rgba, width, height);
-
-  if (!stbi_write_png(path.string().c_str(), width, height, 4, rgba.data(), width * 4)) {
-    status = "capture failed: PNG write failed";
-    return false;
-  }
-  status = "saved " + path.string();
-  return true;
-}
-
 float quaternionAngularSpeed(const glm::vec4& previous, const glm::vec4& current, double dt) {
   if (dt <= 1e-9) {
     return 0.0f;
@@ -3687,145 +2579,6 @@ std::filesystem::path timestampedDataPath(const std::filesystem::path& dir, cons
   return dir / name.str();
 }
 
-template <typename T>
-bool writeBinaryPod(std::ofstream& output, const T& value) {
-  output.write(reinterpret_cast<const char*>(&value), sizeof(T));
-  return static_cast<bool>(output);
-}
-
-class SessionRecorder {
- public:
-  bool open(const std::filesystem::path& path, std::string& status) {
-    close();
-    std::error_code ec;
-    if (!path.parent_path().empty()) {
-      std::filesystem::create_directories(path.parent_path(), ec);
-      if (ec) {
-        status = "session record failed: cannot create directory";
-        return false;
-      }
-    }
-    output_.open(path, std::ios::binary);
-    if (!output_) {
-      status = "session record failed: cannot open " + path.string();
-      return false;
-    }
-    output_.write(kSessionMagic, std::strlen(kSessionMagic));
-    if (!output_) {
-      status = "session record failed: cannot write header";
-      close();
-      return false;
-    }
-    path_ = path;
-    frames_ = 0;
-    bytes_ = 0;
-    start_ = std::chrono::steady_clock::now();
-    status = "recording " + path.string();
-    return true;
-  }
-
-  void close() {
-    if (output_.is_open()) {
-      output_.close();
-    }
-  }
-
-  bool active() const { return output_.is_open(); }
-  size_t frameCount() const { return frames_; }
-  size_t byteCount() const { return bytes_; }
-  std::string pathString() const { return path_.string(); }
-
-  bool record(const std::vector<char>& payload, std::chrono::steady_clock::time_point now,
-              std::string& status) {
-    if (!active()) {
-      return false;
-    }
-    const auto micros = static_cast<uint64_t>(
-      std::chrono::duration_cast<std::chrono::microseconds>(now - start_).count());
-    if (payload.size() > std::numeric_limits<uint32_t>::max()) {
-      status = "session record failed: payload too large";
-      close();
-      return false;
-    }
-    const uint32_t size = static_cast<uint32_t>(payload.size());
-    if (!writeBinaryPod(output_, micros) || !writeBinaryPod(output_, size)) {
-      status = "session record failed: write error";
-      close();
-      return false;
-    }
-    if (!payload.empty()) {
-      output_.write(payload.data(), static_cast<std::streamsize>(payload.size()));
-    }
-    if (!output_) {
-      status = "session record failed: write error";
-      close();
-      return false;
-    }
-    ++frames_;
-    bytes_ += payload.size();
-    return true;
-  }
-
- private:
-  std::ofstream output_;
-  std::filesystem::path path_;
-  std::chrono::steady_clock::time_point start_ = std::chrono::steady_clock::now();
-  size_t frames_ = 0;
-  size_t bytes_ = 0;
-};
-
-bool loadSessionFile(const std::filesystem::path& path, std::vector<RecordedFrame>& frames,
-                     std::string& status) {
-  frames.clear();
-  std::ifstream input(path, std::ios::binary);
-  if (!input) {
-    status = "replay failed: cannot open " + path.string();
-    return false;
-  }
-  std::string magic(std::strlen(kSessionMagic), '\0');
-  input.read(magic.data(), static_cast<std::streamsize>(magic.size()));
-  if (magic != kSessionMagic) {
-    status = "replay failed: unsupported session file";
-    return false;
-  }
-  while (true) {
-    RecordedFrame frame;
-    uint32_t size = 0;
-    input.read(reinterpret_cast<char*>(&frame.timeMicros), sizeof(frame.timeMicros));
-    if (!input) {
-      if (input.gcount() == 0 && input.eof()) {
-        break;
-      }
-      status = "replay failed: truncated frame header";
-      frames.clear();
-      return false;
-    }
-    input.read(reinterpret_cast<char*>(&size), sizeof(size));
-    if (!input) {
-      status = "replay failed: truncated frame header";
-      frames.clear();
-      return false;
-    }
-    if (size > static_cast<uint32_t>(raisin::tcp_viewer::kMaxMessageBytes)) {
-      status = "replay failed: frame exceeds max message size";
-      frames.clear();
-      return false;
-    }
-    frame.payload.resize(size);
-    if (size > 0) {
-      input.read(frame.payload.data(), size);
-      if (!input) {
-        status = "replay failed: truncated frame";
-        frames.clear();
-        return false;
-      }
-    }
-    frames.push_back(std::move(frame));
-  }
-  status = "loaded replay " + path.string() + " (" + std::to_string(frames.size()) + " frames)";
-  return !frames.empty();
-}
-
 std::vector<AssetDiagnostic> collectAssetDiagnostics(const RemoteScene& scene) {
   std::vector<AssetDiagnostic> assets;
   std::unordered_set<uint64_t> seen;
@@ -4172,10 +2925,7 @@ struct TcpViewerImageTexture {
   [[nodiscard]] bool valid() const { return texture != 0 && width > 0 && height > 0; }
 
   void release() {
-    if (texture != 0) {
-      gl::glDeleteTextures(1, &texture);
-    }
-    texture = 0;
+    raisin::deleteTextureAndInvalidateCache(texture);
     width = 0;
     height = 0;
     uvMin = ImVec2(0.0f, 0.0f);
@@ -4437,9 +3187,7 @@ struct TcpViewerIcons {
 
   void release() {
     for (auto& icon : icons) {
-      if (icon.texture != 0) {
-        gl::glDeleteTextures(1, &icon.texture);
-      }
+      raisin::deleteTextureAndInvalidateCache(icon.texture);
       icon = {};
     }
   }
@@ -5046,6 +3794,7 @@ int main(int argc, char* argv[]) {
   bool awaitingResponse = false;
   bool awaitingSensorAck = false;
   bool autoConnect = defaultAutoConnect;
+  bool everConnected = false;
 
   // Sim control: queue of requests flushed onto the next update frame.
   std::vector<raisin::tcp_viewer::SimControlRequest> pendingControlRequests;
@@ -5269,7 +4018,8 @@ int main(int argc, char* argv[]) {
   DiscoveryBeaconReceiver beaconReceiver;
   std::string discoveryStatus;
   beaconReceiver.start(discoveryStatus);
-  std::vector<ServerEntry> discoveredServers = beaconReceiver.servers();
+  std::vector<ServerEntry> discoveredServers =
+    serverEntriesFromDiscovered(beaconReceiver.servers());
   ViewerStats stats;
   const auto steadyStart = std::chrono::steady_clock::now();
   auto nextAutoConnectAttempt = std::chrono::steady_clock::now();
@@ -5293,6 +4043,7 @@ int main(int argc, char* argv[]) {
       lastStatus = "waiting for scene";
       awaitingResponse = false;
       awaitingSensorAck = false;
+      everConnected = true;
       std::snprintf(host, sizeof(host), "%s", endpoint.host.c_str());
       port = endpoint.port;
       std::snprintf(portBuf, sizeof(portBuf), "%d", port);
@@ -5315,7 +4066,7 @@ int main(int argc, char* argv[]) {
     const bool disconnectRequested = scene.consumeDisconnectRequested();
     bool ok = parsedOk && !disconnectRequested;
     if (disconnectRequested) {
-      lastStatus = fromReplay ? "replay protocol disconnect" : "protocol error (disconnect)";
+      lastStatus = fromReplay ? "replay protocol disconnect" : "server disconnected";
     } else if (!parsedOk) {
       lastStatus = fromReplay ? "replay parse error" : "parse error (dropped update)";
       stats.parseErrors++;
@@ -5578,13 +4329,13 @@ int main(int argc, char* argv[]) {
     if (options.exitAfterSeconds > 0.0 && wallElapsed >= options.exitAfterSeconds) {
       quit = true;
     }
-    if (options.waitForServerSeconds > 0.0 && !replayMode && !client.isConnected() &&
-        wallElapsed >= options.waitForServerSeconds) {
+    if (shouldQuitForInitialServerWait(options.waitForServerSeconds, replayMode,
+        client.isConnected(), everConnected, wallElapsed)) {
       lastStatus = "wait-for-server timed out";
       quit = true;
     }
     if (beaconReceiver.poll()) {
-      discoveredServers = beaconReceiver.servers();
+      discoveredServers = serverEntriesFromDiscovered(beaconReceiver.servers());
     }
     if (replayMode && !replayFrames.empty()) {
       if (replayIndex < replayFrames.size() && (replayStep || !replayPaused)) {
@@ -5789,6 +4540,10 @@ int main(int argc, char* argv[]) {
         awaitingResponse = false;
         awaitingSensorAck = false;
         client.disconnect();
+        viewer->setTargetVisual(nullptr);
+        mouseForce = {};
+        poseGrabber = {};
+        pendingControlRequests.clear();
         clearSceneState();
       }
     }
@@ -7078,7 +5833,7 @@ int main(int argc, char* argv[]) {
             }
             if (drawIconTextButton(uiIcons, TcpViewerIconKind::Refresh, "Refresh", "refresh_servers")) {
               beaconReceiver.poll();
-              discoveredServers = beaconReceiver.servers();
+              discoveredServers = serverEntriesFromDiscovered(beaconReceiver.servers());
             }
             bool shownDetectedServer = false;
             for (const auto& server : discoveredServers) {

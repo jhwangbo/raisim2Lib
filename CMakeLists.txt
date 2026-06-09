@@ -15,7 +15,15 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
         set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "Build architecture for macOS packages." FORCE)
     endif()
 endif()
-set(RAISIM_VERSION 2.4.1 CACHE STRING "Default raisim release version to download when raisim is missing.")
+
+set(_raisim_expected_version 2.4.2)
+if(DEFINED CACHE{RAISIM_VERSION} AND NOT "${RAISIM_VERSION}" VERSION_EQUAL "${_raisim_expected_version}")
+    message(FATAL_ERROR
+        "RAISIM_VERSION is ${RAISIM_VERSION}, but this checkout expects ${_raisim_expected_version}. "
+        "Remove the stale CMake cache or configure with -DRAISIM_VERSION=${_raisim_expected_version}."
+    )
+endif()
+set(RAISIM_VERSION 2.4.2 CACHE STRING "Raisim release version to download.")
 project(raisim VERSION ${RAISIM_VERSION} LANGUAGES CXX)
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
@@ -27,7 +35,6 @@ option(RAISIM_EXAMPLE "Build example applications." TRUE)
 option(RAISIM_MATLAB "Build a matlab wrapper." FALSE)
 option(RAISIM_PY "Build a python wrapper." FALSE)
 option(RAISIM_DOC "Build a raisim documentation. You can find the latest doc in raisim.com." FALSE)
-option(RAISIM_CHECK_FOR_UPDATES "Check GitHub for newer raisim releases when configuring." TRUE)
 
 if(WIN32)
     set(_raisim_asset_platform "windows-x86")
@@ -111,36 +118,6 @@ function(_raisim_read_package_version prefix out_var)
         set(${out_var} "${CMAKE_MATCH_1}" PARENT_SCOPE)
     else()
         set(${out_var} "" PARENT_SCOPE)
-    endif()
-endfunction()
-
-function(_raisim_fetch_latest_release out_var error_var)
-    set(_raisim_latest_json "${CMAKE_CURRENT_BINARY_DIR}/downloads/raisim-latest-release.json")
-    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/downloads")
-    file(DOWNLOAD
-        "https://api.github.com/repos/raisimTech/raisim2Lib/releases/latest"
-        "${_raisim_latest_json}"
-        STATUS _raisim_latest_status
-        TIMEOUT 5
-        TLS_VERIFY ON
-        HTTPHEADER "Accept: application/vnd.github+json"
-    )
-
-    list(GET _raisim_latest_status 0 _raisim_latest_code)
-    if(NOT _raisim_latest_code EQUAL 0)
-        list(GET _raisim_latest_status 1 _raisim_latest_message)
-        set(${out_var} "" PARENT_SCOPE)
-        set(${error_var} "${_raisim_latest_code}: ${_raisim_latest_message}" PARENT_SCOPE)
-        return()
-    endif()
-
-    file(READ "${_raisim_latest_json}" _raisim_latest_contents)
-    if(_raisim_latest_contents MATCHES "\"tag_name\"[ \t\r\n]*:[ \t\r\n]*\"v?([0-9][^\"]*)\"")
-        set(${out_var} "${CMAKE_MATCH_1}" PARENT_SCOPE)
-        set(${error_var} "" PARENT_SCOPE)
-    else()
-        set(${out_var} "" PARENT_SCOPE)
-        set(${error_var} "Could not parse latest release tag from GitHub response." PARENT_SCOPE)
     endif()
 endfunction()
 
@@ -230,41 +207,46 @@ function(_raisim_download_release version)
 endfunction()
 
 _raisim_find_package_prefix(RAISIM_PREFIX)
-set(_raisim_latest_version "")
-set(_raisim_latest_error "")
-
-if(RAISIM_CHECK_FOR_UPDATES)
-    _raisim_fetch_latest_release(_raisim_latest_version _raisim_latest_error)
-    if(_raisim_latest_version STREQUAL "")
-        message(STATUS "Skipping raisim update check: ${_raisim_latest_error}")
-    else()
-        message(STATUS "Latest raisim release available online: ${_raisim_latest_version}")
-    endif()
-endif()
+set(_raisim_download_required FALSE)
+set(_raisim_download_reason "")
 
 if(RAISIM_PREFIX STREQUAL "")
-    if(NOT _raisim_latest_version STREQUAL "")
-        set(RAISIM_VERSION "${_raisim_latest_version}")
-    endif()
-    message(STATUS "No usable raisim package found. Downloading raisim ${RAISIM_VERSION}.")
-    _raisim_download_release("${RAISIM_VERSION}")
-    _raisim_find_package_prefix(RAISIM_PREFIX)
+    set(_raisim_download_required TRUE)
+    set(_raisim_download_reason "No usable raisim package found.")
 else()
     _raisim_read_package_version("${RAISIM_PREFIX}" _raisim_installed_version)
     if(_raisim_installed_version STREQUAL "")
-        message(STATUS "Using existing raisim package; could not determine installed version.")
+        set(_raisim_download_required TRUE)
+        set(_raisim_download_reason "Found raisim package at ${RAISIM_PREFIX}, but could not determine its version.")
+    elseif(NOT "${_raisim_installed_version}" VERSION_EQUAL "${RAISIM_VERSION}")
+        set(_raisim_download_required TRUE)
+        set(_raisim_download_reason "Found raisim package ${_raisim_installed_version} at ${RAISIM_PREFIX}, but this checkout requires ${RAISIM_VERSION}.")
     else()
-        message(STATUS "Found existing raisim package ${_raisim_installed_version}: ${RAISIM_PREFIX}")
+        message(STATUS "Found required raisim package ${_raisim_installed_version}: ${RAISIM_PREFIX}")
+    endif()
+endif()
+
+if(_raisim_download_required)
+    message(STATUS "${_raisim_download_reason} Downloading raisim ${RAISIM_VERSION}.")
+    _raisim_download_release("${RAISIM_VERSION}")
+    _raisim_find_package_prefix(RAISIM_PREFIX)
+
+    if(RAISIM_PREFIX STREQUAL "")
+        message(FATAL_ERROR "Could not find raisim package config after extraction.")
     endif()
 
-    if(NOT _raisim_latest_version STREQUAL ""
-            AND NOT _raisim_installed_version STREQUAL ""
-            AND _raisim_installed_version VERSION_LESS _raisim_latest_version)
-        message(STATUS
-            "A newer raisim release is available (${_raisim_installed_version} -> ${_raisim_latest_version}). "
-            "Run ./raisim_upgrade.sh or .\\raisim_upgrade.ps1 to upgrade."
+    _raisim_read_package_version("${RAISIM_PREFIX}" _raisim_installed_version)
+    if(_raisim_installed_version STREQUAL "")
+        message(FATAL_ERROR "Downloaded raisim ${RAISIM_VERSION}, but could not determine the installed package version.")
+    endif()
+
+    if(NOT "${_raisim_installed_version}" VERSION_EQUAL "${RAISIM_VERSION}")
+        message(FATAL_ERROR
+            "Downloaded raisim package ${_raisim_installed_version}, but this checkout requires ${RAISIM_VERSION}."
         )
     endif()
+
+    message(STATUS "Installed required raisim package ${_raisim_installed_version}: ${RAISIM_PREFIX}")
 endif()
 
 if(RAISIM_PREFIX STREQUAL "")
