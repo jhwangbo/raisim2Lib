@@ -1392,6 +1392,16 @@ glm::vec3 visualLocalPointToWorld(const VisualEntry& entry, const glm::vec3& loc
   return entry.lastPos + q * localPoint;
 }
 
+glm::vec3 mouseForceStartApplicationPoint(
+    const VisualEntry& entry, const glm::vec3& fallbackOffset, bool hasClickedWorldPoint,
+    const glm::vec3& clickedWorldPoint) {
+  if (hasClickedWorldPoint && std::isfinite(clickedWorldPoint.x) &&
+      std::isfinite(clickedWorldPoint.y) && std::isfinite(clickedWorldPoint.z)) {
+    return clickedWorldPoint;
+  }
+  return entry.lastPos + fallbackOffset;
+}
+
 bool projectWorldToViewport(
   const raisin::Camera& camera, const ViewerViewportState& viewport, const glm::vec3& world,
   ImVec2& screen) {
@@ -1466,7 +1476,7 @@ float computeAngleRadians(const glm::vec3& a, const glm::vec3& b, const glm::vec
   return std::acos(cosA);
 }
 
-bool readRulerWorldPointAtCursor(
+bool readWorldPointAtCursor(
   const raisin::Camera& camera, const ViewerViewportState& viewport, glm::vec3& world) {
   const int width = camera.rtWidth();
   const int height = camera.rtHeight();
@@ -4793,7 +4803,7 @@ int main(int argc, char* argv[]) {
     if (ruler.enabled && !mouseForce.active && viewportState.hovered &&
         ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
       glm::vec3 rulerPoint(0.0f);
-      if (readRulerWorldPointAtCursor(viewer->getCamera(), viewportState, rulerPoint)) {
+      if (readWorldPointAtCursor(viewer->getCamera(), viewportState, rulerPoint)) {
         appendRulerPoint(rulerPoint, "scene point");
       } else {
         lastStatus = "ruler pick missed";
@@ -4803,7 +4813,7 @@ int main(int argc, char* argv[]) {
     if (angle.enabled && !mouseForce.active && viewportState.hovered &&
         ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
       glm::vec3 picked(0.0f);
-      if (readRulerWorldPointAtCursor(viewer->getCamera(), viewportState, picked)) {
+      if (readWorldPointAtCursor(viewer->getCamera(), viewportState, picked)) {
         if (angle.picked >= 3) {
           angle.picked = 0;
         }
@@ -4957,7 +4967,9 @@ int main(int argc, char* argv[]) {
       int localBodyIdx = 0;
       const VisualEntry* entry = nullptr;
       raisin::Visuals* visual = nullptr;
+      glm::vec3 clickedWorldPoint{0.0f};
       bool fromPick = false;
+      bool hasClickedWorldPoint = false;
     };
     const auto resolveMouseForceStartTarget = [&]() {
       MouseForceStartTarget target;
@@ -4985,6 +4997,8 @@ int main(int argc, char* argv[]) {
             target.entry = pickedEntry;
             target.visual = pickedVisual;
             target.fromPick = true;
+            target.hasClickedWorldPoint =
+              readWorldPointAtCursor(viewer->getCamera(), viewportState, target.clickedWorldPoint);
           }
         }
       }
@@ -5009,12 +5023,21 @@ int main(int argc, char* argv[]) {
       } else {
         if (forceTarget.fromPick && forceTarget.visual) {
           viewer->setTargetVisual(forceTarget.visual);
+          requestedTag = forceTarget.tag;
+          requestedIndex = forceTarget.index;
+          requestedEntry = forceTarget.entry;
         }
-        const glm::vec3 applicationPoint = forceTarget.entry->lastPos + controlPointOffset;
+        const glm::vec3 applicationPoint = mouseForceStartApplicationPoint(
+          *forceTarget.entry, controlPointOffset, forceTarget.hasClickedWorldPoint,
+          forceTarget.clickedWorldPoint);
         ImVec2 anchorScreen = io.MousePos;
         ImVec2 applicationScreen;
-        if (isMouseWithinForceStartRadius(viewer->getCamera(), viewportState, *forceTarget.entry,
-            applicationPoint, io.MousePos, applicationScreen)) {
+        if (forceTarget.hasClickedWorldPoint &&
+            projectWorldToViewport(viewer->getCamera(), viewportState, applicationPoint,
+              applicationScreen)) {
+          anchorScreen = applicationScreen;
+        } else if (isMouseWithinForceStartRadius(viewer->getCamera(), viewportState,
+            *forceTarget.entry, applicationPoint, io.MousePos, applicationScreen)) {
           anchorScreen = applicationScreen;
         }
         mouseForce.active = true;
