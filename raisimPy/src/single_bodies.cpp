@@ -250,19 +250,24 @@ void init_single_bodies(py::module_ &m) {
 	    )mydelimiter")
 
 
-        .def("setPosition", py::overload_cast<const Eigen::Ref<const Eigen::Vector3d, Eigen::Unaligned> &>(&raisim::SingleBodyObject::setPosition), R"mydelimiter(
-	    Set the specified origin position.
+        .def("setPosition",
+             static_cast<void (raisim::SingleBodyObject::*)(
+                 const Eigen::Ref<const Eigen::Vector3d, Eigen::Unaligned> &)>(
+                 &raisim::SingleBodyObject::setPosition), R"mydelimiter(
+		    Set the specified origin position.
 
-	    Args:
-	        origin_position (np.array[float[3]]): origin position.
-	    )mydelimiter",
+		    Args:
+		        origin_position (np.array[float[3]]): origin position.
+		    )mydelimiter",
 	    py::arg("origin_position"))
 
 
-	    .def("setPosition", py::overload_cast<double, double, double>(&raisim::SingleBodyObject::setPosition), R"mydelimiter(
-	    Set the specified origin position.
+	    .def("setPosition",
+             static_cast<void (raisim::SingleBodyObject::*)(double, double, double)>(
+                 &raisim::SingleBodyObject::setPosition), R"mydelimiter(
+		    Set the specified origin position.
 
-	    Args:
+		    Args:
 	        x (float): x component of the origin position.
 	        y (float): y component of the origin position.
 	        z (float): z component of the origin position.
