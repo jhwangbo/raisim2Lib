@@ -19,7 +19,7 @@ Current Workflows
      - Main executable/API
    * - ``RaisimServer`` + rayrai TCP viewer
      - You want to inspect a running simulation from a separate viewer process.
-     - ``raisim::RaisimServer`` and ``rayrai_raisim_tcp_viewer``
+     - ``raisim::RaisimServer`` and ``rayrai_tcp_viewer``
    * - In-process rayrai
      - Rendering is part of your application, sensor pipeline, screenshot tool,
        benchmark, or custom UI.
@@ -32,7 +32,7 @@ Start the simulation server in your application, then launch the viewer binary:
 
 .. code-block:: bash
 
-   <raisim-install>/bin/rayrai_raisim_tcp_viewer
+   <raisim-install>/bin/rayrai_tcp_viewer
 
 The TCP viewer receives world state from ``RaisimServer`` and renders it with
 rayrai. Use it for normal debugging, camera control, collision-body inspection,

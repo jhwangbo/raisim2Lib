@@ -68,7 +68,7 @@ Rosetta shells, and ``macos-x86_64`` on Intel when that asset is available.
 Install ``libomp`` if you want OpenMP parallelism on macOS; without it, the C++
 vectorized environment compiles with a serial fallback.
 
-To visualize the policy, use ``rayrai_raisim_tcp_viewer`` as described in
+To visualize the policy, use ``rayrai_tcp_viewer`` as described in
 :doc:`Visualization`. The training script records policy performance every 200
 iterations. Older RaisimUnity/Unreal visualization workflows have been replaced;
 see :doc:`LegacyIntegrations` for migration notes.

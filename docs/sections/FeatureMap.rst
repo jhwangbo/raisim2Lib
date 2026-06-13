@@ -116,19 +116,12 @@ Visualization and tools
        ``rayrai_pbr_texture_maps``,
        ``rayrai_visual_asset_support``
      - :doc:`Examples`, :doc:`Rayrai`
-   * - Author and validate reusable scenes
-     - ``raisim_engine2``, ``raisim_engine2_headless``,
-       ``raisim_engine2_editor``, ``raisim_engine2::Document``
-     - :doc:`RaisimEngine2`, :doc:`Rayrai`
-   * - Generate offscreen renderer checks
-     - ``rayrai_feature_showcase``
-     - :doc:`Examples`, :doc:`BuildAndTest`
-   * - Benchmark rayrai
-     - ``rayrai_benchmark``, ``rayrai_complete_showcase_benchmark``,
-       ``rayrai_pbr_first_draw_benchmark``
+   * - Exercise sensor and rayrai rendering examples
+     - ``rayrai_rgb_camera``, ``rayrai_depth_camera``,
+       ``rayrai_lidar_pointcloud``, ``rayrai_complete_showcase``
      - :doc:`Examples`, :doc:`BuildAndTest`
    * - Tune simulation performance
-     - benchmark runner, collision settings, sleeping islands, solver settings
+     - timing examples, collision settings, sleeping islands, solver settings
      - :doc:`Performance`, :doc:`BuildAndTest`
 
 Build and repository workflow
