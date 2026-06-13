@@ -14,7 +14,7 @@ This page is excluded from the published docs, and the current examples CMake
 file does not register this source as an installed executable. Treat it as a
 source reference unless you register it in a local examples build.
 
-For visualization, use ``rayrai_raisim_tcp_viewer`` with RaisimServer-based
+For visualization, use ``rayrai_tcp_viewer`` with RaisimServer-based
 applications.
 
 Details

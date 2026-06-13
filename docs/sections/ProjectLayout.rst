@@ -2,9 +2,10 @@
 Project Layout
 #############################
 
-The current RaiSim source tree is organized around one top-level CMake project.
-This page maps the directories users most often need while building examples,
-tests, benchmarks, and rayrai tools.
+``raisim2Lib`` is the public package workspace. It provides binary RaiSim and
+rayrai packages, examples, wrappers, resources, and documentation. This page
+maps the directories users most often need while installing the package and
+building examples.
 
 Source Directories
 ==================
@@ -15,36 +16,28 @@ Source Directories
 
    * - Path
      - Purpose
-   * - ``include/raisim``
-     - Public RaiSim headers installed with the ``raisim`` CMake package.
-   * - ``src``
-     - RaiSim implementation sources.
-   * - ``test``
-     - CTest targets for core physics, objects, sensors, import/export, and
-       feature-specific behavior.
-   * - ``benchmark``
-     - Unified benchmark runner and individual benchmark implementations.
+   * - ``raisim``
+     - Platform-specific binary RaiSim package with headers, libraries, and
+       CMake config files.
+   * - ``rayrai``
+     - Platform-specific binary rayrai package with the renderer library, TCP
+       viewer runtime, headers, and CMake config files.
    * - ``examples``
-     - Source-tree examples, including compact current checkout targets named
-       ``example_*`` and package example sources under
-       ``../raisim2Lib/examples``.
-   * - ``visualizer/rayrai``
-     - rayrai renderer library, TCP viewer, rendering examples, benchmarks, and
-       renderer-focused tests.
-   * - ``raisim_engine2``
-     - Source-tree world authoring layer for ``.rscene`` scenes, RaiSim
-       instantiation, optional rayrai editor/viewport support, and Engine 2
-       tests/benchmarks.
-   * - ``res`` and ``rsc``
+     - C++ example sources and their CMake project. Targets use installed
+       executable names such as ``primitive_grid`` and ``rayrai_tcp_viewer``.
+   * - ``rsc``
      - Runtime resources such as robot models, meshes, textures, USD/glTF
        assets, and example data.
-   * - ``prebuilt/openusd``
-     - Mandatory OpenUSD runtime used by USD mesh loading on supported
-       platforms.
+   * - ``raisimPy``
+     - Optional Python wrapper build for the binary RaiSim package.
+   * - ``raisimGymTorch``
+     - Reinforcement-learning package built against the binary RaiSim package.
+   * - ``docs``
+     - Sphinx documentation sources and generated example pages.
    * - ``third_party``
-     - Bundled third-party libraries built as part of the source tree.
+     - Third-party code used by optional wrappers and docs tooling.
    * - ``cmake``
-     - CMake helpers and package config templates.
+     - CMake helpers for package discovery and local installation.
 
 Build Directories
 =================
@@ -58,37 +51,32 @@ clarity:
 
    * - Build directory
      - Typical use
-   * - ``build-release``
-     - Release examples and tests.
-   * - ``build-benchmark``
-     - Release benchmarks with ``RAISIM_BENCHMARK=ON``.
+   * - ``build``
+     - Default local build for examples and optional wrappers.
+   * - ``build-examples``
+     - Common local build directory for the example CMake project.
    * - ``build-debug``
      - Debug build for local debugging.
    * - ``build-docs``
-     - CMake-driven docs build that also generates Doxygen XML for Breathe.
+     - CMake-driven docs build.
 
-On Linux and macOS, source-tree executables remain in the CMake subdirectory
-that defines them. For example:
+On Linux and macOS, example executables built from ``raisim2Lib/examples`` are
+placed under the example build tree. Installed binary-package executables are
+under ``<raisim-install>/bin``. For example:
 
 .. code-block:: bash
 
-    ./build-release/examples/example_anymal_contacts
-    ./build-release/rayrai/rayrai_raisim_tcp_viewer
-    ./build-release/raisim_engine2/raisim_engine2
-    ./build-benchmark/benchmark/benchmarks
+    ./build-examples/primitive_grid
+    ./build-examples/rayrai_tcp_viewer
+    <raisim-install>/bin/primitive_grid
+    <raisim-install>/bin/rayrai_tcp_viewer
 
 On Windows, CMake places runtime executables under ``<build-dir>/bin``.
 
-The package example tree documented under :doc:`Examples` can contain grouped
+The package example tree documented under :doc:`Examples` contains grouped
 source directories such as ``src/server``, ``src/rayrai``, ``src/worlds``, and
-``src/xml`` even when the compact source checkout keeps only a subset of those
-examples. Target names, not source directory names, are the stable user-facing
-interface.
-
-Some older generated docs and package layouts used paths such as
-``build/examples`` or ``build-examples/examples``. For the current source tree,
-prefer the target's build subdirectory on Linux/macOS or ``<build-dir>/bin`` on
-Windows unless a specific installed package says otherwise.
+``src/xml``. Target names, not source directory names, are the stable
+user-facing interface.
 
 Installed Package Layout
 ========================
@@ -112,23 +100,17 @@ Where To Add New Things
 
    * - Change
      - Usual location
-   * - New RaiSim public API
-     - Header in ``include/raisim`` and implementation in ``src``.
-   * - New physics or importer test
-     - ``test`` plus a CTest registration in the existing test CMake flow.
-   * - New benchmark case
-     - ``benchmark`` and registration in the unified benchmark runner.
-   * - New user-facing example
-     - ``examples`` with an ``example_*`` target.
-   * - New rayrai renderer feature
-     - ``visualizer/rayrai`` with showcase/check image coverage when visual
-       output changes.
-   * - New Engine 2 authoring feature
-     - ``raisim_engine2`` with scene serialization, validation, bridge tests,
-       and benchmarks when authoring or instantiation behavior changes.
+   * - New user-facing C++ example
+     - ``examples/src`` plus a target registration in ``examples/CMakeLists.txt``.
+   * - New example resource
+     - ``rsc`` or ``examples/rsc``, depending on whether it is shared package
+       data or example-only data.
+   * - New Python wrapper behavior
+     - ``raisimPy``.
+   * - New RL package behavior
+     - ``raisimGymTorch``.
    * - New docs page
      - ``docs/sections`` and the relevant ``toctree`` in ``index.rst`` or a
        section index page.
 
-Keep examples focused on demonstrating APIs. Use tests for behavioral
-guarantees and benchmarks for timing claims.
+Keep examples focused on demonstrating the public binary-package APIs.

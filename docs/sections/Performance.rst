@@ -105,85 +105,45 @@ Disable sleeping when every object must remain numerically active every step, or
 when a benchmark is intended to measure the awake dynamics path. Use the
 ``island_sleep`` benchmark to quantify the effect for stack-like scenes.
 
-Benchmark Workflow
+Benchmark Examples
 ==================
 
-Build benchmarks with ``RAISIM_BENCHMARK=ON`` and run timing on one thread.
-Leave ``RAISIM_MUJOCO_BENCHMARK=ON`` (the default) when you want the runner to
-compare against MuJoCo in the same report; turn it off if MuJoCo is not
-available:
+``raisim2Lib`` ships standalone timing-oriented examples rather than a unified
+benchmark runner. Build the examples in Release mode and run timing commands on
+one thread:
 
 .. code-block:: bash
 
-  cmake -S . -B build-benchmark \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DRAISIM_BENCHMARK=ON \
-    -DRAISIM_MUJOCO_BENCHMARK=ON \
-    -DRAISIM_TEST=OFF
-  cmake --build build-benchmark --target benchmarks -j12
+  cmake -S examples -B /tmp/raisim2lib-examples -DCMAKE_BUILD_TYPE=Release
+  cmake --build /tmp/raisim2lib-examples \
+      --target anymal_standing_benchmark articulated_system_benchmark \
+               granular_media island_sleep_benchmark -j12
   OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-      ./build-benchmark/benchmark/benchmarks --all --backend=both --report --repeat 3
+      /tmp/raisim2lib-examples/anymal_standing_benchmark --fast
+  OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+      /tmp/raisim2lib-examples/articulated_system_benchmark
+  OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+      /tmp/raisim2lib-examples/island_sleep_benchmark --steps=12000
 
-``--backend`` accepts ``raisim``, ``mujoco``, or ``both`` (default). For
-apples-to-apples comparisons, both engine variants use identical step counts,
-timesteps, scene geometry, and iteration counts, and time only the simulation
-step loop. ``--report`` writes ``benchmark/report/benchmark_<timestamp>.json``
-which ``tools/repo_status_report.py`` reads when rendering the
-RaiSim-vs-MuJoCo chart in ``repo_status.html``.
+Installed binary packages can also provide these executables under
+``<raisim-install>/bin``.
 
-Representative benchmark IDs include:
+Representative timing examples include:
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 36 64
 
-   * - Benchmark
+   * - Executable
      - Use it for
-   * - ``world_integration``
-     - End-to-end stepping cost for a mixed world.
-   * - ``anymal_standing`` and ``anymal_falling``
-     - Articulated robot contact scenarios.
-   * - ``articulated_mesh_collision_modes``
-     - Construction behavior and preprocessing cost for articulated mesh
-       collision modes: ``ORIGINAL_MESH``, ``CONVEX_HULL``, and
-       ``CONVEX_APPROXIMATION``.
-   * - ``chain10_speed`` and ``chain20_speed``
-     - Articulated dynamics scaling with little collision work.
-   * - ``primitives`` and ``narrowphase``
-     - Primitive collision and narrowphase contact generation.
-   * - ``mesh_collider_speed`` and ``mesh_stack_plane``
-     - Mesh collision and mesh stack behavior.
-   * - ``mesh_collider_heightmap``, ``mesh_collider_plane``, and
-       ``mesh_heightmap_contact_check``
-     - Mesh contact against height maps, planes, and contact-check scenes.
-   * - ``model_asset_pipeline``
-     - Mesh preprocessing, cache reuse, and asset export path cost.
-   * - ``heightmap_lidar`` and ``depth_camera``
-     - CPU fallback sensor workloads; prefer rayrai sensor rendering for
-       RGB/depth observations when renderer output is available.
-   * - ``granular_dense_contact`` and ``granular_heightmap``
-     - Granular contact workloads.
-   * - ``granular_anymal_standing``, ``granular_lifecycle``, and
-       ``granular_validation``
-     - Robot-on-granular scenes, particle lifecycle, and validation scenarios.
-   * - ``deformable_cloth`` and ``deformable_cube_stack``
-     - Deformable solver and contact workloads.
-   * - ``deformable_dense_contact`` and ``deformable_mesh_*``
-     - Dense deformable contact and mesh-construction API variants.
-   * - ``island_sleep``
+   * - ``anymal_standing_benchmark``
+     - Headless articulated robot contact scenario.
+   * - ``articulated_system_benchmark``
+     - Articulated-system stepping cost.
+   * - ``granular_media``
+     - Granular bed interaction with a robot model.
+   * - ``island_sleep_benchmark``
      - Sleeping-island speedup and wake behavior.
-   * - ``rolling_spinning_friction`` and ``swept_ccd``
-     - Contact-model and continuous-collision-detection feature workloads.
-   * - ``ray_collision``, ``ray_speed``, and ``primitive_contact_record``
-     - Ray query and primitive contact microbenchmarks.
-
-List the current benchmark IDs and use benchmark-specific help to inspect
-options:
-
-.. code-block:: bash
-
-  ./build-benchmark/benchmark/benchmarks --list
-  ./build-benchmark/benchmark/benchmarks --bench world_integration -- --help
 
 For stable comparisons, run the same executable, compiler, build type, CPU
 governor, and benchmark arguments. Avoid comparing a visualized run against a
@@ -197,8 +157,10 @@ the experiment explicitly studies external parallelism. Running many worlds in
 parallel is an application-level design choice; it is different from changing the
 deterministic stepping behavior of one ``raisim::World``.
 
-For deterministic contact-solver iteration order, use
-``World::setContactSolverIterationOrder``. For reproducible benchmark numbers,
+``World::setContactSolverIterationOrder(order)`` sets the starting sweep
+direction for the next contact solve. The solver flips the stored direction
+after each solve, so reset it before each measured step only if the experiment
+requires the same starting sweep every time. For reproducible benchmark numbers,
 also control random seeds in the benchmark or application, keep visualization
 disabled unless measured, and pin the same benchmark arguments.
 
@@ -214,6 +176,6 @@ matrix every step.
 That does not make every simulation linear in model size. Collision detection,
 contact generation, solver coupling, deformable bodies, granular media, sensors,
 and rendering can dominate the wall time. Treat old headline kHz numbers as
-historical context, not as a guarantee for a current scene. The benchmark runner
-is the source of truth for the model, compiler, hardware, and build options in
-front of you.
+historical context, not as a guarantee for a current scene. Measure the package
+example or downstream application you actually run, with the compiler, hardware,
+and build options in front of you.
