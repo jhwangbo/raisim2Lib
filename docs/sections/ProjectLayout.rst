@@ -2,10 +2,12 @@
 Project Layout
 #############################
 
-``raisim2Lib`` is the public package workspace. It provides binary RaiSim and
-rayrai packages, examples, wrappers, resources, and documentation. This page
-maps the directories users most often need while installing the package and
-building examples.
+``raisim2Lib`` is the public package workspace. It downloads and uses binary
+RaiSim and rayrai packages, then provides examples, wrappers, resources, and
+documentation around those packages. It is not the RaiSim engine source tree,
+so engine-internal benchmark sources and implementation files are not available
+here. This page maps the directories users most often need while installing the
+package and building examples.
 
 Source Directories
 ==================

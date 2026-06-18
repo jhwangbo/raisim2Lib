@@ -2,15 +2,17 @@
 Performance
 #############################
 
-This page is a practical tuning guide for the current source tree. For commands
-that build and run benchmarks, see :doc:`BuildAndTest`.
+This page is a practical tuning guide for users of the ``raisim2Lib`` binary
+package workspace and for downstream applications linked against the downloaded
+RaiSim and rayrai packages. For commands that build and run package examples,
+see :doc:`BuildAndTest`.
 
 Fast scenes usually come from three choices:
 
 * keep collision geometry simple and intentional;
 * avoid creating more contacts than the task needs;
-* measure with the benchmark runner on one thread before changing solver or
-  modeling choices.
+* measure with timing-oriented package examples or your downstream workload on
+  one thread before changing solver or modeling choices.
 
 What Usually Costs Time
 =======================
@@ -105,11 +107,14 @@ Disable sleeping when every object must remain numerically active every step, or
 when a benchmark is intended to measure the awake dynamics path. Use the
 ``island_sleep`` benchmark to quantify the effect for stack-like scenes.
 
-Benchmark Examples
-==================
+Package Timing Examples
+=======================
 
-``raisim2Lib`` ships standalone timing-oriented examples rather than a unified
-benchmark runner. Build the examples in Release mode and run timing commands on
+``raisim2Lib`` ships standalone timing-oriented examples for binary package
+users. The RaiSim engine source tree has a separate unified benchmark runner
+used by maintainers for release validation, but that runner is not available in
+this workspace because ``raisim2Lib`` downloads RaiSim and rayrai as binary
+packages. Build the public examples in Release mode and run timing commands on
 one thread:
 
 .. code-block:: bash
@@ -145,9 +150,10 @@ Representative timing examples include:
    * - ``island_sleep_benchmark``
      - Sleeping-island speedup and wake behavior.
 
-For stable comparisons, run the same executable, compiler, build type, CPU
-governor, and benchmark arguments. Avoid comparing a visualized run against a
-headless run unless visualization is the measured workload.
+For stable comparisons, run the same executable, package version, compiler,
+build type, CPU governor, benchmark arguments, and repeat count. Run one timing
+process at a time. Avoid comparing a visualized run against a headless run
+unless visualization is the measured workload.
 
 Threading and Determinism
 =========================

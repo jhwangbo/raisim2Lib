@@ -3,10 +3,10 @@ Build, Test, and Benchmark
 #############################
 
 This page describes the public ``raisim2Lib`` package workflow. The workspace
-uses binary RaiSim and rayrai packages, then builds examples and optional
-wrappers against those packages. For installation and activation, see
-:doc:`Installation`. For repository layout and build output paths, see
-:doc:`ProjectLayout`.
+downloads RaiSim and rayrai as binary packages, then builds examples and
+optional wrappers against those packages. It does not contain the RaiSim engine
+source tree. For installation and activation, see :doc:`Installation`. For
+repository layout and build output paths, see :doc:`ProjectLayout`.
 
 Common CMake options
 ====================
@@ -63,8 +63,11 @@ build directory:
 Timing examples
 ===============
 
-``raisim2Lib`` includes standalone timing-oriented example executables. Run
-timing examples on one thread:
+``raisim2Lib`` includes standalone timing-oriented example executables. The
+full source-tree benchmark runner used for RaiSim release validation is not
+shipped in this binary-package workspace. Run package timing examples on one
+thread and repeat the same command several times when comparing package or scene
+changes:
 
 .. code-block:: bash
 
