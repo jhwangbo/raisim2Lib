@@ -94,7 +94,8 @@ void handleSignalQuit(int /*sig*/) {
 }
 
 constexpr int kDefaultPort = raisin::tcp_viewer::kDefaultPort;
-constexpr int kConnectTimeoutMs = 2000;
+constexpr int kManualConnectTimeoutMs = 2000;
+constexpr int kAutoConnectTimeoutMs = 100;
 constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
 constexpr float kRadToDeg = 180.0f / 3.14159265358979323846f;
 constexpr auto kAutoConnectInterval = std::chrono::seconds(3);
@@ -3776,7 +3777,7 @@ int main(int argc, char* argv[]) {
   bool contactForceAbsolute = false;     // false = relative (normalized to max), true = length = mag * scale
   bool forceTransparent = false;         // X-ray (transparent) — see-through bodies
   bool showBodyFrames = false;           // per-body coordinate axes
-  bool showComMarkers = false;           // per-body center-of-mass spheres
+  bool showComMarkers = readEnvBool("RAYRAI_TCP_VIEWER_SHOW_COM_MARKERS", false);
   bool showShortcutsHelp = false;        // help modal toggle
   float contactPointSize = 0.05f;
   float contactForceSize = 0.3f;
@@ -4035,6 +4036,22 @@ int main(int argc, char* argv[]) {
   auto nextAutoConnectAttempt = std::chrono::steady_clock::now();
   auto nextTcpUpdateRequestTime = std::chrono::steady_clock::now();
   auto clearSceneState = [&]() {
+    viewer->setTargetVisual(nullptr);
+    mouseForce = {};
+    poseGrabber = {};
+    pendingControlRequests.clear();
+    controlSelectionTag = 0;
+    controlSelectionIndex = -1;
+    controlPoseTag = 0;
+    controlPoseInitialized = false;
+    controlGc.clear();
+    controlGcTag = 0;
+    controlGcDirty = false;
+    comMarkers.clear();
+    if (bodyFramesNode) {
+      bodyFramesNode->poses.clear();
+      bodyFramesNode->enable(false);
+    }
     scene.clear();
     motionEstimates.clear();
     assetDiagnostics.clear();
@@ -4043,13 +4060,14 @@ int main(int argc, char* argv[]) {
     stats.unresolvedAssets = 0;
   };
   auto connectToEndpoint = [&](const ConnectionEntry& endpoint, bool verbose,
-                               const char* connectingStatus, const char* failureStatus) -> bool {
+                               const char* connectingStatus, const char* failureStatus,
+                               int timeoutMs = kManualConnectTimeoutMs) -> bool {
     if (inspector.active) {
       lastStatus = "close inspector to connect";
       return false;
     }
     lastStatus = connectingStatus;
-    if (client.connectTo(endpoint.host, endpoint.port, verbose, kConnectTimeoutMs)) {
+    if (client.connectTo(endpoint.host, endpoint.port, verbose, timeoutMs)) {
       lastStatus = "waiting for scene";
       awaitingResponse = false;
       awaitingSensorAck = false;
@@ -4176,6 +4194,10 @@ int main(int argc, char* argv[]) {
       std::cerr << "ERROR: --inspect failed: " << inspector.lastError << "\n";
     }
   }
+
+  const bool logExitFps = readEnvBool("RAYRAI_TCP_VIEWER_LOG_EXIT_FPS", false);
+  const auto fpsMeasureStart = std::chrono::steady_clock::now();
+  uint64_t fpsMeasureFrames = 0;
 
   while (!quit && !gSignalQuit.load(std::memory_order_relaxed)) {
     SDL_Event event;
@@ -4385,7 +4407,8 @@ int main(int argc, char* argv[]) {
       if (!normalizeConnectionEndpoint(host, port, endpoint)) {
         lastStatus = "invalid endpoint";
       } else {
-        connectToEndpoint(endpoint, false, "auto-connecting", "auto-connect failed");
+        connectToEndpoint(
+          endpoint, false, "auto-connecting", "auto-connect failed", kAutoConnectTimeoutMs);
       }
       nextAutoConnectAttempt = now + kAutoConnectInterval;
     }
@@ -4550,11 +4573,10 @@ int main(int argc, char* argv[]) {
         awaitingResponse = false;
         awaitingSensorAck = false;
         client.disconnect();
-        viewer->setTargetVisual(nullptr);
-        mouseForce = {};
-        poseGrabber = {};
-        pendingControlRequests.clear();
         clearSceneState();
+        requestedTag = 0;
+        requestedIndex = 0;
+        requestedEntry = nullptr;
       }
     }
 
@@ -5185,6 +5207,7 @@ int main(int argc, char* argv[]) {
     }
     frameSerial++;
     stats.frames++;
+    fpsMeasureFrames++;
     // Headless deferred --inspect: load only after warmup has had time to tick.
     if (options.inspectAfterFrames >= 0 && !options.inspectorPath.empty() &&
         !inspector.active && frameSerial == options.inspectAfterFrames) {
@@ -5372,6 +5395,9 @@ int main(int argc, char* argv[]) {
         }
         if (drawIconTextButton(uiIcons, TcpViewerIconKind::Home, "Restart Replay", "restart_replay")) {
           clearSceneState();
+          requestedTag = 0;
+          requestedIndex = 0;
+          requestedEntry = nullptr;
           replayIndex = 0;
           replayStart = std::chrono::steady_clock::now();
           replayBaseMicros = replayFrames.empty() ? 0 : replayFrames.front().timeMicros;
@@ -5916,6 +5942,9 @@ int main(int argc, char* argv[]) {
               awaitingSensorAck = false;
               lastStatus = "disconnected";
               clearSceneState();
+              requestedTag = 0;
+              requestedIndex = 0;
+              requestedEntry = nullptr;
             }
           }
 
@@ -7183,6 +7212,19 @@ int main(int argc, char* argv[]) {
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     SDL_GL_SwapWindow(window);
+  }
+
+  if (logExitFps) {
+    const double elapsedSeconds =
+      std::chrono::duration<double>(std::chrono::steady_clock::now() - fpsMeasureStart).count();
+    const double fps = elapsedSeconds > 1e-9
+      ? static_cast<double>(fpsMeasureFrames) / elapsedSeconds
+      : 0.0;
+    std::cerr << "[rayrai tcp viewer fps] frames=" << fpsMeasureFrames
+              << " seconds=" << std::fixed << std::setprecision(3) << elapsedSeconds
+              << " fps=" << std::setprecision(1) << fps
+              << " connected=" << (client.isConnected() ? "yes" : "no")
+              << " auto_connect=" << (autoConnect ? "yes" : "no") << "\n";
   }
 
   if (settingsDirty || settingsSavePending) {
