@@ -63,6 +63,7 @@ Use this documentation in this order if you are new to RaiSim:
    sections/BuildAndTest
    sections/ProjectLayout
    sections/Performance
+   sections/Benchmark
    sections/Troubleshooting
    sections/Changelog
    sections/License
