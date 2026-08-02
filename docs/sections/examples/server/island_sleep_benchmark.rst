@@ -19,15 +19,18 @@ into one stack to wake that island and propagate motion.
 Run
 ====
 
-Build and run the example (it always launches the RaiSim TCP server):
+Build and run the example on one thread. It launches a RaiSim TCP server, so
+start the packaged viewer separately when you want to inspect the islands:
 
 .. code-block:: bash
 
-    <raisim-install>/bin/island_sleep_benchmark --steps=12000
+    OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+      ./build-examples/examples/island_sleep_benchmark --steps=12000
+    ./rayrai/bin/rayrai_raisim_tcp_viewer
 
 Arguments
 =========
 
 * ``--steps=``: number of simulation steps to run (default: 12000).
-* ``--hit-step=``: step index to launch the wake sphere (default: steps/2).
-
+* ``--hit-step=``: step index to launch the wake sphere (default: ``2500``;
+  clamped to the last step for shorter runs).

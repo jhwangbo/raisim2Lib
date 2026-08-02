@@ -6,20 +6,26 @@ Overview
 ========
 Runs the RaisimServer in a manual socket loop and updates sensors only when the client requests them. This shows how to drive synchronous visualization and sensor updates.
 
-Source Status
-=============
+Target And Source
+=================
+
+CMake target: ``synchronous_server_update``.
+
 Source file: ``examples/src/server/synchronous_server_update.cpp``.
 
-This page is excluded from the published docs, and the current examples CMake
-file does not register this source as an installed executable. Treat it as a
-source reference unless you register it in a local examples build.
+Run the build-tree example and connect with the packaged viewer:
 
-For visualization, use ``rayrai_tcp_viewer`` with RaisimServer-based
-applications.
+.. code-block:: bash
+
+   ./build-examples/examples/synchronous_server_update
+   ./rayrai/bin/rayrai_raisim_tcp_viewer
 
 Details
 =======
 - Runs RaisimServer in synchronous request/response mode.
 - Manually accepts a TCP connection and processes sensor update requests.
-- Uses VISUALIZER RGB/depth sensors with ``needsSensorUpdate()``.
-
+- Configures RGB/depth cameras with ``MeasurementSource::MANUAL`` and gates
+  request processing with ``needsSensorUpdate()``.
+- Uses ``setupSocket()``, ``acceptConnection()``, ``waitForMessageFromClient()``,
+  ``processRequests()``, and ``closeConnection()`` instead of
+  ``launchServer()``.

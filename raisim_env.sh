@@ -59,9 +59,22 @@ __raisim_prepend_path() {
   echo "Added to ${__raisim_lib_var}: ${entry}"
 }
 
-__raisim_prepend_path "${RAISIM_DIR}/raisim/lib"
-__raisim_prepend_path "${RAISIM_DIR}/rayrai/lib"
+__raisim_prepend_package_lib() {
+  local package_name="$1"
+  local legacy_lib="${RAISIM_DIR}/${package_name}/${RAISIM_OS}/lib"
+  local flat_lib="${RAISIM_DIR}/${package_name}/lib"
 
+  if [[ -d "${legacy_lib}" ]]; then
+    __raisim_prepend_path "${legacy_lib}"
+  else
+    __raisim_prepend_path "${flat_lib}"
+  fi
+}
+
+__raisim_prepend_package_lib "raisim"
+__raisim_prepend_package_lib "rayrai"
+
+unset -f __raisim_prepend_package_lib
 unset -f __raisim_prepend_path
 unset __raisim_lib_var
 unset __raisim_env_dir

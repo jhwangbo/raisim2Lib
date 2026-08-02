@@ -16,9 +16,6 @@ exclude_patterns = [
     ".venv/**",
     "sections/Visualizers.rst",
     "sections/examples/maps/*.rst",
-    "sections/examples/server/island_sleep_benchmark.rst",
-    "sections/examples/server/sensor_suite.rst",
-    "sections/examples/server/synchronous_server_update.rst",
 ]
 
 # General information about the project.
@@ -40,6 +37,9 @@ def read_raisim_version():
     raise RuntimeError(f"Could not parse RAISIM_VERSION from {root_cmake}")
 
 
+# Keep Sphinx package metadata tied to the released binary selected by the
+# root CMake project. An upcoming changelog entry may intentionally be one
+# version ahead until the package version is bumped as part of the release.
 version = read_raisim_version()
 release = version
 rst_epilog = f"""
