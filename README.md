@@ -53,7 +53,7 @@ cd $HOME/raisim2Lib
 source ./raisim_env.sh
 export RAISIM_LOCAL_INSTALL_ROOT=$PWD
 cmake -S . -B build-examples -DCMAKE_BUILD_TYPE=Release -DRAISIM_EXAMPLE=ON
-cmake --build build-examples --parallel
+cmake --build build-examples --parallel 10
 ```
 
 The source-built example executables are written to `build-examples/examples`:
@@ -80,7 +80,7 @@ cd $HOME/raisim2Lib
 source ./raisim_env.sh
 export RAISIM_LOCAL_INSTALL_ROOT=$PWD
 cmake -S . -B build-examples -DCMAKE_BUILD_TYPE=Release -DRAISIM_EXAMPLE=ON
-cmake --build build-examples --parallel
+cmake --build build-examples --parallel 10
 ```
 
 The source-built example executables are written to `build-examples/examples`:
