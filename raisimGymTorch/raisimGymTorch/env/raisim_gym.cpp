@@ -8,6 +8,7 @@
 #include <nanobind/eigen/dense.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
+#include <type_traits>
 #ifdef RAISIMGYM_TORCH_WITH_LIBTORCH
 #include <torch/script.h>
 #include <torch/torch.h>
@@ -22,12 +23,23 @@ namespace nb = nanobind;
 using namespace raisim;
 int THREAD_COUNT = 1;
 
+template<typename Environment, typename = void>
+struct ParallelizeVisualEnvironment : std::false_type {};
+
+template<typename Environment>
+struct ParallelizeVisualEnvironment<
+    Environment,
+    std::void_t<decltype(Environment::kParallelizeVisualEnvironment)>>
+    : std::bool_constant<Environment::kParallelizeVisualEnvironment> {};
+
 #ifndef ENVIRONMENT_NAME
   #define ENVIRONMENT_NAME RaisimGymEnv
 #endif
 
 NB_MODULE(RAISIMGYM_TORCH_ENV_NAME, m) {
-  using EnvType = VectorizedEnvironment<ENVIRONMENT, ENVIRONMENT::kStaticSchedule>;
+  using EnvType = VectorizedEnvironment<ENVIRONMENT,
+                                        ENVIRONMENT::kStaticSchedule,
+                                        ParallelizeVisualEnvironment<ENVIRONMENT>::value>;
   py::class_<EnvType>(m, RSG_MAKE_STR(ENVIRONMENT_NAME))
     .def(py::init<std::string, std::string>(), py::arg("resourceDir"), py::arg("cfg"))
     .def("init", &EnvType::init)

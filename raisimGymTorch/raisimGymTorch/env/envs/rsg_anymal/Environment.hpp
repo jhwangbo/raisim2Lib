@@ -15,12 +15,15 @@ class ENVIRONMENT : public RaisimGymEnv {
 
  public:
   static constexpr bool kStaticSchedule = false;
+  // Physics steps already synchronize with RaisimServer through its mutex.
+  static constexpr bool kParallelizeVisualEnvironment = true;
 
   explicit ENVIRONMENT(const std::string& resourceDir, const Yaml::Node& cfg, bool visualizable) :
       RaisimGymEnv(resourceDir, cfg), visualizable_(visualizable), normDist_(0, 1) {
 
     /// create world
     world_ = std::make_unique<raisim::World>();
+    world_->setSleepingEnabled(false);
 
     /// add objects
     anymal_ = world_->addArticulatedSystem(resourceDir_+"/anymal/urdf/anymal.urdf");
@@ -34,8 +37,8 @@ class ENVIRONMENT : public RaisimGymEnv {
     nJoints_ = gvDim_ - 6;
 
     /// initialize containers
-    gc_.setZero(gcDim_); gc_init_.setZero(gcDim_);
-    gv_.setZero(gvDim_); gv_init_.setZero(gvDim_);
+    gc_init_.setZero(gcDim_);
+    gv_init_.setZero(gvDim_);
     pTarget_.setZero(gcDim_); vTarget_.setZero(gvDim_); pTarget12_.setZero(nJoints_);
 
     /// this is nominal configuration of anymal
@@ -107,19 +110,20 @@ class ENVIRONMENT : public RaisimGymEnv {
   }
 
   void updateObservation() {
-    anymal_->getState(gc_, gv_);
+    const auto& gc = anymal_->getGeneralizedCoordinate();
+    const auto& gv = anymal_->getGeneralizedVelocity();
     raisim::Vec<4> quat;
     raisim::Mat<3,3> rot;
-    quat[0] = gc_[3]; quat[1] = gc_[4]; quat[2] = gc_[5]; quat[3] = gc_[6];
+    quat[0] = gc[3]; quat[1] = gc[4]; quat[2] = gc[5]; quat[3] = gc[6];
     raisim::quatToRotMat(quat, rot);
-    bodyLinearVel_ = rot.e().transpose() * gv_.segment(0, 3);
-    bodyAngularVel_ = rot.e().transpose() * gv_.segment(3, 3);
+    bodyLinearVel_ = rot.e().transpose() * gv.e().segment(0, 3);
+    bodyAngularVel_ = rot.e().transpose() * gv.e().segment(3, 3);
 
-    obDouble_ << gc_[2], /// body height
+    obDouble_ << gc[2], /// body height
         rot.e().row(2).transpose(), /// body orientation
-        gc_.tail(12), /// joint angles
+        gc.e().tail(12), /// joint angles
         bodyLinearVel_, bodyAngularVel_, /// body linear&angular velocity
-        gv_.tail(12); /// joint velocity
+        gv.e().tail(12); /// joint velocity
   }
 
   void observe(Eigen::Ref<EigenVec> ob) final {
@@ -145,7 +149,7 @@ class ENVIRONMENT : public RaisimGymEnv {
   int gcDim_, gvDim_, nJoints_;
   bool visualizable_ = false;
   raisim::ArticulatedSystem* anymal_;
-  Eigen::VectorXd gc_init_, gv_init_, gc_, gv_, pTarget_, pTarget12_, vTarget_;
+  Eigen::VectorXd gc_init_, gv_init_, pTarget_, pTarget12_, vTarget_;
   double terminalRewardCoeff_ = -10.;
   Eigen::VectorXd actionMean_, actionStd_, obDouble_;
   Eigen::Vector3d bodyLinearVel_, bodyAngularVel_;

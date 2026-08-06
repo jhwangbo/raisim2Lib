@@ -24,11 +24,6 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Install Python deps:
-```
-python -m pip install -r requirements.txt
-```
-
 Optional (stable-baselines3 example):
 - gym
 - stable-baselines3

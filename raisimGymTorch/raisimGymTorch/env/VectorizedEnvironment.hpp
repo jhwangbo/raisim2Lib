@@ -22,7 +22,7 @@ namespace raisim {
 
 int THREAD_COUNT;
 
-template<class ChildEnvironment, bool StaticSchedule = false>
+template<class ChildEnvironment, bool StaticSchedule = false, bool ParallelizeVisualEnvironment = false>
 class VectorizedEnvironment {
 
  public:
@@ -91,7 +91,7 @@ class VectorizedEnvironment {
   }
 
   void observe(Eigen::Ref<EigenRowMajorMat> ob, bool updateStatistics) {
-    if (render_ && num_envs_ > 0) {
+    if (render_ && num_envs_ > 0 && !ParallelizeVisualEnvironment) {
       environments_[0]->observe(ob.row(0));
       if constexpr (StaticSchedule) {
 #pragma omp parallel for schedule(static)
@@ -102,16 +102,14 @@ class VectorizedEnvironment {
         for (int i = 1; i < num_envs_; i++)
           environments_[i]->observe(ob.row(i));
       }
-    } else {
-      if constexpr (StaticSchedule) {
+    } else if constexpr (StaticSchedule) {
 #pragma omp parallel for schedule(static)
-        for (int i = 0; i < num_envs_; i++)
-          environments_[i]->observe(ob.row(i));
-      } else {
+      for (int i = 0; i < num_envs_; i++)
+        environments_[i]->observe(ob.row(i));
+    } else {
 #pragma omp parallel for schedule(auto)
-        for (int i = 0; i < num_envs_; i++)
-          environments_[i]->observe(ob.row(i));
-      }
+      for (int i = 0; i < num_envs_; i++)
+        environments_[i]->observe(ob.row(i));
     }
 
     if (normalizeObservation_)
@@ -147,7 +145,7 @@ class VectorizedEnvironment {
   void step(Eigen::Ref<EigenRowMajorMat> action,
             Eigen::Ref<EigenVec> reward,
             Eigen::Ref<EigenBoolVec> done) {
-    if (render_ && num_envs_ > 0) {
+    if (render_ && num_envs_ > 0 && !ParallelizeVisualEnvironment) {
       perAgentStep(0, action, reward, done);
       if constexpr (StaticSchedule) {
 #pragma omp parallel for schedule(static)
@@ -158,16 +156,14 @@ class VectorizedEnvironment {
         for (int i = 1; i < num_envs_; i++)
           perAgentStep(i, action, reward, done);
       }
-    } else {
-      if constexpr (StaticSchedule) {
+    } else if constexpr (StaticSchedule) {
 #pragma omp parallel for schedule(static)
-        for (int i = 0; i < num_envs_; i++)
-          perAgentStep(i, action, reward, done);
-      } else {
+      for (int i = 0; i < num_envs_; i++)
+        perAgentStep(i, action, reward, done);
+    } else {
 #pragma omp parallel for schedule(auto)
-        for (int i = 0; i < num_envs_; i++)
-          perAgentStep(i, action, reward, done);
-      }
+      for (int i = 0; i < num_envs_; i++)
+        perAgentStep(i, action, reward, done);
     }
   }
 
