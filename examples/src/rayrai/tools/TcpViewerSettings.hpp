@@ -84,6 +84,8 @@ struct ViewerSettings {
   float skyTimeOfDayHours = 13.0f;
   float skyLatitude = 37.0f;
   float skyLongitude = 127.0f;
+  bool skyAutomaticUtcOffset = true;
+  float skyUtcOffsetHours = 9.0f;
   int skyYear = 2026;
   int skyMonth = 5;
   int skyDay = 8;

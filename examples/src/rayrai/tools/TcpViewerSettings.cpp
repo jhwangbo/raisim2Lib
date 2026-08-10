@@ -505,6 +505,7 @@ void sanitizeViewerSettings(ViewerSettings& settings) {
   settings.skyTimeOfDayHours = clampValue(settings.skyTimeOfDayHours, 0.0f, 24.0f);
   settings.skyLatitude = clampValue(settings.skyLatitude, -89.9f, 89.9f);
   settings.skyLongitude = clampValue(settings.skyLongitude, -180.0f, 180.0f);
+  settings.skyUtcOffsetHours = clampValue(settings.skyUtcOffsetHours, -12.0f, 14.0f);
   settings.skyYear = clampValue(settings.skyYear, 1900, 2500);
   settings.skyMonth = clampValue(settings.skyMonth, 1, 12);
   settings.skyDay = clampValue(settings.skyDay, 1, 31);
@@ -633,6 +634,8 @@ void loadViewerSettings(ViewerSettings& settings) {
     else if (key == "sky_time_of_day_hours") settings.skyTimeOfDayHours = parseFloatValue(value, settings.skyTimeOfDayHours);
     else if (key == "sky_latitude") settings.skyLatitude = parseFloatValue(value, settings.skyLatitude);
     else if (key == "sky_longitude") settings.skyLongitude = parseFloatValue(value, settings.skyLongitude);
+    else if (key == "sky_automatic_utc_offset") settings.skyAutomaticUtcOffset = parseBoolValue(value, settings.skyAutomaticUtcOffset);
+    else if (key == "sky_utc_offset_hours") settings.skyUtcOffsetHours = parseFloatValue(value, settings.skyUtcOffsetHours);
     else if (key == "sky_year") settings.skyYear = parseIntValue(value, settings.skyYear);
     else if (key == "sky_month") settings.skyMonth = parseIntValue(value, settings.skyMonth);
     else if (key == "sky_day") settings.skyDay = parseIntValue(value, settings.skyDay);
@@ -775,6 +778,8 @@ void saveViewerSettings(const ViewerSettings& settings) {
   output << "sky_time_of_day_hours: " << settings.skyTimeOfDayHours << "\n";
   output << "sky_latitude: " << settings.skyLatitude << "\n";
   output << "sky_longitude: " << settings.skyLongitude << "\n";
+  output << "sky_automatic_utc_offset: " << settings.skyAutomaticUtcOffset << "\n";
+  output << "sky_utc_offset_hours: " << settings.skyUtcOffsetHours << "\n";
   output << "sky_year: " << settings.skyYear << "\n";
   output << "sky_month: " << settings.skyMonth << "\n";
   output << "sky_day: " << settings.skyDay << "\n";

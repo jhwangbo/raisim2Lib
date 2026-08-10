@@ -2096,6 +2096,8 @@ void copyWeatherSettingsToViewerSettings(
   settings.skyTimeOfDayHours = weather.timeOfDayHours;
   settings.skyLatitude = weather.latitude;
   settings.skyLongitude = weather.longitude;
+  settings.skyAutomaticUtcOffset = weather.automaticUtcOffset;
+  settings.skyUtcOffsetHours = weather.utcOffsetHours;
   settings.skyYear = weather.year;
   settings.skyMonth = weather.month;
   settings.skyDay = weather.day;
@@ -2141,10 +2143,14 @@ void copyWeatherPresetToSettings(ViewerSettings& settings, int preset) {
   }
   const bool skyEnabled = settings.skyEnabled;
   const bool weatherEnabled = settings.skyWeatherEnabled;
+  const bool automaticUtcOffset = settings.skyAutomaticUtcOffset;
+  const float utcOffsetHours = settings.skyUtcOffsetHours;
   copyWeatherSettingsToViewerSettings(
     settings, raisin::RayraiWindow::defaultWeatherSettings(weatherPresetFromIndex(clampedPreset)));
   settings.skyEnabled = skyEnabled;
   settings.skyWeatherEnabled = weatherEnabled;
+  settings.skyAutomaticUtcOffset = automaticUtcOffset;
+  settings.skyUtcOffsetHours = utcOffsetHours;
   settings.skyWeatherPreset = clampedPreset;
 }
 
@@ -2162,6 +2168,8 @@ raisin::RayraiWindow::WeatherSettings weatherSettingsFromViewerSettings(
   weather.timeOfDayHours = settings.skyTimeOfDayHours;
   weather.latitude = settings.skyLatitude;
   weather.longitude = settings.skyLongitude;
+  weather.automaticUtcOffset = settings.skyAutomaticUtcOffset;
+  weather.utcOffsetHours = settings.skyUtcOffsetHours;
   weather.year = settings.skyYear;
   weather.month = settings.skyMonth;
   weather.day = settings.skyDay;
@@ -5528,7 +5536,16 @@ int main(int argc, char* argv[]) {
           detailChanged |= drawInlineLabelSliderFloat("render_sky_latitude",
             "Latitude", &settings.skyLatitude, -89.9f, 89.9f, "%.1f");
           detailChanged |= drawInlineLabelSliderFloat("render_sky_longitude",
-            "Longitude", &settings.skyLongitude, -180.0f, 180.0f, "%.1f");
+            "Longitude (deg)", &settings.skyLongitude, -180.0f, 180.0f, "%.2f deg");
+          detailChanged |= ImGui::Checkbox(
+            "Automatic solar offset", &settings.skyAutomaticUtcOffset);
+          ImGui::BeginDisabled(settings.skyAutomaticUtcOffset);
+          detailChanged |= drawInlineLabelSliderFloat("render_sky_utc_offset",
+            "Civil UTC offset", &settings.skyUtcOffsetHours, -12.0f, 14.0f, "%+.2f h");
+          ImGui::EndDisabled();
+          if (settings.skyAutomaticUtcOffset) {
+            ImGui::Text("Solar offset: %+.2f h", settings.skyLongitude / 15.0f);
+          }
           detailChanged |= drawInlineLabelSliderInt("render_sky_year",
             "Year", &settings.skyYear, 1900, 2500);
           detailChanged |= drawInlineLabelSliderInt("render_sky_month",
