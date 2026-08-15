@@ -122,6 +122,7 @@ create_executable(material_static_friction src/server/materials/material_static_
 create_executable(procedural_heightmap src/server/terrain/procedural_heightmap.cpp)
 create_executable(heightmap_from_png src/server/terrain/heightmap_from_png.cpp)
 create_executable(dynamic_heightmap src/server/terrain/dynamic_heightmap.cpp)
+create_executable(heightmap_primitive_drop src/server/terrain/heightmap_primitive_drop.cpp)
 
 # Sensors.
 create_executable(ray_casting src/server/sensors/ray_casting.cpp)
