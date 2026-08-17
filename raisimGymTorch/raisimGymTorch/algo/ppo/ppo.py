@@ -27,20 +27,26 @@ class PPO:
                  use_clipped_value_loss=True,
                  log_dir='run',
                  device='cpu',
-                 shuffle_batch=True):
+                 shuffle_batch=True,
+                 shared_observations=False,
+                 returns_calculator=None):
 
         # PPO components
         self.actor = actor
         self.critic = critic
-        self.storage = RolloutStorage(num_envs, num_transitions_per_env, actor.obs_shape, critic.obs_shape, actor.action_shape, device)
+        self.storage = RolloutStorage(
+            num_envs, num_transitions_per_env, actor.obs_shape, critic.obs_shape,
+            actor.action_shape, device, shared_observations, returns_calculator)
 
         if shuffle_batch:
             self.batch_sampler = self.storage.mini_batch_generator_shuffle
         else:
             self.batch_sampler = self.storage.mini_batch_generator_inorder
 
-        self.optimizer = optim.Adam([*self.actor.parameters(), *self.critic.parameters()], lr=learning_rate)
+        self.trainable_parameters = [*self.actor.parameters(), *self.critic.parameters()]
+        self.optimizer = optim.Adam(self.trainable_parameters, lr=learning_rate)
         self.device = device
+        self.device_type = torch.device(device).type
 
         # env parameters
         self.num_transitions_per_env = num_transitions_per_env
@@ -79,16 +85,23 @@ class PPO:
             self.critic_hidden = torch.zeros(1, num_envs, hidden_size, device=self.device, dtype=torch.float32)
 
     def act(self, actor_obs):
-        self.actor_obs = actor_obs
         with torch.no_grad():
-            obs_tc = torch.from_numpy(actor_obs).to(self.device, dtype=torch.float32)
-            if self.is_recurrent:
-                if self.actor_hidden.dtype != obs_tc.dtype:
-                    self.actor_hidden = self.actor_hidden.to(dtype=obs_tc.dtype)
-                self.actions, self.actions_log_prob, self.actor_hidden = self.actor.sample_recurrent(obs_tc, self.actor_hidden)
-                self.actor_hidden = self.actor_hidden.detach()
-            else:
-                self.actions, self.actions_log_prob = self.actor.sample(obs_tc)
+            return self.act_inference(actor_obs)
+
+    def act_inference(self, actor_obs):
+        """Act while the caller owns a surrounding no-grad context."""
+        self.actor_obs = actor_obs
+        obs_tc = torch.from_numpy(actor_obs)
+        if obs_tc.dtype != torch.float32 or self.device_type != 'cpu':
+            obs_tc = obs_tc.to(self.device, dtype=torch.float32)
+        if self.is_recurrent:
+            if self.actor_hidden.dtype != obs_tc.dtype:
+                self.actor_hidden = self.actor_hidden.to(dtype=obs_tc.dtype)
+            self.actions, self.actions_log_prob, self.actor_hidden = \
+                self.actor.sample_recurrent(obs_tc, self.actor_hidden)
+            self.actor_hidden = self.actor_hidden.detach()
+        else:
+            self.actions, self.actions_log_prob = self.actor.sample(obs_tc)
         return self.actions
 
     def step(self, value_obs, rews, dones):
@@ -181,12 +194,14 @@ class PPO:
                 else:
                     value_loss = (returns_batch - value_batch).pow(2).mean()
 
-                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean()
+                loss = surrogate_loss + self.value_loss_coef * value_loss
+                if self.entropy_coef:
+                    loss = loss - self.entropy_coef * entropy_batch.mean()
 
                 # Gradient step
                 self.optimizer.zero_grad()
                 loss.backward()
-                nn.utils.clip_grad_norm_([*self.actor.parameters(), *self.critic.parameters()], self.max_grad_norm)
+                nn.utils.clip_grad_norm_(self.trainable_parameters, self.max_grad_norm)
                 self.optimizer.step()
 
                 if log_this_iteration:
@@ -254,11 +269,13 @@ class PPO:
             else:
                 value_loss = (returns_flat - values_flat).pow(2).mean()
 
-            loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_flat.mean()
+            loss = surrogate_loss + self.value_loss_coef * value_loss
+            if self.entropy_coef:
+                loss = loss - self.entropy_coef * entropy_flat.mean()
 
             self.optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_([*self.actor.parameters(), *self.critic.parameters()], self.max_grad_norm)
+            nn.utils.clip_grad_norm_(self.trainable_parameters, self.max_grad_norm)
             self.optimizer.step()
 
             if log_this_iteration:
