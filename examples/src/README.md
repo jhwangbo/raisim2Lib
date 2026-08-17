@@ -89,6 +89,7 @@ TCP viewer.
 - `articulated_system_benchmark`: run standalone timing scenes for ANYmal,
   Atlas, and chain articulated systems.
 - `dynamic_heightmap`: animate a heightmap and color map through RaisimServer.
+- `heightmap_primitive_drop`: drop 432 mixed primitives onto a procedural heightmap.
 - `rayrai_coacd_mesh_approximation`: original mesh versus CoACD convex approximation mesh
   collision parts through `World::addMesh`.
 - `rayrai_visual_asset_support`: inspect realistic textured URDF assets while

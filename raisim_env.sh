@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-  echo "This script must be sourced: source /path/to/raisimLib/raisim_env.sh"
-  exit 1
+if [[ -n "${BASH_VERSION:-}" ]]; then
+  __raisim_env_file="${BASH_SOURCE[0]}"
+  if [[ "${__raisim_env_file}" == "$0" ]]; then
+    echo "This script must be sourced: source /path/to/raisimLib/raisim_env.sh"
+    exit 1
+  fi
+elif [[ -n "${ZSH_VERSION:-}" ]]; then
+  __raisim_env_file="${(%):-%x}"
+else
+  echo "This script must be sourced from Bash or Zsh."
+  return 1 2>/dev/null || exit 1
 fi
 
-__raisim_env_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+__raisim_env_dir="$(cd "$(dirname "${__raisim_env_file}")" && pwd)"
 export RAISIM_DIR="${__raisim_env_dir}"
 
 if [[ -z "${RAISIM_OS:-}" ]]; then
@@ -47,7 +55,12 @@ __raisim_prepend_path() {
   if [[ -z "${entry}" || ! -d "${entry}" ]]; then
     return
   fi
-  local current_value="${!__raisim_lib_var}"
+  local current_value
+  if [[ -n "${ZSH_VERSION:-}" ]]; then
+    current_value="${(P)__raisim_lib_var}"
+  else
+    current_value="${!__raisim_lib_var}"
+  fi
   case ":${current_value}:" in
     *":${entry}:"*) return ;;
   esac
@@ -78,3 +91,4 @@ unset -f __raisim_prepend_package_lib
 unset -f __raisim_prepend_path
 unset __raisim_lib_var
 unset __raisim_env_dir
+unset __raisim_env_file
