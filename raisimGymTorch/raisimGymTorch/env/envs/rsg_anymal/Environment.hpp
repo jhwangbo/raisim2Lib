@@ -14,7 +14,7 @@ namespace raisim {
 class ENVIRONMENT : public RaisimGymEnv {
 
  public:
-  static constexpr bool kStaticSchedule = false;
+  static constexpr bool kStaticSchedule = true;
   // Physics steps already synchronize with RaisimServer through its mutex.
   static constexpr bool kParallelizeVisualEnvironment = true;
 
@@ -79,7 +79,19 @@ class ENVIRONMENT : public RaisimGymEnv {
     }
   }
 
-  void init() final { }
+  void init() final {
+    updateIntegrationSteps();
+  }
+
+  void setSimulationTimeStep(double dt) {
+    RaisimGymEnv::setSimulationTimeStep(dt);
+    updateIntegrationSteps();
+  }
+
+  void setControlTimeStep(double dt) {
+    RaisimGymEnv::setControlTimeStep(dt);
+    updateIntegrationSteps();
+  }
 
   void reset() final {
     anymal_->setState(gc_init_, gv_init_);
@@ -95,10 +107,15 @@ class ENVIRONMENT : public RaisimGymEnv {
 
     anymal_->setPdTarget(pTarget_, vTarget_);
 
-    for(int i=0; i< int(control_dt_ / simulation_dt_ + 1e-10); i++){
-      if(server_) server_->lockVisualizationServerMutex();
-      world_->integrate();
-      if(server_) server_->unlockVisualizationServerMutex();
+    if (server_) {
+      for (int i = 0; i < integrationSteps_; i++) {
+        server_->lockVisualizationServerMutex();
+        world_->integrate();
+        server_->unlockVisualizationServerMutex();
+      }
+    } else {
+      for (int i = 0; i < integrationSteps_; i++)
+        world_->integrate();
     }
 
     updateObservation();
@@ -146,7 +163,11 @@ class ENVIRONMENT : public RaisimGymEnv {
   void curriculumUpdate() { };
 
  private:
-  int gcDim_, gvDim_, nJoints_;
+  void updateIntegrationSteps() {
+    integrationSteps_ = int(control_dt_ / simulation_dt_ + 1e-10);
+  }
+
+  int gcDim_, gvDim_, nJoints_, integrationSteps_ = 0;
   bool visualizable_ = false;
   raisim::ArticulatedSystem* anymal_;
   Eigen::VectorXd gc_init_, gv_init_, pTarget_, pTarget12_, vTarget_;
