@@ -16,14 +16,14 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
     endif()
 endif()
 
-set(_raisim_expected_version 2.4.6)
+set(_raisim_expected_version 2.5.0)
 if(DEFINED CACHE{RAISIM_VERSION} AND NOT "${RAISIM_VERSION}" VERSION_EQUAL "${_raisim_expected_version}")
     message(FATAL_ERROR
         "RAISIM_VERSION is ${RAISIM_VERSION}, but this checkout expects ${_raisim_expected_version}. "
         "Remove the stale CMake cache or configure with -DRAISIM_VERSION=${_raisim_expected_version}."
     )
 endif()
-set(RAISIM_VERSION 2.4.6 CACHE STRING "Raisim release version to download.")
+set(RAISIM_VERSION 2.5.0 CACHE STRING "Raisim release version to download.")
 project(raisim VERSION ${RAISIM_VERSION} LANGUAGES CXX)
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
@@ -276,65 +276,92 @@ message("-- Detected OS/Architecture is ${RAISIM_OS}")
 if(WIN32)
     install(
         DIRECTORY
-        ${RAISIM_PREFIX}/bin
+        "${RAISIM_PREFIX}/bin"
         DESTINATION
-        ${CMAKE_INSTALL_PREFIX}
+        "."
     )
 else()
     install(
         DIRECTORY
-        ${RAISIM_PREFIX}/lib
+        "${RAISIM_PREFIX}/lib"
         DESTINATION
-        ${CMAKE_INSTALL_PREFIX}
+        "."
     )
 endif()
 
 install(
         DIRECTORY
-        ${RAISIM_PREFIX}/include
+        "${RAISIM_PREFIX}/include"
         DESTINATION
-        ${CMAKE_INSTALL_PREFIX}
+        "."
 )
 
 if(NOT RAYRAI_PREFIX STREQUAL "")
+    set(_rayrai_lib_install_options)
+    set(_raisim_openusd_dir "${RAISIM_PREFIX}/lib/openusd")
+    set(_rayrai_openusd_dir "${RAYRAI_PREFIX}/lib/openusd")
+
+    if(IS_SYMLINK "${_rayrai_openusd_dir}")
+        if(NOT EXISTS "${_rayrai_openusd_dir}")
+            message(FATAL_ERROR
+                "rayrai OpenUSD runtime symlink is dangling: ${_rayrai_openusd_dir}"
+            )
+        endif()
+
+        get_filename_component(_raisim_openusd_realpath "${_raisim_openusd_dir}" REALPATH)
+        get_filename_component(_rayrai_openusd_realpath "${_rayrai_openusd_dir}" REALPATH)
+        if(_rayrai_openusd_realpath STREQUAL _raisim_openusd_realpath)
+            # The release archive reuses the RaiSim OpenUSD runtime through this
+            # symlink. RaiSim's lib directory is installed above, so copying the
+            # alias would collide with the real destination directory.
+            list(APPEND _rayrai_lib_install_options PATTERN "openusd" EXCLUDE)
+        else()
+            message(FATAL_ERROR
+                "rayrai OpenUSD runtime symlink must resolve to ${_raisim_openusd_dir}, "
+                "but it resolves to ${_rayrai_openusd_realpath}"
+            )
+        endif()
+    endif()
+
     install(
         DIRECTORY
-        ${RAYRAI_PREFIX}/lib
+        "${RAYRAI_PREFIX}/lib"
         DESTINATION
-        ${CMAKE_INSTALL_PREFIX}
+        "."
+        ${_rayrai_lib_install_options}
     )
 
     install(
         DIRECTORY
-        ${RAYRAI_PREFIX}/include
+        "${RAYRAI_PREFIX}/include"
         DESTINATION
-        ${CMAKE_INSTALL_PREFIX}
+        "."
     )
 
-    if(EXISTS ${RAYRAI_PREFIX}/share)
+    if(EXISTS "${RAYRAI_PREFIX}/share")
         install(
             DIRECTORY
-            ${RAYRAI_PREFIX}/share
+            "${RAYRAI_PREFIX}/share"
             DESTINATION
-            ${CMAKE_INSTALL_PREFIX}
+            "."
         )
     endif()
 
-    if(EXISTS ${RAYRAI_PREFIX}/bin)
+    if(EXISTS "${RAYRAI_PREFIX}/bin")
         install(
             DIRECTORY
-            ${RAYRAI_PREFIX}/bin
+            "${RAYRAI_PREFIX}/bin"
             DESTINATION
-            ${CMAKE_INSTALL_PREFIX}
+            "."
         )
     endif()
 
-    if(EXISTS ${RAYRAI_PREFIX}/cmake)
+    if(EXISTS "${RAYRAI_PREFIX}/cmake")
         install(
             DIRECTORY
-            ${RAYRAI_PREFIX}/cmake
+            "${RAYRAI_PREFIX}/cmake"
             DESTINATION
-            ${CMAKE_INSTALL_PREFIX}
+            "."
         )
     endif()
 endif()

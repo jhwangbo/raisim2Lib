@@ -1,147 +1,61 @@
 ## raisimGymTorch
 
-Python + C++ (nanobind) bindings for RaiSim gym environments, plus training scripts.
+Python and C++ bindings for training RaiSim environments with PyTorch.
 
-### Dependencies
-C++/build:
-- CMake >= 3.10
-- A C++17 compiler
-- OpenMP on Linux/Windows. On macOS, OpenMP is used when available; otherwise the C++ vectorized environment builds with a serial fallback.
-- Eigen3 (already vendored at `thirdParty/Eigen3`)
-- raisim (provided in this repo under `raisim/`)
-- rayrai (provided in this repo under `rayrai/`; the exported CMake package supplies SDL2 and rendering dependencies)
+### Requirements
 
-Python (runtime + training):
-- Python >= 3.9 (nanobind requirement)
-- See `requirements.txt`
+- Python 3.9 or newer
+- CMake 3.10 or newer
+- A C++20 compiler
+- OpenMP
 
-### Virtual Environment (recommended)
-From `raisimGymTorch/`:
-```
+RaiSim, rayrai, Eigen, and nanobind are included in the parent repository.
+
+### Install and build
+
+From this directory:
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
+python setup.py build_ext --inplace
 ```
 
-Optional (stable-baselines3 example):
-- gym
-- stable-baselines3
+This creates an optimized Release build and uses the PyTorch installation from
+the active environment. Additional compiler flags are not required.
 
-### Build (uses the active Python)
-From `raisimGymTorch/`:
-```
-python setup.py develop
-```
+### Train ANYmal
 
-On macOS, source the package environment before building so the runtime loader
-can find the downloaded or unpacked RaiSim and rayrai libraries:
-
-```
-cd ..
-source ./raisim_env.sh
-cd raisimGymTorch
-python setup.py develop
+```bash
+python raisimGymTorch/env/envs/rsg_anymal/runner.py --mode train
 ```
 
-If `../raisim` or `../rayrai` is missing, the CMake configure step downloads
-the matching macOS release package automatically (`macos-arm64` on Apple
-Silicon, including Rosetta shells, and `macos-x86_64` on Intel when that asset
-is available). Install `libomp` if you want OpenMP parallelism on macOS;
-otherwise the build uses the serial fallback.
+The runner automatically uses the optimized C++ environment, C++ return
+calculation, CPU thread settings, and C++ policy evaluation.
+If the C++ TorchScript evaluator is unavailable, evaluation automatically falls
+back to PyTorch on CUDA when available, otherwise CPU.
 
-Debug build:
-```
-python setup.py develop --Debug
-```
+To use another network, change `build_actor_network()` and
+`build_critic_network()` in `runner.py`. If it needs a special evaluation
+wrapper, also change `build_evaluation_network()`. No C++ changes are needed.
 
-If CMake cannot locate raisim or Eigen in a non-standard setup, pass:
-```
-python setup.py develop --CMAKE_PREFIX_PATH /path/to/prefix
-```
+Resume from a checkpoint:
 
-### setup.py arguments
-This project supports standard setuptools/distutils commands (e.g. `develop`, `build_ext`, `install`), plus the custom flags below. Custom flags must come after the command.
-
-Custom flags:
-- `--Debug`: build with `CMAKE_BUILD_TYPE=Debug` and create `<ENV_NAME>_debug_app`.
-- `--CMAKE_PREFIX_PATH <path>`: forwarded to CMake for non-standard installs (e.g., raisim or Eigen).
-- `--Libtorch`: enables libtorch support (`-DRAISIMGYM_TORCH_WITH_LIBTORCH=ON`).
-
-If `--Libtorch` is set and no Torch path is provided, the build will try to download LibTorch into `thirdParty/libtorch`.
-Control this with:
-- `LIBTORCH_URL`: explicit LibTorch zip URL (overrides all other settings).
-- `LIBTORCH_CHANNEL`: `nightly` (default) or `stable`.
-- `LIBTORCH_CUDA`: `cpu` (default) or a CUDA tag like `cu118`.
-- `LIBTORCH_VERSION`: required for `stable` channel (e.g., `2.8.0`).
-- `LIBTORCH_SKIP_DOWNLOAD=1`: disable auto-download.
-
-Examples:
-```
-python setup.py build_ext --inplace --Debug
-python setup.py develop --CMAKE_PREFIX_PATH /path/to/prefix
-python setup.py develop --Libtorch
+```bash
+python raisimGymTorch/env/envs/rsg_anymal/runner.py \
+  --mode retrain --weight /path/to/full_N.pt
 ```
 
-### Run training (anymal example)
-```
-cd raisimGymTorch/env/envs/rsg_anymal
-python runner.py
+Test a checkpoint:
+
+```bash
+python raisimGymTorch/env/envs/rsg_anymal/tester.py \
+  --weight /path/to/full_N.pt
 ```
 
-### Test a policy
-```
-python raisimGymTorch/env/envs/rsg_anymal/tester.py --weight data/roughTerrain/FOLDER_NAME/full_XXX.pt
-```
+### Benchmark
 
-### Retrain from a checkpoint
+```bash
+python raisimGymTorch/env/envs/rsg_anymal/benchmark_rollout.py
 ```
-python raisimGymTorch/env/envs/rsg_anymal/runner.py --mode retrain --weight data/roughTerrain/FOLDER_NAME/full_XXX.pt
-```
-
-### Recurrent PPO (GRU) training flow
-RNN training follows the split-and-pad strategy used in rsl_rl: trajectories are split at `done`, padded to a common
-length, and masked so padded steps do not contribute to loss.
-
-Data flow (rollout → storage):
-```
-for t in 0..T-1:
-  obs_t        -> actor GRU -> action_t
-  critic_obs_t -> critic GRU -> value_t
-  store: obs_t, critic_obs_t, action_t, log_prob_t, reward_t, done_t
-  store: actor_hidden_t, critic_hidden_t
-```
-
-Split and pad trajectories (done boundaries):
-```
-T x N rollout            ->         padded trajectories (max_len x num_traj)
-
-env0: a1 a2 a3 a4 | a5 a6              a1 a2 a3 a4
-env1: b1 b2 | b3 b4 b5 | b6      =>    a5 a6  0  0
-                                        b1 b2  0  0
-                                        b3 b4 b5 0
-                                        b6  0  0  0
-
-masks (same shape):
-  T = valid, F = padded
-  T T T T
-  T T F F
-  T T F F
-  T T T F
-  T F F F
-```
-
-Recurrent PPO update (masked):
-```
-for each mini-batch of trajectories:
-  logits_seq, _ = actor GRU(padded_obs, init_hidden)
-  values_seq, _ = critic GRU(padded_critic_obs, init_hidden)
-
-  flatten -> apply mask -> compute PPO loss only on valid steps
-```
-
-This avoids per-timestep Python loops and keeps the GRU training efficient while handling episode boundaries correctly.
-
-### Debugging
-1. Build with debug symbols: `python setup.py develop --Debug` (this produces `<ENV_NAME>_debug_app`)
-2. Run under Valgrind or a debugger (CLion works well).

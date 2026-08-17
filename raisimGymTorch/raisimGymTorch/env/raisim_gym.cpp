@@ -8,14 +8,13 @@
 #include <nanobind/eigen/dense.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
-#include <type_traits>
-#ifdef RAISIMGYM_TORCH_WITH_LIBTORCH
-#include <torch/script.h>
-#include <torch/torch.h>
-#include <unordered_map>
+#include <chrono>
 #include <cstring>
-#endif
+#include <stdexcept>
+#include <thread>
+#include <type_traits>
 #include "Environment.hpp"
+#include "TorchPolicyBridge.hpp"
 #include "VectorizedEnvironment.hpp"
 
 namespace py = nanobind;
@@ -47,6 +46,7 @@ NB_MODULE(RAISIMGYM_TORCH_ENV_NAME, m) {
     .def("observe", &EnvType::observe)
     .def("observeCritic", &EnvType::observeCritic)
     .def("step", &EnvType::step)
+    .def("stepAndObserve", &EnvType::stepAndObserve)
     .def("setSeed", &EnvType::setSeed)
     .def("getRewardInfo", &EnvType::getRewardInfo, py::rv_policy::reference_internal)
     .def("getRewardNames", &EnvType::getRewardNames)
@@ -58,6 +58,8 @@ NB_MODULE(RAISIMGYM_TORCH_ENV_NAME, m) {
     .def("getCriticObDim", &EnvType::getCriticObDim)
     .def("getActionDim", &EnvType::getActionDim)
     .def("getNumOfEnvs", &EnvType::getNumOfEnvs)
+    .def("getNumThreads", &EnvType::getNumThreads)
+    .def("setNumThreads", &EnvType::setNumThreads)
     .def("turnOnVisualization", &EnvType::turnOnVisualization)
     .def("turnOffVisualization", &EnvType::turnOffVisualization)
     .def("stopRecordingVideo", &EnvType::stopRecordingVideo)
@@ -82,169 +84,139 @@ NB_MODULE(RAISIMGYM_TORCH_ENV_NAME, m) {
     .def("seed", &NormalSampler::seed)
     .def("sample", &NormalSampler::sample);
 
+  // Preserve NumPy's float64 GAE recurrence while moving its 400 small Python
+  // iterations into one native call. Normalization remains in RolloutStorage.
+  m.def("compute_returns",
+        [](nb::ndarray<const float, nb::ndim<3>, nb::c_contig, nb::device::cpu> rewards,
+           nb::ndarray<const bool, nb::ndim<3>, nb::c_contig, nb::device::cpu> dones,
+           nb::ndarray<const float, nb::ndim<3>, nb::c_contig, nb::device::cpu> values,
+           nb::ndarray<const float, nb::ndim<2>, nb::c_contig, nb::device::cpu> lastValues,
+           nb::ndarray<float, nb::ndim<3>, nb::c_contig, nb::device::cpu> returns,
+           double gamma,
+           double lambda) {
+          const size_t steps = rewards.shape(0);
+          const size_t envs = rewards.shape(1);
+          if (rewards.shape(2) != 1 || dones.shape(0) != steps ||
+              dones.shape(1) != envs || dones.shape(2) != 1 ||
+              values.shape(0) != steps || values.shape(1) != envs ||
+              values.shape(2) != 1 || returns.shape(0) != steps ||
+              returns.shape(1) != envs || returns.shape(2) != 1 ||
+              lastValues.shape(0) != envs || lastValues.shape(1) != 1) {
+            throw std::runtime_error("invalid generalized-advantage array shape");
+          }
+
+          const float *rewardData = rewards.data();
+          const bool *doneData = dones.data();
+          const float *valueData = values.data();
+          const float *lastValueData = lastValues.data();
+          float *returnData = returns.data();
+          nb::gil_scoped_release release;
+#pragma omp parallel for schedule(static)
+          for (size_t env = 0; env < envs; ++env) {
+            double advantage = 0.0;
+            for (size_t step = steps; step-- > 0;) {
+              const size_t index = step * envs + env;
+              const double nextValue = step + 1 == steps
+                                           ? static_cast<double>(lastValueData[env])
+                                           : static_cast<double>(valueData[index + envs]);
+              const double notTerminal = doneData[index] ? 0.0 : 1.0;
+              const double discounted = (notTerminal * gamma) * nextValue;
+              const double delta =
+                  (static_cast<double>(rewardData[index]) + discounted) -
+                  static_cast<double>(valueData[index]);
+              const double trace = ((notTerminal * gamma) * lambda) * advantage;
+              advantage = delta + trace;
+              returnData[index] = static_cast<float>(
+                  advantage + static_cast<double>(valueData[index]));
+            }
+          }
+        },
+        py::arg("rewards"), py::arg("dones"), py::arg("values"),
+        py::arg("last_values"), py::arg("returns"), py::arg("gamma"),
+        py::arg("lambda"));
+
 #ifdef RAISIMGYM_TORCH_WITH_LIBTORCH
   using nb::c_contig;
   using nb::device::cpu;
 
-  class TorchRolloutRunner {
+  class TorchPolicyRunner {
    public:
-    TorchRolloutRunner(EnvType &env, const std::string &module_path, int seed = 0)
-        : env_(env), sampler_(env.getActionDim()) {
-      sampler_.seed(seed);
-      module_ = torch::jit::load(module_path);
-      module_.eval();
-      module_.to(at::kCPU);
+    using RewardArray =
+        nb::ndarray<float, nb::ndim<3>, c_contig, cpu>;
+
+    TorchPolicyRunner(EnvType &env, const std::string &modulePath)
+        : env_(env),
+          policy_(nullptr),
+          observations_(env.getNumOfEnvs(), env.getObDim()),
+          actions_(env.getNumOfEnvs(), env.getActionDim()),
+          rewards_(env.getNumOfEnvs()),
+          dones_(env.getNumOfEnvs()) {
+      load(modulePath);
     }
 
-    void update_weights(nb::dict weights) {
-      torch::NoGradGuard no_grad;
-      auto params = module_.named_parameters(/*recurse=*/true);
-      std::unordered_map<std::string, torch::Tensor> param_map;
-      param_map.reserve(params.size());
-      for (const auto &p : params) {
-        param_map.emplace(p.name, p.value);
-      }
-
-      for (auto item : weights) {
-        const std::string name = nb::cast<std::string>(item.first);
-        auto it = param_map.find(name);
-        if (it == param_map.end()) {
-          throw std::runtime_error("Unknown parameter name in state dict: " + name);
-        }
-        auto arr = nb::cast<nb::ndarray<float, c_contig, cpu>>(item.second);
-        std::vector<int64_t> sizes;
-        sizes.reserve(arr.ndim());
-        for (size_t i = 0; i < arr.ndim(); ++i) {
-          sizes.push_back(static_cast<int64_t>(arr.shape(i)));
-        }
-        auto src = torch::from_blob(arr.data(), sizes, torch::TensorOptions().dtype(torch::kFloat32));
-        it->second.copy_(src);
-      }
+    ~TorchPolicyRunner() {
+      raisimgym_torch_policy_destroy(policy_);
     }
 
-    void rollout(nb::ndarray<float, c_contig, cpu> actor_obs,
-                 nb::ndarray<float, c_contig, cpu> critic_obs,
-                 nb::ndarray<float, c_contig, cpu> actions,
-                 nb::ndarray<float, c_contig, cpu> rewards,
-                 nb::ndarray<bool, c_contig, cpu> dones,
-                 nb::ndarray<float, c_contig, cpu> mu,
-                 nb::ndarray<float, c_contig, cpu> sigma,
-                 nb::ndarray<float, c_contig, cpu> logp,
-                 nb::ndarray<float, c_contig, cpu> std_vec,
-                 bool update_obs_stats) {
-      if (actor_obs.ndim() != 3) {
-        throw std::runtime_error("actor_obs must be 3D [T, N, O]");
-      }
-      if (critic_obs.ndim() != 3) {
-        throw std::runtime_error("critic_obs must be 3D [T, N, O]");
-      }
-      if (actions.ndim() != 3) {
-        throw std::runtime_error("actions must be 3D [T, N, A]");
-      }
-      if (mu.ndim() != 3 || sigma.ndim() != 3) {
-        throw std::runtime_error("mu/sigma must be 3D [T, N, A]");
-      }
-      if (rewards.ndim() != 3 || dones.ndim() != 3 || logp.ndim() != 3) {
-        throw std::runtime_error("rewards/dones/logp must be 3D [T, N, 1]");
-      }
-      if (std_vec.ndim() != 1) {
-        throw std::runtime_error("std_vec must be 1D [A]");
+    TorchPolicyRunner(const TorchPolicyRunner &) = delete;
+    TorchPolicyRunner &operator=(const TorchPolicyRunner &) = delete;
+
+    void load(const std::string &modulePath) {
+      void *newPolicy = raisimgym_torch_policy_create(modulePath.c_str());
+      if (newPolicy == nullptr)
+        throw std::runtime_error(raisimgym_torch_policy_error());
+      raisimgym_torch_policy_destroy(policy_);
+      policy_ = newPolicy;
+    }
+
+    void run(RewardArray rewardInformation, double controlDt = 0.0) {
+      const size_t stepCount = rewardInformation.shape(0);
+      const size_t numEnvs = static_cast<size_t>(env_.getNumOfEnvs());
+      const size_t observationDim = static_cast<size_t>(env_.getObDim());
+      const size_t rewardDim = static_cast<size_t>(env_.getRewardInfo().cols());
+      if (rewardInformation.shape(1) != numEnvs ||
+          rewardInformation.shape(2) != rewardDim) {
+        throw std::runtime_error(
+            "reward_information must have shape [steps, num_envs, reward_dim]");
       }
 
-      const int64_t T = static_cast<int64_t>(actor_obs.shape(0));
-      const int64_t N = static_cast<int64_t>(actor_obs.shape(1));
-      const int64_t O = static_cast<int64_t>(actor_obs.shape(2));
-      const int64_t A = static_cast<int64_t>(actions.shape(2));
-
-      if (critic_obs.shape(0) != actor_obs.shape(0) ||
-          critic_obs.shape(1) != actor_obs.shape(1) ||
-          critic_obs.shape(2) != actor_obs.shape(2)) {
-        throw std::runtime_error("actor_obs and critic_obs shapes must match");
-      }
-      if (actions.shape(0) != actor_obs.shape(0) ||
-          actions.shape(1) != actor_obs.shape(1)) {
-        throw std::runtime_error("actions shape mismatch");
-      }
-      if (mu.shape(0) != actor_obs.shape(0) || mu.shape(1) != actor_obs.shape(1) || mu.shape(2) != actions.shape(2) ||
-          sigma.shape(0) != actor_obs.shape(0) || sigma.shape(1) != actor_obs.shape(1) || sigma.shape(2) != actions.shape(2)) {
-        throw std::runtime_error("mu/sigma shape mismatch");
-      }
-      if (rewards.shape(0) != actor_obs.shape(0) || rewards.shape(1) != actor_obs.shape(1) || rewards.shape(2) != 1) {
-        throw std::runtime_error("rewards shape mismatch");
-      }
-      if (dones.shape(0) != actor_obs.shape(0) || dones.shape(1) != actor_obs.shape(1) || dones.shape(2) != 1) {
-        throw std::runtime_error("dones shape mismatch");
-      }
-      if (logp.shape(0) != actor_obs.shape(0) || logp.shape(1) != actor_obs.shape(1) || logp.shape(2) != 1) {
-        throw std::runtime_error("logp shape mismatch");
-      }
-      if (std_vec.shape(0) != static_cast<size_t>(A)) {
-        throw std::runtime_error("std_vec length mismatch");
-      }
-
-      float *actor_ptr = actor_obs.data();
-      float *critic_ptr = critic_obs.data();
-      float *action_ptr = actions.data();
-      float *reward_ptr = rewards.data();
-      bool *done_ptr = dones.data();
-      float *mu_ptr = mu.data();
-      float *sigma_ptr = sigma.data();
-      float *logp_ptr = logp.data();
-      float *std_ptr = std_vec.data();
-
-      Eigen::Map<EigenVec> std_map(std_ptr, A);
-
+      float *rewardInfo = rewardInformation.data();
+      const size_t valuesPerStep = numEnvs * rewardDim;
+      const auto frameDuration = std::chrono::duration<double>(controlDt);
       nb::gil_scoped_release release;
-      torch::NoGradGuard no_grad;
-
-      for (int64_t t = 0; t < T; ++t) {
-        Eigen::Map<EigenRowMajorMat> obs_map(actor_ptr + t * N * O, N, O);
-        env_.observe(obs_map, update_obs_stats);
-
-        if (critic_ptr != actor_ptr) {
-          std::memcpy(critic_ptr + t * N * O, obs_map.data(), sizeof(float) * N * O);
+      for (size_t step = 0; step < stepCount; ++step) {
+        const auto frameStart = std::chrono::steady_clock::now();
+        env_.observe(observations_, false);
+        if (!raisimgym_torch_policy_forward(
+                policy_, observations_.data(), numEnvs, observationDim,
+                actions_.data(), static_cast<size_t>(actions_.cols())))
+          throw std::runtime_error(raisimgym_torch_policy_error());
+        env_.step(actions_, rewards_, dones_);
+        std::memcpy(rewardInfo + step * valuesPerStep,
+                    env_.getRewardInfo().data(),
+                    valuesPerStep * sizeof(float));
+        if (controlDt > 0.0) {
+          const auto elapsed = std::chrono::steady_clock::now() - frameStart;
+          if (elapsed < frameDuration)
+            std::this_thread::sleep_for(frameDuration - elapsed);
         }
-
-        auto obs_tensor = torch::from_blob(obs_map.data(), {N, O}, torch::TensorOptions().dtype(torch::kFloat32));
-        auto out = module_.forward({obs_tensor}).toTensor().contiguous();
-        float *mean_ptr = out.data_ptr<float>();
-
-        std::memcpy(mu_ptr + t * N * A, mean_ptr, sizeof(float) * N * A);
-        for (int64_t i = 0; i < N; ++i) {
-          std::memcpy(sigma_ptr + t * N * A + i * A, std_ptr, sizeof(float) * A);
-        }
-
-        Eigen::Map<EigenRowMajorMat> mean_map(mean_ptr, N, A);
-        Eigen::Map<EigenRowMajorMat> action_map(action_ptr + t * N * A, N, A);
-        Eigen::Map<EigenVec> logp_map(logp_ptr + t * N, N);
-        sampler_.sample(mean_map, std_map, action_map, logp_map);
-
-        Eigen::Map<EigenVec> reward_map(reward_ptr + t * N, N);
-        Eigen::Map<EigenBoolVec> done_map(done_ptr + t * N, N);
-        env_.step(action_map, reward_map, done_map);
       }
     }
 
    private:
     EnvType &env_;
-    NormalSampler sampler_;
-    torch::jit::Module module_;
+    void *policy_;
+    EigenRowMajorMat observations_;
+    EigenRowMajorMat actions_;
+    EigenVec rewards_;
+    EigenBoolVec dones_;
   };
 
-  py::class_<TorchRolloutRunner>(m, "TorchRolloutRunner")
-    .def(py::init<EnvType &, const std::string &, int>(),
-         py::arg("env"), py::arg("module_path"), py::arg("seed") = 0)
-    .def("update_weights", &TorchRolloutRunner::update_weights, py::arg("state_dict"))
-    .def("rollout", &TorchRolloutRunner::rollout,
-         py::arg("actor_obs"),
-         py::arg("critic_obs"),
-         py::arg("actions"),
-         py::arg("rewards"),
-         py::arg("dones"),
-         py::arg("mu"),
-         py::arg("sigma"),
-         py::arg("logp"),
-         py::arg("std_vec"),
-         py::arg("update_obs_stats") = true);
+  py::class_<TorchPolicyRunner>(m, "TorchPolicyRunner")
+    .def(py::init<EnvType &, const std::string &>(),
+         py::arg("env"), py::arg("module_path"), py::keep_alive<1, 2>())
+    .def("load", &TorchPolicyRunner::load, py::arg("module_path"))
+    .def("run", &TorchPolicyRunner::run,
+         py::arg("reward_information"), py::arg("control_dt") = 0.0);
 #endif
 }

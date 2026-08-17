@@ -6,6 +6,7 @@
 #ifndef SRC_RAISIMGYMVECENV_HPP
 #define SRC_RAISIMGYMVECENV_HPP
 
+#include <stdexcept>
 #include "RaisimGymEnv.hpp"
 #ifdef RAISIMGYM_NO_OPENMP
 #ifndef RAISIMGYM_OPENMP_FALLBACK_HPP
@@ -45,8 +46,7 @@ class VectorizedEnvironment {
   const std::string& getCfgString() const { return cfgString_; }
 
   void init() {
-    THREAD_COUNT = cfg_["num_threads"].template As<int>();
-    omp_set_num_threads(THREAD_COUNT);
+    setNumThreads(cfg_["num_threads"].template As<int>());
     num_envs_ = cfg_["num_envs"].template As<int>();
 
     environments_.reserve(num_envs_);
@@ -167,6 +167,40 @@ class VectorizedEnvironment {
     }
   }
 
+  /// Advance every environment and produce the following normalized
+  /// observation in the same OpenMP region. This is equivalent to step()
+  /// followed by observe(), but avoids launching a second worker team merely
+  /// to copy each environment's cached observation.
+  void stepAndObserve(Eigen::Ref<EigenRowMajorMat> action,
+                      Eigen::Ref<EigenVec> reward,
+                      Eigen::Ref<EigenBoolVec> done,
+                      Eigen::Ref<EigenRowMajorMat> observation,
+                      bool updateStatistics) {
+    if (render_ && num_envs_ > 0 && !ParallelizeVisualEnvironment) {
+      perAgentStepAndObserve(0, action, reward, done, observation);
+      if constexpr (StaticSchedule) {
+#pragma omp parallel for schedule(static)
+        for (int i = 1; i < num_envs_; i++)
+          perAgentStepAndObserve(i, action, reward, done, observation);
+      } else {
+#pragma omp parallel for schedule(auto)
+        for (int i = 1; i < num_envs_; i++)
+          perAgentStepAndObserve(i, action, reward, done, observation);
+      }
+    } else if constexpr (StaticSchedule) {
+#pragma omp parallel for schedule(static)
+      for (int i = 0; i < num_envs_; i++)
+        perAgentStepAndObserve(i, action, reward, done, observation);
+    } else {
+#pragma omp parallel for schedule(auto)
+      for (int i = 0; i < num_envs_; i++)
+        perAgentStepAndObserve(i, action, reward, done, observation);
+    }
+
+    if (normalizeObservation_)
+      updateObservationStatisticsAndNormalize(observation, updateStatistics);
+  }
+
   void turnOnVisualization() { if(render_) environments_[0]->turnOnVisualization(); }
   void turnOffVisualization() { if(render_) environments_[0]->turnOffVisualization(); }
   void startRecordingVideo(const std::string& videoName) { if(render_) environments_[0]->startRecordingVideo(videoName); }
@@ -216,6 +250,13 @@ class VectorizedEnvironment {
   int getCriticObDim() { return criticObDim_; }
   int getActionDim() { return actionDim_; }
   int getNumOfEnvs() { return num_envs_; }
+  int getNumThreads() const { return THREAD_COUNT; }
+  void setNumThreads(int threadCount) {
+    if (threadCount < 1)
+      throw std::runtime_error("thread count must be positive");
+    THREAD_COUNT = threadCount;
+    omp_set_num_threads(THREAD_COUNT);
+  }
 
   ////// optional methods //////
   void curriculumUpdate() {
@@ -227,6 +268,15 @@ class VectorizedEnvironment {
   const std::vector<std::string>& getRewardNames() const { return rewardNames_; }
 
  private:
+  inline void perAgentStepAndObserve(int agentId,
+                                     Eigen::Ref<EigenRowMajorMat> &action,
+                                     Eigen::Ref<EigenVec> &reward,
+                                     Eigen::Ref<EigenBoolVec> &done,
+                                     Eigen::Ref<EigenRowMajorMat> &observation) {
+    perAgentStep(agentId, action, reward, done);
+    environments_[agentId]->observe(observation.row(agentId));
+  }
+
   void updateObservationStatisticsAndNormalize(Eigen::Ref<EigenRowMajorMat> &ob, bool updateStatistics) {
     if (updateStatistics) {
       recentMean_ = ob.colwise().mean();

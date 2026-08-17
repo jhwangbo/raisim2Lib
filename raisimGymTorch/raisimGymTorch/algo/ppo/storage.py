@@ -23,12 +23,18 @@ def split_and_pad_trajectories(tensor: torch.Tensor, dones: torch.Tensor):
 
 
 class RolloutStorage:
-    def __init__(self, num_envs, num_transitions_per_env, actor_obs_shape, critic_obs_shape, actions_shape, device):
+    def __init__(self, num_envs, num_transitions_per_env, actor_obs_shape, critic_obs_shape,
+                 actions_shape, device, shared_observations=False, returns_calculator=None):
         self.device = device
+        self.shared_observations = shared_observations
+        self.returns_calculator = returns_calculator
+        if shared_observations and actor_obs_shape != critic_obs_shape:
+            raise ValueError("shared actor/critic observations must have identical shapes")
 
         # Core
-        self.critic_obs = np.zeros([num_transitions_per_env, num_envs, *critic_obs_shape], dtype=np.float32)
         self.actor_obs = np.zeros([num_transitions_per_env, num_envs, *actor_obs_shape], dtype=np.float32)
+        self.critic_obs = (self.actor_obs if shared_observations else
+                           np.zeros([num_transitions_per_env, num_envs, *critic_obs_shape], dtype=np.float32))
         self.rewards = np.zeros([num_transitions_per_env, num_envs, 1], dtype=np.float32)
         self.actions = np.zeros([num_transitions_per_env, num_envs, *actions_shape], dtype=np.float32)
         self.dones = np.zeros([num_transitions_per_env, num_envs, 1], dtype=bool)
@@ -42,8 +48,9 @@ class RolloutStorage:
         self.sigma = np.zeros([num_transitions_per_env, num_envs, *actions_shape], dtype=np.float32)
 
         # torch variables
-        self.critic_obs_tc = torch.from_numpy(self.critic_obs).to(self.device)
         self.actor_obs_tc = torch.from_numpy(self.actor_obs).to(self.device)
+        self.critic_obs_tc = (self.actor_obs_tc if shared_observations else
+                              torch.from_numpy(self.critic_obs).to(self.device))
         self.actions_tc = torch.from_numpy(self.actions).to(self.device)
         self.actions_log_prob_tc = torch.from_numpy(self.actions_log_prob).to(self.device)
         self.values_tc = torch.from_numpy(self.values).to(self.device)
@@ -66,7 +73,11 @@ class RolloutStorage:
                         hidden_state_a=None, hidden_state_c=None):
         if self.step >= self.num_transitions_per_env:
             raise AssertionError("Rollout buffer overflow")
-        self.critic_obs[self.step] = critic_obs
+        if self.shared_observations:
+            if actor_obs is not critic_obs:
+                raise ValueError("shared observations require the same actor and critic input")
+        else:
+            self.critic_obs[self.step] = critic_obs
         self.actor_obs[self.step] = actor_obs
         self.actions[self.step] = actions
         self.mu[self.step] = mu
@@ -128,28 +139,34 @@ class RolloutStorage:
             else:
                 self.values = critic.predict(torch.from_numpy(self.critic_obs).to(self.device)).cpu().numpy()
 
-        advantage = 0
+        if self.returns_calculator is not None:
+            self.returns_calculator(
+                self.rewards, self.dones, self.values, last_values.cpu().numpy(),
+                self.returns, gamma, lam)
+        else:
+            advantage = 0
 
-        for step in reversed(range(self.num_transitions_per_env)):
-            if step == self.num_transitions_per_env - 1:
-                next_values = last_values.cpu().numpy()
-                # next_is_not_terminal = 1.0 - self.dones[step].float()
-            else:
-                next_values = self.values[step + 1]
-                # next_is_not_terminal = 1.0 - self.dones[step+1].float()
+            for step in reversed(range(self.num_transitions_per_env)):
+                if step == self.num_transitions_per_env - 1:
+                    next_values = last_values.cpu().numpy()
+                    # next_is_not_terminal = 1.0 - self.dones[step].float()
+                else:
+                    next_values = self.values[step + 1]
+                    # next_is_not_terminal = 1.0 - self.dones[step+1].float()
 
-            next_is_not_terminal = 1.0 - self.dones[step]
-            delta = self.rewards[step] + next_is_not_terminal * gamma * next_values - self.values[step]
-            advantage = delta + next_is_not_terminal * gamma * lam * advantage
-            self.returns[step] = advantage + self.values[step]
+                next_is_not_terminal = 1.0 - self.dones[step]
+                delta = self.rewards[step] + next_is_not_terminal * gamma * next_values - self.values[step]
+                advantage = delta + next_is_not_terminal * gamma * lam * advantage
+                self.returns[step] = advantage + self.values[step]
 
         # Compute and normalize the advantages
         self.advantages = self.returns - self.values
         self.advantages = (self.advantages - self.advantages.mean()) / (self.advantages.std() + 1e-8)
 
         # Convert to torch variables
-        self.critic_obs_tc = torch.from_numpy(self.critic_obs).to(self.device)
         self.actor_obs_tc = torch.from_numpy(self.actor_obs).to(self.device)
+        self.critic_obs_tc = (self.actor_obs_tc if self.shared_observations else
+                              torch.from_numpy(self.critic_obs).to(self.device))
         self.actions_tc = torch.from_numpy(self.actions).to(self.device)
         self.actions_log_prob_tc = torch.from_numpy(self.actions_log_prob).to(self.device)
         self.values_tc = torch.from_numpy(self.values).to(self.device)

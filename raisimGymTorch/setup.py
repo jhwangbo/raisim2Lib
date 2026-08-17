@@ -7,12 +7,11 @@ import re
 
 from setuptools import Extension, find_packages
 from setuptools.command.build_ext import build_ext
+from setuptools.command.develop import develop
 from distutils.core import setup
 
 __CMAKE_PREFIX_PATH__ = None
 __DEBUG__ = False
-__WITH_LIBTORCH__ = False
-__LIBTORCH_ROOT__ = None
 
 
 def read_raisim_version():
@@ -46,34 +45,33 @@ if "--Debug" in sys.argv:
     sys.argv.remove("--Debug")
     __DEBUG__ = True
 
-if "--Libtorch" in sys.argv:
-    sys.argv.remove("--Libtorch")
-    __WITH_LIBTORCH__ = True
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    __LIBTORCH_ROOT__ = os.path.join(script_dir, "thirdParty", "libtorch")
 
-    torch_dir_env = os.environ.get("Torch_DIR")
-    cmake_prefix_env = os.environ.get("CMAKE_PREFIX_PATH")
-    torch_config = os.path.join(__LIBTORCH_ROOT__, "share", "cmake", "Torch", "TorchConfig.cmake")
-    needs_libtorch = not torch_dir_env and not cmake_prefix_env and not os.path.exists(torch_config)
+class CMakeDevelop(develop):
+    """Install editable using the PyTorch from the selected environment."""
 
-    if needs_libtorch and not os.environ.get("LIBTORCH_SKIP_DOWNLOAD"):
-        downloader = os.path.join(script_dir, "scripts", "get_libtorch.py")
-        cmd = [sys.executable, downloader, "--dest", os.path.join(script_dir, "thirdParty")]
-        url_override = os.environ.get("LIBTORCH_URL")
-        if url_override:
-            cmd += ["--url", url_override]
-        else:
-            channel = os.environ.get("LIBTORCH_CHANNEL", "nightly")
-            cuda_tag = os.environ.get("LIBTORCH_CUDA", "cpu")
-            cmd += ["--channel", channel, "--cuda", cuda_tag]
-            version = os.environ.get("LIBTORCH_VERSION")
-            if version:
-                cmd += ["--version", version]
-        subprocess.check_call(cmd)
+    def run(self):
+        command = [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "-e",
+            os.path.dirname(os.path.abspath(__file__)),
+            "--use-pep517",
+            "--no-build-isolation",
+        ]
+        if self.install_dir:
+            command.extend(("--target", self.install_dir))
+        if self.no_deps:
+            command.append("--no-deps")
+        if self.user:
+            command.append("--user")
+        if self.prefix:
+            command.extend(("--prefix", self.prefix))
+        if self.index_url:
+            command.extend(("--index-url", self.index_url))
+        subprocess.check_call(command)
 
-    if __CMAKE_PREFIX_PATH__ is None and os.path.exists(torch_config):
-        __CMAKE_PREFIX_PATH__ = __LIBTORCH_ROOT__
 
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=''):
@@ -100,16 +98,14 @@ class CMakeBuild(build_ext):
         cmake_args = ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
                       '-DPYTHON_EXECUTABLE=' + python_exec,
                       '-DPython_EXECUTABLE=' + python_exec,
-                      '-DPython_ROOT_DIR=' + python_prefix]
+                      '-DPython_ROOT_DIR=' + python_prefix,
+                      '-DRAISIMGYM_TORCH_WITH_LIBTORCH=ON']
         if python_include:
             cmake_args.append('-DPython_INCLUDE_DIR=' + python_include)
             cmake_args.append('-DPython_INCLUDE_DIRS=' + python_include)
 
         if __CMAKE_PREFIX_PATH__ is not None:
             cmake_args.append('-DCMAKE_PREFIX_PATH=' + __CMAKE_PREFIX_PATH__)
-        if __WITH_LIBTORCH__:
-            cmake_args.append('-DRAISIMGYM_TORCH_WITH_LIBTORCH=ON')
-
         cfg = 'Debug' if __DEBUG__ else 'Release'
         build_args = ['--config', cfg]
 
@@ -141,7 +137,7 @@ setup(
     description='gym for raisim using torch.',
     long_description='',
     ext_modules=[CMakeExtension('_raisim_gym')],
-    cmdclass=dict(build_ext=CMakeBuild),
+    cmdclass=dict(build_ext=CMakeBuild, develop=CMakeDevelop),
     include_package_data=True,
     zip_safe=False,
 )

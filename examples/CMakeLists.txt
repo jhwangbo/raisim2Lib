@@ -119,7 +119,6 @@ create_executable(mesh_stack src/server/basics/mesh_stack.cpp)
 create_executable(compound_object src/server/basics/compound_object.cpp)
 create_executable(dynamic_object_addition src/server/basics/dynamic_object_addition.cpp)
 create_executable(ycb_objects src/server/basics/ycb_objects.cpp)
-
 create_executable(model_asset_pipeline src/server/assets/model_asset_pipeline.cpp)
 
 # Materials and terrain.
@@ -128,9 +127,12 @@ create_executable(material_static_friction src/server/materials/material_static_
 create_executable(procedural_heightmap src/server/terrain/procedural_heightmap.cpp)
 create_executable(heightmap_from_png src/server/terrain/heightmap_from_png.cpp)
 create_executable(dynamic_heightmap src/server/terrain/dynamic_heightmap.cpp)
+create_executable(heightmap_primitive_drop src/server/terrain/heightmap_primitive_drop.cpp)
+create_executable(heightmap_mesh_drop src/server/terrain/heightmap_mesh_drop.cpp)
 
 # Sensors.
 create_executable(ray_casting src/server/sensors/ray_casting.cpp)
+create_executable(large_scale_ray_test src/server/sensors/large_scale_ray_test.cpp)
 create_executable(ray_scan_lidar src/server/sensors/ray_scan_lidar.cpp)
 create_executable(sensor_suite src/server/sensor_suite.cpp)
 
