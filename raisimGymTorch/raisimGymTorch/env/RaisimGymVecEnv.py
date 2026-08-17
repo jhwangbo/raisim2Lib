@@ -20,6 +20,7 @@ class RaisimGymVecEnv:
         self.num_critic_obs = self.wrapper.getCriticObDim()
         self.num_acts = self.wrapper.getActionDim()
         self._observation = np.zeros([self.num_envs, self.num_obs], dtype=np.float32)
+        self._next_observation = np.zeros([self.num_envs, self.num_obs], dtype=np.float32)
         self._critic_observation = np.zeros([self.num_envs, self.num_critic_obs], dtype=np.float32)
         self.actions = np.zeros([self.num_envs, self.num_acts], dtype=np.float32)
         self.log_prob = np.zeros(self.num_envs, dtype=np.float32)
@@ -51,6 +52,12 @@ class RaisimGymVecEnv:
         if copy:
             return self._reward.copy(), self._done.copy()
         return self._reward, self._done
+
+    def step_and_observe(self, action, update_statistics=True):
+        self.wrapper.stepAndObserve(
+            action, self._reward, self._done, self._next_observation, update_statistics)
+        self._observation, self._next_observation = self._next_observation, self._observation
+        return self._reward, self._done, self._observation
 
     def load_scaling(self, dir_name, iteration, count=1e5):
         mean_file_name = dir_name + "/mean" + str(iteration) + ".csv"
@@ -90,6 +97,9 @@ class RaisimGymVecEnv:
 
     def curriculum_callback(self):
         self.wrapper.curriculumUpdate()
+
+    def set_num_threads(self, thread_count):
+        self.wrapper.setNumThreads(thread_count)
 
     @property
     def num_envs(self):
