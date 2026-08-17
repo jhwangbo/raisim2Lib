@@ -126,6 +126,7 @@ create_executable(heightmap_mesh_drop src/server/terrain/heightmap_mesh_drop.cpp
 
 # Sensors.
 create_executable(ray_casting src/server/sensors/ray_casting.cpp)
+create_executable(large_scale_ray_test src/server/sensors/large_scale_ray_test.cpp)
 create_executable(ray_scan_lidar src/server/sensors/ray_scan_lidar.cpp)
 create_executable(sensor_suite src/server/sensor_suite.cpp)
 
