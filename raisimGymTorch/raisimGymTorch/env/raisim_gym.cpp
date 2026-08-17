@@ -13,11 +13,8 @@
 #include <stdexcept>
 #include <thread>
 #include <type_traits>
-#ifdef RAISIMGYM_TORCH_WITH_LIBTORCH
-#include <torch/script.h>
-#include <torch/torch.h>
-#endif
 #include "Environment.hpp"
+#include "TorchPolicyBridge.hpp"
 #include "VectorizedEnvironment.hpp"
 
 namespace py = nanobind;
@@ -149,23 +146,33 @@ NB_MODULE(RAISIMGYM_TORCH_ENV_NAME, m) {
 
     TorchPolicyRunner(EnvType &env, const std::string &modulePath)
         : env_(env),
+          policy_(nullptr),
           observations_(env.getNumOfEnvs(), env.getObDim()),
+          actions_(env.getNumOfEnvs(), env.getActionDim()),
           rewards_(env.getNumOfEnvs()),
           dones_(env.getNumOfEnvs()) {
       load(modulePath);
     }
 
+    ~TorchPolicyRunner() {
+      raisimgym_torch_policy_destroy(policy_);
+    }
+
+    TorchPolicyRunner(const TorchPolicyRunner &) = delete;
+    TorchPolicyRunner &operator=(const TorchPolicyRunner &) = delete;
+
     void load(const std::string &modulePath) {
-      module_ = torch::jit::load(modulePath);
-      module_.eval();
-      module_.to(at::kCPU);
+      void *newPolicy = raisimgym_torch_policy_create(modulePath.c_str());
+      if (newPolicy == nullptr)
+        throw std::runtime_error(raisimgym_torch_policy_error());
+      raisimgym_torch_policy_destroy(policy_);
+      policy_ = newPolicy;
     }
 
     void run(RewardArray rewardInformation, double controlDt = 0.0) {
       const size_t stepCount = rewardInformation.shape(0);
       const size_t numEnvs = static_cast<size_t>(env_.getNumOfEnvs());
       const size_t observationDim = static_cast<size_t>(env_.getObDim());
-      const size_t actionDim = static_cast<size_t>(env_.getActionDim());
       const size_t rewardDim = static_cast<size_t>(env_.getRewardInfo().cols());
       if (rewardInformation.shape(1) != numEnvs ||
           rewardInformation.shape(2) != rewardDim) {
@@ -177,25 +184,14 @@ NB_MODULE(RAISIMGYM_TORCH_ENV_NAME, m) {
       const size_t valuesPerStep = numEnvs * rewardDim;
       const auto frameDuration = std::chrono::duration<double>(controlDt);
       nb::gil_scoped_release release;
-      torch::NoGradGuard noGrad;
       for (size_t step = 0; step < stepCount; ++step) {
         const auto frameStart = std::chrono::steady_clock::now();
         env_.observe(observations_, false);
-        auto observationTensor = torch::from_blob(
-            observations_.data(),
-            {static_cast<int64_t>(numEnvs),
-             static_cast<int64_t>(observationDim)},
-            torch::TensorOptions().dtype(torch::kFloat32));
-        auto actions = module_.forward({observationTensor}).toTensor().contiguous();
-        if (!actions.device().is_cpu() || actions.scalar_type() != torch::kFloat32 ||
-            actions.dim() != 2 || actions.size(0) != static_cast<int64_t>(numEnvs) ||
-            actions.size(1) != static_cast<int64_t>(actionDim)) {
-          throw std::runtime_error(
-              "policy must return CPU float32 actions with shape [num_envs, action_dim]");
-        }
-        Eigen::Map<EigenRowMajorMat> actionMap(
-            actions.data_ptr<float>(), numEnvs, actionDim);
-        env_.step(actionMap, rewards_, dones_);
+        if (!raisimgym_torch_policy_forward(
+                policy_, observations_.data(), numEnvs, observationDim,
+                actions_.data(), static_cast<size_t>(actions_.cols())))
+          throw std::runtime_error(raisimgym_torch_policy_error());
+        env_.step(actions_, rewards_, dones_);
         std::memcpy(rewardInfo + step * valuesPerStep,
                     env_.getRewardInfo().data(),
                     valuesPerStep * sizeof(float));
@@ -209,8 +205,9 @@ NB_MODULE(RAISIMGYM_TORCH_ENV_NAME, m) {
 
    private:
     EnvType &env_;
-    torch::jit::Module module_;
+    void *policy_;
     EigenRowMajorMat observations_;
+    EigenRowMajorMat actions_;
     EigenVec rewards_;
     EigenBoolVec dones_;
   };

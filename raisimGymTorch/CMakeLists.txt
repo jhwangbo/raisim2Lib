@@ -263,6 +263,18 @@ if (RAISIMGYM_TORCH_WITH_LIBTORCH)
         "${TORCH_PYTHON_ROOT}/include"
         "${TORCH_PYTHON_ROOT}/include/torch/csrc/api/include")
     set(TORCH_LIBRARY_DIR "${TORCH_PYTHON_ROOT}/lib")
+
+    # find_library() caches successful results. setup.py deliberately reuses
+    # its CMake build directory, so a different virtual environment (or a
+    # removed standalone LibTorch installation) could otherwise leave these
+    # variables pointing at libraries which no longer exist. Always resolve
+    # them from the torch package belonging to Python_EXECUTABLE.
+    unset(TORCH_LIBRARY CACHE)
+    unset(TORCH_CPU_LIBRARY CACHE)
+    unset(C10_LIBRARY CACHE)
+    unset(TORCH_LIBRARY)
+    unset(TORCH_CPU_LIBRARY)
+    unset(C10_LIBRARY)
     find_library(TORCH_LIBRARY NAMES torch
         PATHS "${TORCH_LIBRARY_DIR}" NO_DEFAULT_PATH)
     find_library(TORCH_CPU_LIBRARY NAMES torch_cpu
@@ -283,9 +295,20 @@ endif()
 SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR}/raisimGymTorch/env/envs)
 set(RAISIMGYM_ENV_DIR ${CMAKE_CURRENT_SOURCE_DIR}/raisimGymTorch/env/envs)
 
+set(RAISIMGYM_TORCH_SOURCES)
+if(RAISIMGYM_TORCH_WITH_LIBTORCH)
+    set(_raisimgym_torch_bridge
+        "${CMAKE_CURRENT_SOURCE_DIR}/raisimGymTorch/env/TorchPolicyBridge.cpp")
+    list(APPEND RAISIMGYM_TORCH_SOURCES "${_raisimgym_torch_bridge}")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        set_source_files_properties(${_raisimgym_torch_bridge} PROPERTIES
+            COMPILE_DEFINITIONS "_GLIBCXX_USE_CXX11_ABI=${TORCH_CXX11_ABI}")
+    endif()
+endif()
+
 ######## Env ##########
 FOREACH(subdir ${SUBDIRS})
-    nanobind_add_module(${subdir} raisimGymTorch/env/raisim_gym.cpp raisimGymTorch/env/Yaml.cpp)
+    nanobind_add_module(${subdir} raisimGymTorch/env/raisim_gym.cpp raisimGymTorch/env/Yaml.cpp ${RAISIMGYM_TORCH_SOURCES})
     target_link_libraries(${subdir} PRIVATE raisim::raisim rayrai ${Dependencies})
     target_include_directories(${subdir} PUBLIC ${EIGEN3_INCLUDE_DIRS} ${RAISIMGYM_ENV_DIR}/${subdir} ${CMAKE_CURRENT_SOURCE_DIR}/raisimGymTorch/env ${RAYRAI_INCLUDE_DIR} ${RAYRAI_INCLUDE_DIR}/SDL2)
     target_compile_options(${subdir} PRIVATE -fPIC -O3 -flto)
@@ -297,10 +320,6 @@ FOREACH(subdir ${SUBDIRS})
     endif()
     if (RAISIMGYM_TORCH_WITH_LIBTORCH)
         target_compile_definitions(${subdir} PRIVATE RAISIMGYM_TORCH_WITH_LIBTORCH)
-        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-            target_compile_definitions(${subdir} PRIVATE
-                _GLIBCXX_USE_CXX11_ABI=${TORCH_CXX11_ABI})
-        endif()
         target_include_directories(${subdir} SYSTEM PRIVATE ${TORCH_INCLUDE_DIRS})
         set_target_properties(${subdir} PROPERTIES
             BUILD_RPATH "${TORCH_LIBRARY_DIR}"

@@ -7,6 +7,7 @@ import re
 
 from setuptools import Extension, find_packages
 from setuptools.command.build_ext import build_ext
+from setuptools.command.develop import develop
 from distutils.core import setup
 
 __CMAKE_PREFIX_PATH__ = None
@@ -43,6 +44,34 @@ if "--Debug" in sys.argv:
     index = sys.argv.index('--Debug')
     sys.argv.remove("--Debug")
     __DEBUG__ = True
+
+
+class CMakeDevelop(develop):
+    """Install editable using the PyTorch from the selected environment."""
+
+    def run(self):
+        command = [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "-e",
+            os.path.dirname(os.path.abspath(__file__)),
+            "--use-pep517",
+            "--no-build-isolation",
+        ]
+        if self.install_dir:
+            command.extend(("--target", self.install_dir))
+        if self.no_deps:
+            command.append("--no-deps")
+        if self.user:
+            command.append("--user")
+        if self.prefix:
+            command.extend(("--prefix", self.prefix))
+        if self.index_url:
+            command.extend(("--index-url", self.index_url))
+        subprocess.check_call(command)
+
 
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=''):
@@ -108,7 +137,7 @@ setup(
     description='gym for raisim using torch.',
     long_description='',
     ext_modules=[CMakeExtension('_raisim_gym')],
-    cmdclass=dict(build_ext=CMakeBuild),
+    cmdclass=dict(build_ext=CMakeBuild, develop=CMakeDevelop),
     include_package_data=True,
     zip_safe=False,
 )
