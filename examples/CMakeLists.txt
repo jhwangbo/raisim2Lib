@@ -34,6 +34,12 @@ if(WIN32)
             endif()
             if(EXISTS "${_source_dir}/openusd")
                 file(COPY "${_source_dir}/openusd" DESTINATION "${CMAKE_BINARY_DIR}/bin")
+
+                # OpenUSD plugInfo paths resolve plugin DLLs relative to this subtree.
+                file(GLOB _openusd_runtime_dlls "${_source_dir}/usd_*.dll")
+                if(_openusd_runtime_dlls)
+                    file(COPY ${_openusd_runtime_dlls} DESTINATION "${CMAKE_BINARY_DIR}/bin/openusd")
+                endif()
             endif()
         endif()
     endfunction()
