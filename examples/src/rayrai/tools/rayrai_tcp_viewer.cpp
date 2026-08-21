@@ -2628,18 +2628,7 @@ std::vector<AssetDiagnostic> collectAssetDiagnostics(const RemoteScene& scene) {
 }
 
 size_t unresolvedAssetCount(const RemoteScene& scene) {
-  size_t count = 0;
-  std::unordered_set<uint64_t> seen;
-  for (const auto& snapshot : scene.getVisualEntries()) {
-    const auto& entry = snapshot.entry;
-    if (entry.meshFile.empty()) {
-      continue;
-    }
-    if (seen.insert(visualMotionKey(snapshot.tag, snapshot.index)).second && entry.meshPath.empty()) {
-      ++count;
-    }
-  }
-  return count;
+  return scene.unresolvedAssetCount();
 }
 
 void pushPacketSample(std::deque<PacketSample>& samples, const PacketSample& sample) {
@@ -4136,6 +4125,7 @@ int main(int argc, char* argv[]) {
     assetDiagnosticsDirty = true;
     stats.pendingSensorRequests = static_cast<int>(pending.size());
     stats.unresolvedAssets = unresolvedAssetCount(scene);
+    const auto selectableObjects = scene.getSelectableObjects();
     const double sampleTime = std::chrono::duration<double>(sampleNow - steadyStart).count();
     PacketSample sample;
     sample.timeSeconds = sampleTime;
@@ -4143,7 +4133,7 @@ int main(int argc, char* argv[]) {
     sample.parsed = ok;
     sample.replay = fromReplay;
     sample.pendingSensors = static_cast<int>(pending.size());
-    sample.objects = scene.selectableObjectCount();
+    sample.objects = selectableObjects.size();
     sample.visuals = scene.visualCount();
     sample.instanced = scene.instancedCount();
     sample.pointClouds = scene.pointCloudCount();
@@ -4154,7 +4144,7 @@ int main(int argc, char* argv[]) {
       if (trajectoryCsv) {
         writeTrajectoryRows(trajectoryCsv, scene, worldTime);
       }
-      for (const auto& item : scene.getSelectableObjects()) {
+      for (const auto& item : selectableObjects) {
         if (isContactItem(item) || !item.visual) {
           continue;
         }
@@ -4207,6 +4197,7 @@ int main(int argc, char* argv[]) {
   const auto fpsMeasureStart = std::chrono::steady_clock::now();
   uint64_t fpsMeasureFrames = 0;
 
+  std::vector<char> tcpPayload;
   while (!quit && !gSignalQuit.load(std::memory_order_relaxed)) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -4507,7 +4498,7 @@ int main(int argc, char* argv[]) {
     const uint32_t updateRequestTag = hasForcedTargetOffset ? 0 : requestedTag;
 
     if (client.isConnected()) {
-      std::vector<char> payload;
+      auto& payload = tcpPayload;
       bool networkFailed = false;
 
       if (awaitingSensorAck) {
