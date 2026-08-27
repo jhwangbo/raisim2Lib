@@ -129,6 +129,7 @@ create_executable(heightmap_from_png src/server/terrain/heightmap_from_png.cpp)
 create_executable(dynamic_heightmap src/server/terrain/dynamic_heightmap.cpp)
 create_executable(heightmap_primitive_drop src/server/terrain/heightmap_primitive_drop.cpp)
 create_executable(heightmap_mesh_drop src/server/terrain/heightmap_mesh_drop.cpp)
+create_executable(blocky_heightmap_drop src/server/terrain/blocky_heightmap_drop.cpp)
 
 # Sensors.
 create_executable(ray_casting src/server/sensors/ray_casting.cpp)
