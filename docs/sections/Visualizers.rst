@@ -28,11 +28,12 @@ Current Workflows
 ``RaisimServer`` + rayrai TCP viewer
 ====================================
 
-Start the simulation server in your application, then launch the viewer binary:
+Start the simulation server in your application, then launch the source-built
+viewer binary:
 
 .. code-block:: bash
 
-   <raisim-install>/bin/rayrai_tcp_viewer
+   ./build-examples/examples/rayrai_tcp_viewer
 
 The TCP viewer receives world state from ``RaisimServer`` and renders it with
 rayrai. Use it for normal debugging, camera control, collision-body inspection,

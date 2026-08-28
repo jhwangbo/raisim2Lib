@@ -8,13 +8,13 @@
 
 <img src="docs/image/procedural_heightmap.png" alt="procedural heightmap example" width="100%">
 
-RaiSim is a physics engine for robotics and artificial intelligence research. The public distribution is provided as binary packages with headers, libraries, examples, rayrai tools, and documentation.
+RaiSim is a physics engine for robotics and artificial intelligence research. The public distribution is provided as binary packages with headers, libraries, examples, rayrai viewer sources, and documentation.
 
 [![RaiSim video](https://img.youtube.com/vi/CN0ah5-OWik/0.jpg)](https://www.youtube.com/watch?v=CN0ah5-OWik)
 
 ## Install
 
-Download the binary package for your platform and unpack it to an install location such as `$HOME/raisim2Lib` on Linux/macOS or `C:\raisim` on Windows. Current macOS packages use `macos-arm64-<version>.zip` for Apple Silicon and `macos-x86_64-<version>.zip` for Intel. Keep the package directories together; examples and rayrai tools expect the bundled assets to remain next to the installed binaries.
+Download the binary package for your platform and unpack it to an install location such as `$HOME/raisim2Lib` on Linux/macOS or `C:\raisim` on Windows. Current macOS packages use `macos-arm64-<version>.zip` for Apple Silicon and `macos-x86_64-<version>.zip` for Intel. Keep the package directories together; examples and source-built rayrai tools expect the bundled assets to remain with the package.
 
 Set up the runtime environment before running examples or applications. From the unpacked package root:
 
@@ -63,7 +63,7 @@ The source-built example executables are written to `build-examples/examples`:
 ./build-examples/examples/primitive_grid
 ```
 
-Install headers, libraries, CMake package files, and bundled rayrai tools to a local prefix with:
+Install headers, libraries, and CMake package files to a local prefix with:
 
 ```bash
 cmake --install build-examples --prefix "$HOME/.local"
@@ -98,7 +98,7 @@ If `raisim/` or `rayrai/` is missing from the checkout, CMake downloads the matc
 
 Apple Silicon hosts select the `macos-arm64` package, even when CMake or the shell is running under Rosetta, and compile with the Apple M-series tuning flags used by the examples. Intel Macs select `macos-x86_64` when that release asset is available.
 
-Install headers, libraries, CMake package files, and bundled rayrai tools to a local prefix with:
+Install headers, libraries, and CMake package files to a local prefix with:
 
 ```bash
 cmake --install build-examples --prefix "$HOME/.local"
@@ -126,7 +126,7 @@ The source-built example executables are written to `build-examples\bin`:
 .\build-examples\bin\primitive_grid.exe
 ```
 
-Install headers, libraries, CMake package files, and bundled rayrai tools to a local prefix with:
+Install headers, libraries, and CMake package files to a local prefix with:
 
 ```powershell
 cmake --install build-examples --config Release --prefix C:\raisim-local
@@ -148,11 +148,11 @@ You can also set the activation key explicitly in your application with `raisim:
 
 ## Run Examples
 
-Server-based examples publish a `raisim::World` through `RaisimServer`. Start the rayrai TCP viewer first, then run an example:
+Server-based examples publish a `raisim::World` through `RaisimServer`. Build the examples as shown above, then start the source-built rayrai TCP viewer before running an example:
 
 ```bash
-$RAISIM_LOCAL_INSTALL_ROOT/bin/rayrai_raisim_tcp_viewer
-$RAISIM_LOCAL_INSTALL_ROOT/bin/example_anymal_contacts
+./build-examples/examples/rayrai_tcp_viewer
+./build-examples/examples/primitive_grid
 ```
 
 In-process rayrai examples open their own renderer window and do not need the TCP viewer:
@@ -188,13 +188,13 @@ endif()
 
 ## Visualization
 
-Use `rayrai_raisim_tcp_viewer` for applications that publish through `raisim::RaisimServer`. Use in-process rayrai APIs when your application needs its own renderer window, offscreen rendering, RGB/depth sensors, or screenshots.
+Use the source-built `rayrai_tcp_viewer` for applications that publish through `raisim::RaisimServer`. Use in-process rayrai APIs when your application needs its own renderer window, offscreen rendering, RGB/depth sensors, or screenshots.
 
 ### Rayrai TCP viewer
 
 <img src="docs/image/rayrai/tcp_viewer/tcp_viewer_overview.png" alt="rayrai TCP viewer" width="100%">
 
-`rayrai_raisim_tcp_viewer` is the recommended visualizer for `RaisimServer` simulations. It connects to a running server over TCP and renders the world with the full rayrai PBR pipeline (procedural sky, IBL, directional shadows, reflective ground, weather, tone mapping). The overlay surfaces:
+`rayrai_tcp_viewer` is the recommended visualizer for `RaisimServer` simulations. It is built from the viewer sources in this repository and connects to a running server over TCP. The viewer renders the world with the full rayrai PBR pipeline (procedural sky, IBL, directional shadows, reflective ground, weather, tone mapping). The overlay surfaces:
 
 * **Pause / Step / Step 10** — interactive simulation control over the wire (`PROTOCOL_FEATURE_SIM_CONTROL`); pause and step a remote server from the viewer without changing simulation code.
 * **Force / pose / generalized-coordinate authoring** — drag-poke objects, retarget single-body poses, or override an articulated system's joint angles directly from the inspector.

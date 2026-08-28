@@ -26,8 +26,9 @@ cd build-examples\bin
 If a source-built viewer asks for `SDL2d.dll`, it was built from a debug-flavored
 configuration; rebuild with `--config Release` to use the release SDL2 runtime.
 
-Most `server/*` examples publish to `raisim::RaisimServer`. Start
-`<raisim-install>/bin/rayrai_raisim_tcp_viewer` in another terminal to visualize them.
+Most `server/*` examples publish to `raisim::RaisimServer`. Build the
+`rayrai_tcp_viewer` target and start the resulting build-tree executable in
+another terminal to visualize them.
 Most `rayrai/*` examples create an in-process rayrai window and do not need the
 TCP viewer.
 
