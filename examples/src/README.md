@@ -91,8 +91,8 @@ TCP viewer.
   Atlas, and chain articulated systems.
 - `dynamic_heightmap`: animate a heightmap and color map through RaisimServer.
 - `heightmap_primitive_drop`: drop 432 mixed primitives onto a procedural heightmap.
-- `blocky_heightmap_drop`: drop 400 mixed bodies (boxes, spheres, capsules, cylinders,
-  and monkey meshes) onto a 500x500-sample, 40m x 40m
+- `blocky_heightmap_drop`: drop 900 mixed bodies (boxes, spheres, capsules, cylinders,
+  and monkey meshes) onto a 250x250-sample, 20m x 20m
   height map whose 5x5 sample blocks share one height drawn uniformly from -0.15m to 0.15m.
 - `rayrai_coacd_mesh_approximation`: original mesh versus CoACD convex approximation mesh
   collision parts through `World::addMesh`.

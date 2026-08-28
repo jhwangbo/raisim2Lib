@@ -17,11 +17,11 @@ int main(int argc, char* argv[]) {
   world.setTimeStep(0.002);
   world.setERP(0.0, 0.0);
 
-  /// blocky height map: 500x500 samples over 40m x 40m (0.08m sample spacing).
-  /// Every 5x5 patch of samples shares one height, giving 100x100 flat tiles of
+  /// blocky height map: 250x250 samples over 20m x 20m (0.08m sample spacing).
+  /// Every 5x5 patch of samples shares one height, giving 50x50 flat tiles of
   /// 0.4m x 0.4m. Tile heights are sampled uniformly from -0.15m to 0.15m.
-  constexpr size_t samples = 500;
-  constexpr double mapSize = 40.0;
+  constexpr size_t samples = 250;
+  constexpr double mapSize = 20.0;
   constexpr size_t blockSize = 5;
   constexpr size_t blocks = samples / blockSize;
   constexpr double heightRange = 0.15;
@@ -53,15 +53,23 @@ int main(int argc, char* argv[]) {
                            sep + "monkey" + sep + "monkey.obj";
   raisim::Path::replaceAntiSeparatorWithSeparator(monkeyPath);
 
-  /// drop 400 bodies (20x20 grid) above the tiles: box, sphere, capsule,
-  /// cylinder, and monkey mesh, 80 of each
-  constexpr int gridSize = 20;
-  constexpr double spacing = 0.9;
+  /// drop 900 bodies (30x30 grid) above the tiles: box, sphere, capsule,
+  /// cylinder, and monkey mesh, 180 of each. The compact, centered layout keeps
+  /// every body fully over the smaller height map with at least 0.8m clearance.
+  constexpr int gridRows = 30;
+  constexpr int gridColumns = 30;
+  constexpr double spacing = 0.6;
   constexpr double dropHeight = 3.0;
+  constexpr double maxBodyRadius = 0.5;
+  static_assert(gridRows * gridColumns == 900);
+  static_assert(0.5 * (gridColumns - 1) * spacing + maxBodyRadius <
+                0.5 * mapSize);
+  static_assert(0.5 * (gridRows - 1) * spacing + maxBodyRadius <
+                0.5 * mapSize);
 
   int meshCount = 0;
-  for (int row = 0; row < gridSize; ++row) {
-    for (int column = 0; column < gridSize; ++column) {
+  for (int row = 0; row < gridRows; ++row) {
+    for (int column = 0; column < gridColumns; ++column) {
       raisim::SingleBodyObject* object = nullptr;
       const int shape = (row + 2 * column) % 5;
 
@@ -83,7 +91,7 @@ int main(int argc, char* argv[]) {
           object->setAppearance("0.8, 0.65, 0.2, 1.0");
           break;
         default: {
-          /// a convex hull keeps 80 mesh bodies cheap to load and to collide
+          /// a convex hull keeps 180 mesh bodies cheap to load and to collide
           const double scale = 0.13 + 0.01 * (meshCount % 4);
           object = world.addMesh(monkeyPath, 1.0, scale, "",
                                  raisim::MeshCollisionMode::CONVEX_HULL);
@@ -100,8 +108,8 @@ int main(int argc, char* argv[]) {
         }
       }
 
-      const double x = spacing * (column - 0.5 * (gridSize - 1));
-      const double y = spacing * (row - 0.5 * (gridSize - 1));
+      const double x = spacing * (column - 0.5 * (gridColumns - 1));
+      const double y = spacing * (row - 0.5 * (gridRows - 1));
       const double z = heightMap->getHeight(x, y) + dropHeight +
                        0.05 * ((7 * row + 3 * column) % 5);
 
