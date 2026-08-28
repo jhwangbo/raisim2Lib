@@ -112,6 +112,15 @@ constexpr float kDefaultMouseForceAccelPerPixel = 0.10f;
 constexpr float kMinMouseForceAccelPerPixel = 0.01f;
 constexpr float kMaxMouseForceAccelPerPixel = 5.0f;
 
+float resolveUiScaleForDisplay(float configuredScale, float automaticScale,
+                               bool userSet, bool initialized,
+                               bool displaySizeChanged) {
+  if (!userSet && (!initialized || displaySizeChanged)) {
+    return automaticScale;
+  }
+  return configuredScale;
+}
+
 using raisin::tcp_viewer::BufferReader;
 using raisin::tcp_viewer::ConnectionEntry;
 using raisin::tcp_viewer::DiscoveredServer;
@@ -4237,11 +4246,11 @@ int main(int argc, char* argv[]) {
     const float scaleX = displaySize.x / 1920.0f;
     const float scaleY = displaySize.y / 1080.0f;
     defaultUiScale = std::clamp(std::min(scaleX, scaleY) * 1.25f, 1.1f, 2.6f);
-    if (!uiScaleInitialized || (!uiScaleUserSet && (displaySize.x != lastDisplaySize.x ||
-                                                     displaySize.y != lastDisplaySize.y))) {
-      uiScale = defaultUiScale;
-      uiScaleInitialized = true;
-    }
+    const bool displaySizeChanged = displaySize.x != lastDisplaySize.x ||
+                                    displaySize.y != lastDisplaySize.y;
+    uiScale = resolveUiScaleForDisplay(uiScale, defaultUiScale, uiScaleUserSet,
+                                       uiScaleInitialized, displaySizeChanged);
+    uiScaleInitialized = true;
     lastDisplaySize = displaySize;
     ImGuiIO& io = ImGui::GetIO();
     io.FontGlobalScale = 1.0f;
