@@ -53,16 +53,16 @@ int main(int argc, char **argv) {
 
   server.setupSocket();
   raisim_examples::warnIfNoClientConnected(server);
-  server.acceptConnection(2000.0);
+  while (!server.isConnected()) {
+    server.acceptConnection(100000);
+  }
 
   for (int k = 0; k < loopN; k++) {
     server.applyInteractionForce();
     world.integrate();
-    if (server.needsSensorUpdate()) {
-      if (server.waitForMessageFromClient(1.0)) {
-        if (!server.processRequests()) {
-          server.acceptConnection(2000.0);
-        }
+    if (server.waitForMessageFromClient(1)) {
+      if (!server.processRequests()) {
+        server.acceptConnection(100000);
       }
     }
   }

@@ -63,8 +63,6 @@ int main(int argc, char **argv) {
   /// this method should be called before server launch
   auto scans = server.addPointCloud("spinning lidar");
   scans->pointSize = 0.003f;
-  scans->resize(512*64);
-  int scanCounter = 0;
 
   server.launchServer();
 
@@ -72,7 +70,17 @@ int main(int argc, char **argv) {
   raisim_examples::warnIfNoClientConnected(server);
   for (int k = 0; k < loopN; k++) {
     RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
-    server.integrateWorldThreadSafe();
+    server.integrateWorldThreadSafe([&]() {
+      /// Replace the point cloud with the most recent lidar read. Keeping this
+      /// inside the server lock also prevents the TCP thread from serializing it
+      /// while the vectors are resized.
+      const auto& pos = lidar->getPosition();
+      const auto& ori = lidar->getOrientation();
+      const auto& scan = lidar->getScan();
+      scans->resize(scan.size());
+      for (size_t i = 0; i < scan.size(); ++i)
+        scans->position[i] = pos + (ori * scan[i]);
+    });
 
     {
       std::lock_guard<raisim::Sensor> sensorLock(*depthSensor1);
@@ -85,18 +93,6 @@ int main(int argc, char **argv) {
     dummySphere1->setPosition(posFromRaisim.e());
     dummySphere2->setPosition(pointCloudFromConversion[400].e());
 
-    {
-      /// lidar processing      
-      auto& pos = lidar->getPosition();
-      auto& ori = lidar->getOrientation();
-      auto& scan = lidar->getScan();
-
-      for (auto& point : scan) {
-        raisim::Vec<3> scanPos = pos + (ori * point);
-        scans->position[scanCounter++] = scanPos;
-        scanCounter = scanCounter % (512*64);
-      }
-    }
   }
 
   server.killServer();

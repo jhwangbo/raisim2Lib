@@ -45,4 +45,7 @@ class SessionRecorder {
 bool loadSessionFile(const std::filesystem::path& path, std::vector<RecordedFrame>& frames,
                      std::string& status);
 
+/** Return the first frame whose timestamp is not earlier than timeMicros. */
+size_t findSessionFrameAtOrAfter(const std::vector<RecordedFrame>& frames, uint64_t timeMicros);
+
 } // namespace raisin::tcp_viewer

@@ -56,6 +56,7 @@
 #include "TcpViewerDiscovery.hpp"
 #include "TcpViewerScreenshot.hpp"
 #include "TcpViewerSession.hpp"
+#include "TcpViewerSensors.hpp"
 #include "TcpViewerSettings.hpp"
 
 #include "rayrai/RayraiWindow.hpp"
@@ -103,10 +104,15 @@ constexpr auto kOverlayAutoCollapseDelay = std::chrono::milliseconds(3500);
 constexpr auto kSettingsSaveDebounce = std::chrono::milliseconds(750);
 constexpr int kTransferRateGraphBuckets = 60;
 constexpr double kTransferRateGraphWindowSeconds = 30.0;
+constexpr double kDiagnosticsPresentationRateHz = 5.0;
+constexpr double kDiagnosticsPresentationIntervalSeconds =
+  1.0 / kDiagnosticsPresentationRateHz;
 constexpr float kBaseFontSize = 24.0f;
 constexpr float kFontScale = 0.75f;
 constexpr float kDefaultFontRasterizerDensity = 1.75f;
 constexpr float kUiScaleEpsilon = 0.01f;
+constexpr float kCollapsedLogoSizeInFontHeights = 2.75f;
+constexpr float kCollapsedLogoOpacity = 0.50f;
 constexpr const char* kRobotoFontRelativePath = "rsc/fonts/roboto/Roboto-Medium.ttf";
 constexpr float kDefaultMouseForceAccelPerPixel = 0.10f;
 constexpr float kMinMouseForceAccelPerPixel = 0.01f;
@@ -131,12 +137,16 @@ using raisin::tcp_viewer::RecordedFrame;
 using raisin::tcp_viewer::RemoteScene;
 using raisin::tcp_viewer::SelectedObjectInfo;
 using raisin::tcp_viewer::SessionRecorder;
+using raisin::tcp_viewer::SensorInfo;
+using raisin::tcp_viewer::SensorPreviewInfo;
+using raisin::tcp_viewer::SensorRenderer;
 using raisin::tcp_viewer::ViewerSettings;
 using raisin::tcp_viewer::cloudQualityName;
 using raisin::tcp_viewer::consumeTcpUpdateSlot;
 using raisin::tcp_viewer::colorModeName;
 using raisin::tcp_viewer::formatConnectionLabel;
 using raisin::tcp_viewer::formatEndpointHost;
+using raisin::tcp_viewer::findSessionFrameAtOrAfter;
 using raisin::tcp_viewer::highFidelityPbrAllowedForQuality;
 using raisin::tcp_viewer::kSessionMagic;
 using raisin::tcp_viewer::kTcpUpdateRateDefaultHz;
@@ -406,6 +416,7 @@ struct ViewerStats {
   double fps = 0.0;
   double updateHz = 0.0;
   double rxKbps = 0.0;
+  double lastRoundTripMs = 0.0;
   int pendingSensorRequests = 0;
   size_t unresolvedAssets = 0;
   std::chrono::steady_clock::time_point windowStart = std::chrono::steady_clock::now();
@@ -422,7 +433,82 @@ struct PacketSample {
   size_t instanced = 0;
   size_t pointClouds = 0;
   size_t unresolvedAssets = 0;
+  double roundTripMs = 0.0;
 };
+
+struct NetworkTimingSummary {
+  double currentMs = 0.0;
+  double averageMs = 0.0;
+  double jitterMs = 0.0;
+  double maximumMs = 0.0;
+};
+
+struct DiagnosticsPresentationState {
+  bool initialized = false;
+  double lastRefreshSeconds = 0.0;
+  std::deque<PacketSample> packetSamples;
+  std::array<float, kTransferRateGraphBuckets> transferRates{};
+  NetworkTimingSummary timing;
+  std::vector<float> roundTripTimes;
+  int parseErrors = 0;
+  double rxKbps = 0.0;
+  size_t unresolvedAssets = 0;
+};
+
+NetworkTimingSummary summarizePacketTimings(const std::deque<PacketSample>& samples) {
+  NetworkTimingSummary result;
+  double sum = 0.0;
+  double jitterSum = 0.0;
+  double previous = 0.0;
+  size_t count = 0;
+  for (const auto& sample : samples) {
+    if (sample.replay || !sample.parsed || sample.roundTripMs <= 0.0) continue;
+    result.currentMs = sample.roundTripMs;
+    result.maximumMs = std::max(result.maximumMs, sample.roundTripMs);
+    sum += sample.roundTripMs;
+    if (count > 0) jitterSum += std::abs(sample.roundTripMs - previous);
+    previous = sample.roundTripMs;
+    ++count;
+  }
+  if (count > 0) result.averageMs = sum / static_cast<double>(count);
+  if (count > 1) result.jitterMs = jitterSum / static_cast<double>(count - 1);
+  return result;
+}
+
+struct SelectedSignalSample {
+  double worldTime = 0.0;
+  float linearSpeed = 0.0f;
+  float angularSpeed = 0.0f;
+  float generalizedSpeed = 0.0f;
+  float contactCount = 0.0f;
+};
+
+enum class SelectedSignalKind {
+  LinearSpeed,
+  AngularSpeed,
+  GeneralizedSpeed,
+  Contacts,
+};
+
+struct SelectedSignalPresentation {
+  const char* plotId = "";
+  const char* title = "";
+  const char* currentValueFormat = "";
+};
+
+SelectedSignalPresentation selectedSignalPresentation(SelectedSignalKind kind) {
+  switch (kind) {
+    case SelectedSignalKind::LinearSpeed:
+      return {"##linear_speed_history", "Linear speed (m/s)", "Current %.3f m/s"};
+    case SelectedSignalKind::AngularSpeed:
+      return {"##angular_speed_history", "Angular speed (rad/s)", "Current %.3f rad/s"};
+    case SelectedSignalKind::GeneralizedSpeed:
+      return {"##generalized_speed_history", "Generalized speed (mixed units)", "Current %.3f"};
+    case SelectedSignalKind::Contacts:
+      return {"##contact_history", "Contacts (count)", "Current %.0f"};
+  }
+  return {};
+}
 
 struct AssetDiagnostic {
   uint32_t tag = 0;
@@ -1207,6 +1293,7 @@ std::string findRobotoFontPath(const std::filesystem::path& binaryDir) {
   candidates.push_back(binaryDir / ".." / kRobotoFontRelativePath);
   candidates.push_back(binaryDir / ".." / ".." / kRobotoFontRelativePath);
   candidates.push_back(binaryDir / ".." / ".." / ".." / kRobotoFontRelativePath);
+  candidates.push_back(binaryDir / ".." / "share/rayrai" / kRobotoFontRelativePath);
   candidates.push_back(std::filesystem::current_path() / kRobotoFontRelativePath);
   candidates.push_back(std::filesystem::current_path() / ".." / kRobotoFontRelativePath);
 
@@ -2455,6 +2542,18 @@ const char* tcpViewerJointTypeLabel(int32_t rawType) {
   }
 }
 
+const char* tcpViewerJointTypeName(int32_t rawType) {
+  const auto type = static_cast<raisim::Joint::Type>(rawType);
+  switch (type) {
+    case raisim::Joint::Type::REVOLUTE: return "Revolute";
+    case raisim::Joint::Type::PRISMATIC: return "Prismatic";
+    case raisim::Joint::Type::SPHERICAL: return "Spherical";
+    case raisim::Joint::Type::FLOATING: return "Floating";
+    case raisim::Joint::Type::FIXED: return "Fixed";
+    default: return "Unknown";
+  }
+}
+
 glm::vec4 normalizedWxyz(glm::vec4 quat) {
   const float norm2 = quat.w * quat.w + quat.x * quat.x + quat.y * quat.y + quat.z * quat.z;
   if (!std::isfinite(norm2) || norm2 <= 1e-12f) {
@@ -2513,6 +2612,174 @@ const char* objectTypeLabel(int objectTypeRaw) {
   }
 }
 
+const char* sensorTypeLabel(raisim::Sensor::Type type) {
+  switch (type) {
+    case raisim::Sensor::Type::RGB: return "RGB camera";
+    case raisim::Sensor::Type::DEPTH: return "Depth camera";
+    case raisim::Sensor::Type::IMU: return "IMU";
+    case raisim::Sensor::Type::SPINNING_LIDAR: return "Spinning lidar";
+    default: return "Unknown sensor";
+  }
+}
+
+const char* sensorSourceLabel(raisim::Sensor::MeasurementSource source) {
+  return source == raisim::Sensor::MeasurementSource::MANUAL ? "manual" : "RaiSim";
+}
+
+struct CameraFrustumUiState {
+  uint32_t parentTag = 0;
+  raisim::Sensor::Type type = raisim::Sensor::Type::UNKNOWN;
+  std::string sensorName;
+  std::string visualName;
+  bool visible = false;
+  std::shared_ptr<raisin::CameraFrustum> frustum;
+};
+
+using CameraFrustumUiStates = std::unordered_map<std::string, CameraFrustumUiState>;
+
+bool isCameraSensorType(raisim::Sensor::Type type) {
+  return type == raisim::Sensor::Type::RGB || type == raisim::Sensor::Type::DEPTH;
+}
+
+std::string cameraFrustumKey(const SensorInfo& sensor) {
+  return std::to_string(sensor.parentTag) + ":" +
+         std::to_string(static_cast<int>(sensor.type)) + ":" + sensor.name;
+}
+
+float cameraFrustumFarDistance(const SensorInfo& sensor) {
+  if (sensor.type == raisim::Sensor::Type::RGB) return 10.0f;
+  if (sensor.type == raisim::Sensor::Type::DEPTH && std::isfinite(sensor.clipFar)) {
+    return static_cast<float>(std::max(sensor.clipFar, 1.0e-3));
+  }
+  return 10.0f;
+}
+
+float cameraFrustumHorizontalFov(const SensorInfo& sensor) {
+  if (!std::isfinite(sensor.hFov) || sensor.hFov <= 0.0) {
+    return glm::radians(60.0f);
+  }
+  return static_cast<float>(std::min(sensor.hFov, 3.124139361));
+}
+
+void removeCameraFrustum(raisin::RayraiWindow& viewer, CameraFrustumUiState& state) {
+  if (!state.frustum) return;
+  viewer.removeVisualObject(state.visualName);
+  state.frustum.reset();
+}
+
+void clearCameraFrustums(raisin::RayraiWindow& viewer, CameraFrustumUiStates& states) {
+  for (auto& [key, state] : states) {
+    (void)key;
+    removeCameraFrustum(viewer, state);
+  }
+  states.clear();
+}
+
+void updateCameraFrustums(raisin::RayraiWindow& viewer, const RemoteScene& scene,
+                          CameraFrustumUiStates& states) {
+  for (auto& [key, state] : states) {
+    (void)key;
+    if (!state.visible) {
+      removeCameraFrustum(viewer, state);
+      continue;
+    }
+    const auto sensors = scene.getSensorsForTag(state.parentTag);
+    const auto sensor = std::find_if(sensors.begin(), sensors.end(), [&](const SensorInfo& item) {
+      return item.type == state.type && item.name == state.sensorName;
+    });
+    if (sensor == sensors.end() || !isCameraSensorType(sensor->type)) {
+      removeCameraFrustum(viewer, state);
+      continue;
+    }
+    if (!state.frustum) {
+      const glm::vec4 color = sensor->type == raisim::Sensor::Type::RGB
+        ? glm::vec4(0.25f, 0.78f, 1.0f, 1.0f)
+        : glm::vec4(1.0f, 0.66f, 0.20f, 1.0f);
+      state.frustum = viewer.addCameraFrustum(state.visualName, color);
+      state.frustum->setDetectable(false);
+    }
+    const float aspect = sensor->width > 0 && sensor->height > 0
+      ? static_cast<float>(sensor->width) / static_cast<float>(sensor->height)
+      : 1.0f;
+    const glm::quat orientation(sensor->orientation.w, sensor->orientation.x,
+                                sensor->orientation.y, sensor->orientation.z);
+    state.frustum->updatePerspective(sensor->position, orientation,
+      cameraFrustumHorizontalFov(*sensor), aspect,
+      static_cast<float>(sensor->clipNear), cameraFrustumFarDistance(*sensor));
+  }
+}
+
+struct TcpViewerIcons;
+bool drawSensorTreeNode(const TcpViewerIcons& icons, raisim::Sensor::Type type,
+                        const char* label);
+
+void drawObjectSensors(const TcpViewerIcons& icons, const std::vector<SensorInfo>& sensors,
+                       const std::vector<SensorPreviewInfo>& previews,
+                       CameraFrustumUiStates& cameraFrustums) {
+  if (sensors.empty()) return;
+  for (size_t i = 0; i < sensors.size(); ++i) {
+    const auto& sensor = sensors[i];
+    ImGui::PushID(static_cast<int>(i));
+    const std::string label = std::string(sensorTypeLabel(sensor.type)) + "  " + sensor.name;
+    if (drawSensorTreeNode(icons, sensor.type, label.c_str())) {
+      ImGui::TextDisabled("source %s", sensorSourceLabel(sensor.source));
+      if (isCameraSensorType(sensor.type)) {
+        const std::string frustumKey = cameraFrustumKey(sensor);
+        auto& state = cameraFrustums[frustumKey];
+        state.parentTag = sensor.parentTag;
+        state.type = sensor.type;
+        state.sensorName = sensor.name;
+        if (state.visualName.empty()) {
+          state.visualName = "__tcp_sensor_frustum:" + frustumKey;
+        }
+        ImGui::Checkbox("Show frustum", &state.visible);
+        ImGui::SameLine();
+        if (sensor.type == raisim::Sensor::Type::RGB) {
+          ImGui::TextDisabled("10 m display range");
+        } else {
+          ImGui::TextDisabled("%.3f m depth range", cameraFrustumFarDistance(sensor));
+        }
+        ImGui::TextDisabled("%dx%d | clip %.3f .. %.3f m",
+          sensor.width, sensor.height, sensor.clipNear, sensor.clipFar);
+      } else if (sensor.type == raisim::Sensor::Type::SPINNING_LIDAR) {
+        ImGui::TextDisabled("%d yaw x %d pitch samples",
+          sensor.yawSamples, sensor.pitchSamples);
+      }
+
+      const auto preview = std::find_if(previews.begin(), previews.end(), [&](const auto& item) {
+        return item.type == sensor.type && item.name == sensor.name;
+      });
+      if (preview != previews.end()) {
+        ImGui::TextDisabled("render %.2f ms", preview->renderMilliseconds);
+        if (preview->type == raisim::Sensor::Type::DEPTH) {
+          ImGui::TextDisabled("valid depth %.3f .. %.3f m",
+            preview->minimumDepth, preview->maximumDepth);
+        }
+        if (preview->texture != 0 && preview->width > 0 && preview->height > 0) {
+          const float imageWidth = ImGui::GetContentRegionAvail().x;
+          const float imageHeight = imageWidth * static_cast<float>(preview->height) /
+                                    static_cast<float>(preview->width);
+          ImGui::Image(reinterpret_cast<ImTextureID>(uint64_t(preview->texture)),
+            ImVec2(imageWidth, imageHeight), ImVec2(0, 1), ImVec2(1, 0));
+        }
+      } else if (sensor.source == raisim::Sensor::MeasurementSource::MANUAL &&
+                 (sensor.type == raisim::Sensor::Type::RGB ||
+                  sensor.type == raisim::Sensor::Type::DEPTH)) {
+        if (sensor.viewerUpdateRequested) {
+          ImGui::TextDisabled("Rendering the first frame...");
+        } else {
+          ImGui::TextWrapped(
+            "Waiting for a server request. If this persists, reinstall RaiSim and rebuild the server example.");
+        }
+      } else {
+        ImGui::TextDisabled("No image preview for this sensor type");
+      }
+      ImGui::TreePop();
+    }
+    ImGui::PopID();
+  }
+}
+
 bool objectMatchesFilter(const ObjectListItem& item, const std::string& filterLower) {
   if (filterLower.empty()) {
     return true;
@@ -2523,10 +2790,19 @@ bool objectMatchesFilter(const ObjectListItem& item, const std::string& filterLo
   return toLowerAscii(haystack.str()).find(filterLower) != std::string::npos;
 }
 
+bool objectTypeLabelLess(int lhsObjectTypeRaw, int rhsObjectTypeRaw) {
+  const int labelOrder = std::strcmp(
+    objectTypeLabel(lhsObjectTypeRaw), objectTypeLabel(rhsObjectTypeRaw));
+  if (labelOrder != 0) return labelOrder < 0;
+  return lhsObjectTypeRaw < rhsObjectTypeRaw;
+}
+
 bool objectLessByMode(const ObjectListItem& lhs, const ObjectListItem& rhs, int mode) {
   switch (mode) {
     case 1:
-      if (lhs.objectTypeRaw != rhs.objectTypeRaw) return lhs.objectTypeRaw < rhs.objectTypeRaw;
+      if (lhs.objectTypeRaw != rhs.objectTypeRaw) {
+        return objectTypeLabelLess(lhs.objectTypeRaw, rhs.objectTypeRaw);
+      }
       return lhs.name < rhs.name;
     case 2:
       return lhs.tag < rhs.tag;
@@ -2536,6 +2812,19 @@ bool objectLessByMode(const ObjectListItem& lhs, const ObjectListItem& rhs, int 
     default:
       return lhs.name < rhs.name;
   }
+}
+
+constexpr int kDefaultObjectSortMode = 1;
+
+struct SensorTreeRowLayout {
+  float iconX = 0.0f;
+  float labelX = 0.0f;
+};
+
+SensorTreeRowLayout sensorTreeRowLayout(float rowX, float treeNodeToLabelSpacing,
+                                        float iconSize, float itemInnerSpacing) {
+  const float iconX = rowX + treeNodeToLabelSpacing;
+  return {iconX, iconX + iconSize + itemInnerSpacing};
 }
 
 raisin::Visuals* chooseDefaultFollowTarget(const RemoteScene& scene) {
@@ -2677,6 +2966,35 @@ std::array<float, kTransferRateGraphBuckets> buildTransferRateGraph(
 
 float maxTransferRate(const std::array<float, kTransferRateGraphBuckets>& rates) {
   return *std::max_element(rates.begin(), rates.end());
+}
+
+bool refreshDiagnosticsPresentation(DiagnosticsPresentationState& presentation,
+  const std::deque<PacketSample>& packetSamples, const ViewerStats& stats,
+  double nowSeconds) {
+  if (!std::isfinite(nowSeconds)) {
+    return false;
+  }
+  if (presentation.initialized && nowSeconds >= presentation.lastRefreshSeconds &&
+      nowSeconds - presentation.lastRefreshSeconds < kDiagnosticsPresentationIntervalSeconds) {
+    return false;
+  }
+
+  presentation.initialized = true;
+  presentation.lastRefreshSeconds = nowSeconds;
+  presentation.packetSamples = packetSamples;
+  presentation.transferRates = buildTransferRateGraph(packetSamples, nowSeconds);
+  presentation.timing = summarizePacketTimings(packetSamples);
+  presentation.roundTripTimes.clear();
+  presentation.roundTripTimes.reserve(packetSamples.size());
+  for (const auto& sample : packetSamples) {
+    if (!sample.replay && sample.parsed && sample.roundTripMs > 0.0) {
+      presentation.roundTripTimes.push_back(static_cast<float>(sample.roundTripMs));
+    }
+  }
+  presentation.parseErrors = stats.parseErrors;
+  presentation.rxKbps = stats.rxKbps;
+  presentation.unresolvedAssets = stats.unresolvedAssets;
+  return true;
 }
 
 bool exportSceneJson(const std::filesystem::path& path, const RemoteScene& scene,
@@ -2921,6 +3239,21 @@ enum class TcpViewerIconKind {
   Play,
   Step,
   StepFast,
+  SensorDepth,
+  SensorImu,
+  SensorLidar,
+  SensorUnknown,
+  ObjectVisual,
+  ObjectSphere,
+  ObjectBox,
+  ObjectCylinder,
+  ObjectCapsule,
+  ObjectMesh,
+  ObjectGround,
+  ObjectHeightmap,
+  ObjectCompound,
+  ObjectDeformable,
+  ObjectGranular,
   Count
 };
 
@@ -2969,6 +3302,21 @@ const char* tcpViewerIconFileName(TcpViewerIconKind kind) {
     case TcpViewerIconKind::Play: return "play_uicons_sr_play.png";
     case TcpViewerIconKind::Step: return "step_uicons_sr_step_forward.png";
     case TcpViewerIconKind::StepFast: return "step_fast_uicons_sr_forward_fast.png";
+    case TcpViewerIconKind::SensorDepth: return "depth_uicons_sr_scanner_image.png";
+    case TcpViewerIconKind::SensorImu: return "imu_uicons_sr_compass_alt.png";
+    case TcpViewerIconKind::SensorLidar: return "lidar_uicons_sr_radar.png";
+    case TcpViewerIconKind::SensorUnknown: return "sensor_uicons_sr_sensor.png";
+    case TcpViewerIconKind::ObjectVisual: return "visual_uicons_sr_transformation_shapes.png";
+    case TcpViewerIconKind::ObjectSphere: return "sphere_uicons_sr_sphere.png";
+    case TcpViewerIconKind::ObjectBox: return "box_uicons_sr_cube.png";
+    case TcpViewerIconKind::ObjectCylinder: return "cylinder_uicons_sr_database.png";
+    case TcpViewerIconKind::ObjectCapsule: return "capsule_uicons_sr_capsules.png";
+    case TcpViewerIconKind::ObjectMesh: return "mesh_uicons_sr_vector_polygon.png";
+    case TcpViewerIconKind::ObjectGround: return "ground_uicons_sr_land_layers.png";
+    case TcpViewerIconKind::ObjectHeightmap: return "heightmap_uicons_sr_mountain.png";
+    case TcpViewerIconKind::ObjectCompound: return "compound_uicons_sr_cubes.png";
+    case TcpViewerIconKind::ObjectDeformable: return "deformable_uicons_sr_wave_square.png";
+    case TcpViewerIconKind::ObjectGranular: return "granular_uicons_sr_braille.png";
     case TcpViewerIconKind::Count: break;
   }
   return "";
@@ -3238,6 +3586,21 @@ ImVec4 tcpViewerIconTint(TcpViewerIconKind kind, bool hovered, bool active) {
     case TcpViewerIconKind::Play: color = ImVec4(0.30f, 0.95f, 0.58f, 1.0f); break;
     case TcpViewerIconKind::Step: color = ImVec4(0.55f, 0.86f, 1.00f, 1.0f); break;
     case TcpViewerIconKind::StepFast: color = ImVec4(0.55f, 0.86f, 1.00f, 1.0f); break;
+    case TcpViewerIconKind::SensorDepth: color = ImVec4(0.43f, 0.87f, 1.00f, 1.0f); break;
+    case TcpViewerIconKind::SensorImu: color = ImVec4(0.55f, 0.95f, 0.68f, 1.0f); break;
+    case TcpViewerIconKind::SensorLidar: color = ImVec4(1.00f, 0.70f, 0.30f, 1.0f); break;
+    case TcpViewerIconKind::SensorUnknown: color = ImVec4(0.72f, 0.76f, 0.84f, 1.0f); break;
+    case TcpViewerIconKind::ObjectVisual: color = ImVec4(0.88f, 0.68f, 1.00f, 1.0f); break;
+    case TcpViewerIconKind::ObjectSphere: color = ImVec4(0.42f, 0.86f, 1.00f, 1.0f); break;
+    case TcpViewerIconKind::ObjectBox: color = ImVec4(0.48f, 0.78f, 1.00f, 1.0f); break;
+    case TcpViewerIconKind::ObjectCylinder: color = ImVec4(0.42f, 0.91f, 0.78f, 1.0f); break;
+    case TcpViewerIconKind::ObjectCapsule: color = ImVec4(0.66f, 0.88f, 0.56f, 1.0f); break;
+    case TcpViewerIconKind::ObjectMesh: color = ImVec4(0.78f, 0.70f, 1.00f, 1.0f); break;
+    case TcpViewerIconKind::ObjectGround: color = ImVec4(0.68f, 0.82f, 0.45f, 1.0f); break;
+    case TcpViewerIconKind::ObjectHeightmap: color = ImVec4(0.78f, 0.72f, 0.42f, 1.0f); break;
+    case TcpViewerIconKind::ObjectCompound: color = ImVec4(0.48f, 0.82f, 0.96f, 1.0f); break;
+    case TcpViewerIconKind::ObjectDeformable: color = ImVec4(0.96f, 0.58f, 0.78f, 1.0f); break;
+    case TcpViewerIconKind::ObjectGranular: color = ImVec4(0.94f, 0.68f, 0.40f, 1.0f); break;
     case TcpViewerIconKind::Count: color = ImVec4(0.92f, 0.94f, 0.98f, 1.0f); break;
   }
   const float boost = active ? 1.18f : (hovered ? 1.08f : 1.0f);
@@ -3245,6 +3608,85 @@ ImVec4 tcpViewerIconTint(TcpViewerIconKind kind, bool hovered, bool active) {
   color.y = std::min(color.y * boost, 1.0f);
   color.z = std::min(color.z * boost, 1.0f);
   return color;
+}
+
+TcpViewerIconKind sensorTypeIconKind(raisim::Sensor::Type type) {
+  switch (type) {
+    case raisim::Sensor::Type::RGB: return TcpViewerIconKind::Camera;
+    case raisim::Sensor::Type::DEPTH: return TcpViewerIconKind::SensorDepth;
+    case raisim::Sensor::Type::IMU: return TcpViewerIconKind::SensorImu;
+    case raisim::Sensor::Type::SPINNING_LIDAR: return TcpViewerIconKind::SensorLidar;
+    default: return TcpViewerIconKind::SensorUnknown;
+  }
+}
+
+TcpViewerIconKind jointTypeIconKind(int32_t rawType) {
+  switch (static_cast<raisim::Joint::Type>(rawType)) {
+    case raisim::Joint::Type::REVOLUTE: return TcpViewerIconKind::Reset;
+    case raisim::Joint::Type::PRISMATIC: return TcpViewerIconKind::Step;
+    case raisim::Joint::Type::SPHERICAL: return TcpViewerIconKind::ObjectSphere;
+    case raisim::Joint::Type::FLOATING: return TcpViewerIconKind::ObjectVisual;
+    case raisim::Joint::Type::FIXED: return TcpViewerIconKind::Connect;
+    default: return TcpViewerIconKind::Options;
+  }
+}
+
+void drawJointTypeIcon(const TcpViewerIcons& icons, int32_t rawType) {
+  const TcpViewerIconKind kind = jointTypeIconKind(rawType);
+  const TcpViewerIcon* icon = icons.get(kind);
+  if (!icon) return;
+
+  const float iconSize = std::round(ImGui::GetFontSize() * 0.9f);
+  ImGui::Image(reinterpret_cast<ImTextureID>(uint64_t(icon->texture)),
+    ImVec2(iconSize, iconSize), ImVec2(0, 0), ImVec2(1, 1), tcpViewerIconTint(kind, false, false));
+  if (ImGui::IsItemHovered()) {
+    ImGui::SetTooltip("%s joint", tcpViewerJointTypeName(rawType));
+  }
+  ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+}
+
+TcpViewerIconKind objectTypeIconKind(int objectTypeRaw) {
+  if (objectTypeRaw == -1) return TcpViewerIconKind::ObjectVisual;
+  if (objectTypeRaw == 10) return TcpViewerIconKind::ObjectDeformable;
+  if (objectTypeRaw == 11) return TcpViewerIconKind::ObjectGranular;
+  if (objectTypeRaw < 0) return TcpViewerIconKind::Options;
+  switch (static_cast<raisim::ObjectType>(objectTypeRaw)) {
+    case raisim::ObjectType::SPHERE: return TcpViewerIconKind::ObjectSphere;
+    case raisim::ObjectType::BOX: return TcpViewerIconKind::ObjectBox;
+    case raisim::ObjectType::CYLINDER: return TcpViewerIconKind::ObjectCylinder;
+    case raisim::ObjectType::CAPSULE: return TcpViewerIconKind::ObjectCapsule;
+    case raisim::ObjectType::MESH: return TcpViewerIconKind::ObjectMesh;
+    case raisim::ObjectType::HALFSPACE: return TcpViewerIconKind::ObjectGround;
+    case raisim::ObjectType::HEIGHTMAP: return TcpViewerIconKind::ObjectHeightmap;
+    case raisim::ObjectType::ARTICULATED_SYSTEM: return TcpViewerIconKind::Robot;
+    case raisim::ObjectType::COMPOUND: return TcpViewerIconKind::ObjectCompound;
+    default: return TcpViewerIconKind::Options;
+  }
+}
+
+bool drawSensorTreeNode(const TcpViewerIcons& icons, raisim::Sensor::Type type,
+                        const char* label) {
+  const TcpViewerIconKind kind = sensorTypeIconKind(type);
+  const TcpViewerIcon* icon = icons.get(kind);
+  if (!icon) return ImGui::TreeNode(label);
+
+  const bool open = ImGui::TreeNodeEx("##sensor", ImGuiTreeNodeFlags_SpanAvailWidth);
+  const ImVec2 rowMin = ImGui::GetItemRectMin();
+  const ImVec2 rowMax = ImGui::GetItemRectMax();
+  const float iconSize = std::round(ImGui::GetFontSize() * 0.9f);
+  const SensorTreeRowLayout layout = sensorTreeRowLayout(
+    rowMin.x, ImGui::GetTreeNodeToLabelSpacing(), iconSize,
+    ImGui::GetStyle().ItemInnerSpacing.x);
+  const float iconY = rowMin.y + std::max(0.0f, (rowMax.y - rowMin.y - iconSize) * 0.5f);
+  const float textY = rowMin.y + std::max(0.0f, (rowMax.y - rowMin.y - ImGui::GetFontSize()) * 0.5f);
+  ImDrawList* drawList = ImGui::GetWindowDrawList();
+  drawList->AddImage(reinterpret_cast<ImTextureID>(uint64_t(icon->texture)),
+    ImVec2(layout.iconX, iconY), ImVec2(layout.iconX + iconSize, iconY + iconSize),
+    ImVec2(0, 0), ImVec2(1, 1),
+    ImGui::GetColorU32(tcpViewerIconTint(kind, ImGui::IsItemHovered(), open)));
+  drawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(),
+    ImVec2(layout.labelX, textY), ImGui::GetColorU32(ImGuiCol_Text), label);
+  return open;
 }
 
 ImVec2 iconTextButtonSize(const char* label, ImVec2 requestedSize = ImVec2(0.0f, 0.0f)) {
@@ -3391,7 +3833,7 @@ bool drawIconOnlyButton(const TcpViewerIcons& icons, TcpViewerIconKind kind,
 void drawCollapsedLeftPanelLogo(const TcpViewerImageTexture& logo) {
   const bool hasLogo = logo.valid();
   const float fontSize = ImGui::GetFontSize();
-  const float outerSize = std::round(fontSize * 3.05f);
+  const float outerSize = std::round(fontSize * kCollapsedLogoSizeInFontHeights);
   const ImVec2 handleSize = hasLogo
     ? ImVec2(outerSize, outerSize)
     : ImVec2(std::max(8.0f, std::round(fontSize * 0.48f)),
@@ -3433,7 +3875,7 @@ void drawCollapsedLeftPanelLogo(const TcpViewerImageTexture& logo) {
   const ImVec2 imageMax(center.x + imageW * 0.5f, center.y + imageH * 0.5f);
   const ImTextureID textureId = (ImTextureID)(intptr_t)logo.texture;
   drawList->AddImage(textureId, imageMin, imageMax, logo.uvMin, logo.uvMax,
-    ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, hovered ? 1.0f : 0.94f)));
+    ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, kCollapsedLogoOpacity)));
 }
 
 void renderViewer(raisin::RayraiWindow& viewer, SDL_Window* window,
@@ -3722,6 +4164,7 @@ int main(int argc, char* argv[]) {
 
   TcpClient client;
   RemoteScene scene(viewer);
+  SensorRenderer sensorRenderer;
   scene.setShowCollisionBodies(false);
   scene.setForceTransparent(false);
 
@@ -3758,17 +4201,23 @@ int main(int argc, char* argv[]) {
   bool recordPngSequence = false;
   int recordEveryNFrames = 1;
   int recordFrameIndex = 0;
+  std::string recordFramePrefix = "rayrai_tcp_viewer_frame";
+  std::filesystem::path serverRecordFrameDirectory;
+  bool serverRequestedRecording = false;
+  std::string sensorStatus;
   SessionRecorder sessionRecorder;
   std::vector<RecordedFrame> replayFrames;
   bool replayMode = false;
   bool replayPaused = false;
   bool replayStep = false;
   size_t replayIndex = 0;
+  size_t replaySeekIndex = std::numeric_limits<size_t>::max();
   float replaySpeed = options.replaySpeed;
   auto replayStart = std::chrono::steady_clock::now();
   uint64_t replayBaseMicros = 0;
   std::ofstream trajectoryCsv;
   std::deque<PacketSample> packetSamples;
+  DiagnosticsPresentationState diagnosticsPresentation;
   std::vector<AssetDiagnostic> assetDiagnostics;
   bool assetDiagnosticsDirty = true;
   bool exportScenePending = !options.exportScenePath.empty();
@@ -3809,6 +4258,7 @@ int main(int argc, char* argv[]) {
   bool detailMinimized = envMinimizePanels;
   std::shared_ptr<raisin::CoordinateFrame> worldFrame;
   bool awaitingResponse = false;
+  auto updateRequestSentAt = std::chrono::steady_clock::now();
   bool awaitingSensorAck = false;
   bool autoConnect = defaultAutoConnect;
   bool everConnected = false;
@@ -4028,10 +4478,14 @@ int main(int argc, char* argv[]) {
   bool requestResetCamera = false;
   bool groupObjectsByType = false;
   bool hideCollisionObjects = false;
-  int objectSortMode = 0;
+  int objectSortMode = kDefaultObjectSortMode;
   char objectFilterBuf[160] = "";
   std::array<CameraBookmark, 4> cameraBookmarks;
   std::unordered_map<uint64_t, MotionEstimate> motionEstimates;
+  std::deque<SelectedSignalSample> selectedSignals;
+  CameraFrustumUiStates cameraFrustums;
+  uint64_t selectedSignalKey = 0;
+  double selectedSignalLastTime = -std::numeric_limits<double>::infinity();
   DiscoveryBeaconReceiver beaconReceiver;
   std::string discoveryStatus;
   beaconReceiver.start(discoveryStatus);
@@ -4059,7 +4513,12 @@ int main(int argc, char* argv[]) {
       bodyFramesNode->enable(false);
     }
     scene.clear();
+    sensorRenderer.clear();
+    clearCameraFrustums(*viewer, cameraFrustums);
     motionEstimates.clear();
+    selectedSignals.clear();
+    selectedSignalKey = 0;
+    selectedSignalLastTime = -std::numeric_limits<double>::infinity();
     assetDiagnostics.clear();
     assetDiagnosticsDirty = true;
     stats.pendingSensorRequests = 0;
@@ -4097,6 +4556,44 @@ int main(int argc, char* argv[]) {
     BufferReader reader(payload);
     scene.setVerbose(verboseParsing);
     const bool parsedOk = scene.applyResponse(reader, pending);
+    if (!fromReplay) {
+      for (const auto& command : scene.takeViewerCommands()) {
+        switch (command.type) {
+          case raisin::tcp_viewer::ViewerCommandType::StartRecording: {
+            const std::filesystem::path requested(command.path);
+            recordFramePrefix = requested.stem().empty()
+              ? "rayrai_tcp_viewer_video"
+              : requested.stem().string();
+            serverRecordFrameDirectory = std::filesystem::path(screenshotDirBuf) /
+                                         (recordFramePrefix + "_frames");
+            recordFrameIndex = 0;
+            recordPngSequence = true;
+            serverRequestedRecording = true;
+            captureStatus = "server recording PNG sequence: " +
+                            serverRecordFrameDirectory.string();
+          } break;
+          case raisin::tcp_viewer::ViewerCommandType::StopRecording:
+            if (serverRequestedRecording) {
+              recordPngSequence = false;
+              serverRequestedRecording = false;
+              captureStatus = "server recording stopped after " +
+                              std::to_string(recordFrameIndex) + " frame(s)";
+            }
+            break;
+          case raisin::tcp_viewer::ViewerCommandType::Screenshot:
+            screenshotRequested = true;
+            break;
+          case raisin::tcp_viewer::ViewerCommandType::SetWindowSize:
+            if (command.width > 0 && command.height > 0) {
+              SDL_SetWindowSize(window, std::clamp(command.width, 160, 8192),
+                                std::clamp(command.height, 120, 8192));
+            }
+            break;
+        }
+      }
+    } else {
+      static_cast<void>(scene.takeViewerCommands());
+    }
     const bool disconnectRequested = scene.consumeDisconnectRequested();
     bool ok = parsedOk && !disconnectRequested;
     if (disconnectRequested) {
@@ -4147,6 +4644,7 @@ int main(int argc, char* argv[]) {
     sample.instanced = scene.instancedCount();
     sample.pointClouds = scene.pointCloudCount();
     sample.unresolvedAssets = stats.unresolvedAssets;
+    sample.roundTripMs = fromReplay ? 0.0 : stats.lastRoundTripMs;
     pushPacketSample(packetSamples, sample);
     if (ok) {
       const double worldTime = scene.hasServerWorldTime() ? scene.getServerWorldTime() : sampleTime;
@@ -4377,6 +4875,28 @@ int main(int argc, char* argv[]) {
     if (beaconReceiver.poll()) {
       discoveredServers = serverEntriesFromDiscovered(beaconReceiver.servers());
     }
+    if (replayMode && !replayFrames.empty() &&
+        replaySeekIndex != std::numeric_limits<size_t>::max()) {
+      const size_t target = std::min(replaySeekIndex, replayFrames.size() - 1u);
+      replaySeekIndex = std::numeric_limits<size_t>::max();
+      clearSceneState();
+      size_t appliedCount = 0;
+      for (size_t i = 0; i <= target; ++i) {
+        std::vector<PendingSensorUpdate> ignoredSensors;
+        if (!applyScenePayload(replayFrames[i].payload, true, now, ignoredSensors)) {
+          break;
+        }
+        appliedCount = i + 1u;
+      }
+      replayIndex = appliedCount;
+      replayPaused = true;
+      replayStep = false;
+      replayStart = now;
+      replayBaseMicros = replayIndex == 0
+        ? replayFrames.front().timeMicros
+        : replayFrames[replayIndex - 1u].timeMicros;
+      lastStatus = "replay seek";
+    }
     if (replayMode && !replayFrames.empty()) {
       if (replayIndex < replayFrames.size() && (replayStep || !replayPaused)) {
         const uint64_t targetMicros = replayStep
@@ -4451,6 +4971,42 @@ int main(int argc, char* argv[]) {
       controlGcDirty = false;
     }
     scene.setSelectionTag(hasForcedTargetOffset ? 0 : requestedTag);
+    if (requestedEntry && scene.hasServerWorldTime()) {
+      const uint64_t signalKey = visualMotionKey(requestedTag, requestedIndex);
+      const double signalTime = scene.getServerWorldTime();
+      if (signalKey != selectedSignalKey) {
+        selectedSignals.clear();
+        selectedSignalKey = signalKey;
+        selectedSignalLastTime = -std::numeric_limits<double>::infinity();
+      }
+      if (signalTime > selectedSignalLastTime) {
+        SelectedSignalSample sample;
+        sample.worldTime = signalTime;
+        const auto motion = motionEstimates.find(signalKey);
+        if (motion != motionEstimates.end() && motion->second.valid) {
+          sample.linearSpeed = glm::length(motion->second.linearVelocity);
+          sample.angularSpeed = motion->second.angularSpeed;
+        }
+        const auto& selectedInfo = scene.getSelectedInfo();
+        if (selectedInfo.valid && selectedInfo.tag == requestedTag) {
+          double squaredSpeed = 0.0;
+          for (float velocity : selectedInfo.generalizedVelocities) {
+            squaredSpeed += static_cast<double>(velocity) * static_cast<double>(velocity);
+          }
+          sample.generalizedSpeed = static_cast<float>(std::sqrt(squaredSpeed));
+        }
+        sample.contactCount = static_cast<float>(scene.contactCountForTag(requestedTag));
+        selectedSignals.push_back(sample);
+        while (selectedSignals.size() > 600) {
+          selectedSignals.pop_front();
+        }
+        selectedSignalLastTime = signalTime;
+      }
+    } else if (!requestedEntry) {
+      selectedSignals.clear();
+      selectedSignalKey = 0;
+      selectedSignalLastTime = -std::numeric_limits<double>::infinity();
+    }
     const auto setRulerEndpoint = [&](int endpoint, const glm::vec3& point, std::string label) {
       label = trimAscii(label);
       if (label.empty()) {
@@ -4531,6 +5087,7 @@ int main(int argc, char* argv[]) {
             }
           } else {
             awaitingResponse = true;
+            updateRequestSentAt = now;
             pendingControlRequests.clear();
             if (mouseForce.active) {
               mouseForce.pendingRequestIndex = std::numeric_limits<size_t>::max();
@@ -4546,6 +5103,8 @@ int main(int argc, char* argv[]) {
             }
           } else {
             awaitingResponse = false;
+            stats.lastRoundTripMs = std::chrono::duration<double, std::milli>(
+              now - updateRequestSentAt).count();
             stats.lastPayloadBytes = static_cast<int>(payload.size());
             stats.bytes += payload.size();
             stats.updates++;
@@ -4557,7 +5116,10 @@ int main(int argc, char* argv[]) {
             if (!parsedOk) {
               networkFailed = lastStatus.find("disconnect") != std::string::npos;
             } else if (!pending.empty()) {
-              if (!sendSensorUpdate(client, pending)) {
+              if (!sensorRenderer.render(*viewer, pending, sensorStatus)) {
+                lastStatus = "sensor render failed";
+                networkFailed = true;
+              } else if (!sendSensorUpdate(client, pending)) {
                 if (!client.lastIoWouldBlock()) {
                   lastStatus = "sensor update failed";
                   networkFailed = true;
@@ -4828,6 +5390,7 @@ int main(int argc, char* argv[]) {
                                     !poseGrabberSuppressViewportInput;
     const bool allowClickSelection = !mouseForce.active && !shiftForceCaptureRequested &&
                                      !rulerCapturesViewportInput && !poseGrabber.dragging;
+    updateCameraFrustums(*viewer, scene, cameraFrustums);
     renderViewer(*viewer, window, allowViewportInput, allowClickSelection, &viewportState);
 
     if (ruler.enabled && !mouseForce.active && viewportState.hovered &&
@@ -5267,9 +5830,12 @@ int main(int argc, char* argv[]) {
     }
     if (recordPngSequence && frameSerial % std::max(1, recordEveryNFrames) == 0) {
       std::ostringstream frameName;
-      frameName << "rayrai_tcp_viewer_frame_" << std::setw(6) << std::setfill('0')
+      frameName << recordFramePrefix << "_" << std::setw(6) << std::setfill('0')
                 << recordFrameIndex++ << ".png";
-      saveViewerTexturePng(*viewer, std::filesystem::path(screenshotDirBuf) / frameName.str(), captureStatus);
+      const std::filesystem::path frameDirectory = serverRequestedRecording
+        ? serverRecordFrameDirectory
+        : std::filesystem::path(screenshotDirBuf);
+      saveViewerTexturePng(*viewer, frameDirectory / frameName.str(), captureStatus);
     }
     updateStatsWindow(stats, now);
 
@@ -5412,6 +5978,21 @@ int main(int argc, char* argv[]) {
           replayPaused = false;
         }
         drawInlineLabelSliderFloat("replay_speed", "Replay speed", &replaySpeed, 0.05f, 8.0f, "%.2f");
+        const uint64_t firstMicros = replayFrames.empty() ? 0 : replayFrames.front().timeMicros;
+        const uint64_t lastMicros = replayFrames.empty() ? 0 : replayFrames.back().timeMicros;
+        const float durationSeconds = static_cast<float>(lastMicros - firstMicros) / 1.0e6f;
+        const uint64_t currentMicros = replayIndex == 0
+          ? firstMicros
+          : replayFrames[std::min(replayIndex - 1u, replayFrames.size() - 1u)].timeMicros;
+        float timelineSeconds = static_cast<float>(currentMicros - firstMicros) / 1.0e6f;
+        if (durationSeconds > 0.0f && drawInlineLabelSliderFloat(
+              "replay_timeline", "Timeline", &timelineSeconds, 0.0f,
+              durationSeconds, "%.3f s")) {
+          replayPaused = true;
+          const uint64_t targetMicros = firstMicros + static_cast<uint64_t>(
+            std::max(0.0f, timelineSeconds) * 1.0e6f);
+          replaySeekIndex = findSessionFrameAtOrAfter(replayFrames, targetMicros);
+        }
         ImGui::TextDisabled("frame %zu / %zu", std::min(replayIndex, replayFrames.size()), replayFrames.size());
       }
       if (!captureStatus.empty()) {
@@ -5827,7 +6408,8 @@ int main(int argc, char* argv[]) {
         drawCollapsedLeftPanelLogo(collapsedLogoVisible ? raisimLogo : TcpViewerImageTexture{});
       } else if (ImGui::BeginTabBar("##LeftTabs")) {
         if (ImGui::BeginTabItem("Connection")) {
-          ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImVec4(0.66f, 0.71f, 0.78f, 1.0f));
+          ImGui::PushStyleColor(ImGuiCol_TextDisabled,
+            raionrobotics_imgui_secondary_text_color());
           ConnectionEntry current;
           current.host = host;
           current.port = port;
@@ -6230,17 +6812,19 @@ int main(int argc, char* argv[]) {
           }), items.end());
           std::sort(items.begin(), items.end(), [&](const ObjectListItem& lhs, const ObjectListItem& rhs) {
             if (groupObjectsByType && lhs.objectTypeRaw != rhs.objectTypeRaw) {
-              return lhs.objectTypeRaw < rhs.objectTypeRaw;
+              return objectTypeLabelLess(lhs.objectTypeRaw, rhs.objectTypeRaw);
             }
             return objectLessByMode(lhs, rhs, objectSortMode);
           });
 
+          const float objectIconSize = std::round(ImGui::GetFontSize() * 1.05f);
+          const float objectIconWidth = objectIconSize + style.ItemInnerSpacing.x;
           float objectContentWidth = ImGui::CalcTextSize("No matching objects").x;
           for (const auto& item : items) {
             const std::string nameText = item.name.empty() ?
               ("tag " + std::to_string(item.tag)) : item.name;
             objectContentWidth = std::max(objectContentWidth,
-              ImGui::CalcTextSize(objectTypeLabel(item.objectTypeRaw)).x +
+              objectIconWidth + ImGui::CalcTextSize(objectTypeLabel(item.objectTypeRaw)).x +
               ImGui::CalcTextSize(": ").x + ImGui::CalcTextSize(nameText.c_str()).x);
             if (groupObjectsByType) {
               objectContentWidth = std::max(objectContentWidth,
@@ -6297,6 +6881,16 @@ int main(int argc, char* argv[]) {
               const ImVec2 itemMin = ImGui::GetItemRectMin();
               const ImVec2 textPos(itemMin.x + ImGui::GetStyle().FramePadding.x,
                 itemMin.y + ImGui::GetStyle().FramePadding.y);
+              float textX = textPos.x;
+              const TcpViewerIconKind iconKind = objectTypeIconKind(item.objectTypeRaw);
+              if (const TcpViewerIcon* icon = uiIcons.get(iconKind)) {
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                drawList->AddImage(reinterpret_cast<ImTextureID>(uint64_t(icon->texture)),
+                  ImVec2(textX, textPos.y), ImVec2(textX + objectIconSize, textPos.y + objectIconSize),
+                  ImVec2(0, 0), ImVec2(1, 1),
+                  ImGui::GetColorU32(tcpViewerIconTint(iconKind, ImGui::IsItemHovered(), selected)));
+                textX += objectIconWidth;
+              }
               const std::string nameText =
                 item.name.empty() ? ("tag " + std::to_string(item.tag)) : item.name;
               const char* sep = ": ";
@@ -6304,12 +6898,12 @@ int main(int argc, char* argv[]) {
               const ImVec2 sepSize = ImGui::CalcTextSize(sep);
               ImDrawList* drawList = ImGui::GetWindowDrawList();
               drawList->AddText(
-                ImGui::GetFont(), ImGui::GetFontSize(), textPos, typeColor, typeName);
+                ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(textX, textPos.y), typeColor, typeName);
               drawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(),
-                ImVec2(textPos.x + typeSize.x, textPos.y), ImGui::GetColorU32(ImGuiCol_Text),
+                ImVec2(textX + typeSize.x, textPos.y), ImGui::GetColorU32(ImGuiCol_Text),
                 sep);
               drawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(),
-                ImVec2(textPos.x + typeSize.x + sepSize.x, textPos.y),
+                ImVec2(textX + typeSize.x + sepSize.x, textPos.y),
                 ImGui::GetColorU32(item.isCollision ? ImGuiCol_TextDisabled : ImGuiCol_Text),
                 nameText.c_str());
             };
@@ -6566,6 +7160,7 @@ int main(int argc, char* argv[]) {
                     const int32_t type = i < controlInfo.jointTypes.size() ?
                       controlInfo.jointTypes[i] : int32_t(raisim::Joint::Type::FIXED);
                     ImGui::PushID(static_cast<int>(i));
+                    drawJointTypeIcon(uiIcons, type);
                     ImGui::Text("%s [%s]", controlInfo.jointNames[i].c_str(),
                       tcpViewerJointTypeLabel(type));
                     const bool validSlice = offset >= 0 &&
@@ -6645,15 +7240,30 @@ int main(int argc, char* argv[]) {
           ImGui::PopTextWrapPos();
           ImGui::SeparatorText("Data Transfer");
           const double diagnosticsNowSeconds = std::chrono::duration<double>(now - steadyStart).count();
-          const auto transferRates = buildTransferRateGraph(packetSamples, diagnosticsNowSeconds);
-          const float peakTransferRate = maxTransferRate(transferRates);
+          refreshDiagnosticsPresentation(
+            diagnosticsPresentation, packetSamples, stats, diagnosticsNowSeconds);
+          const float peakTransferRate = maxTransferRate(diagnosticsPresentation.transferRates);
           const float graphMax = std::max(1.0f, peakTransferRate * 1.15f);
           char transferOverlay[96];
           std::snprintf(transferOverlay, sizeof(transferOverlay), "current %.1f KiB/s | peak %.1f KiB/s",
-            stats.rxKbps, peakTransferRate);
-          ImGui::PlotLines("##DataTransferRate", transferRates.data(),
-            static_cast<int>(transferRates.size()), 0, transferOverlay, 0.0f, graphMax,
+            diagnosticsPresentation.rxKbps, peakTransferRate);
+          ImGui::PlotLines("##DataTransferRate", diagnosticsPresentation.transferRates.data(),
+            static_cast<int>(diagnosticsPresentation.transferRates.size()), 0,
+            transferOverlay, 0.0f, graphMax,
             ImVec2(diagnosticsContentWidth, ImGui::GetFontSize() * 6.0f));
+          if (!diagnosticsPresentation.roundTripTimes.empty()) {
+            char timingOverlay[128];
+            std::snprintf(timingOverlay, sizeof(timingOverlay),
+              "RTT %.2f ms | avg %.2f | jitter %.2f | max %.2f",
+              diagnosticsPresentation.timing.currentMs,
+              diagnosticsPresentation.timing.averageMs,
+              diagnosticsPresentation.timing.jitterMs,
+              diagnosticsPresentation.timing.maximumMs);
+            ImGui::PlotLines("##RoundTripTime", diagnosticsPresentation.roundTripTimes.data(),
+              static_cast<int>(diagnosticsPresentation.roundTripTimes.size()), 0, timingOverlay,
+              0.0f, FLT_MAX,
+              ImVec2(diagnosticsContentWidth, ImGui::GetFontSize() * 5.0f));
+          }
           float updateRateHz = settings.tcpUpdateRateHz;
           if (drawInlineLabelSliderFloat("diagnostics_update_rate", "Target",
                 &updateRateHz, kTcpUpdateRateMinHz, kTcpUpdateRateMaxHz, "%.0f Hz")) {
@@ -6663,8 +7273,9 @@ int main(int argc, char* argv[]) {
           }
 
           ImGui::SeparatorText("Packets");
-          ImGui::TextDisabled("Recent %zu packets | parse errors %d | RX %.1f KiB/s", packetSamples.size(),
-            stats.parseErrors, stats.rxKbps);
+          ImGui::TextDisabled("Recent %zu packets | parse errors %d | RX %.1f KiB/s",
+            diagnosticsPresentation.packetSamples.size(), diagnosticsPresentation.parseErrors,
+            diagnosticsPresentation.rxKbps);
           const float packetHeight = ImGui::GetFontSize() * 8.0f;
           if (ImGui::BeginChild("##PacketHistory", ImVec2(diagnosticsContentWidth, packetHeight), true)) {
             if (ImGui::BeginTable("##packet_table", 8,
@@ -6678,7 +7289,8 @@ int main(int argc, char* argv[]) {
               ImGui::TableSetupColumn("sens", ImGuiTableColumnFlags_WidthFixed, 44.0f);
               ImGui::TableSetupColumn("miss", ImGuiTableColumnFlags_WidthFixed, 44.0f);
               ImGui::TableHeadersRow();
-              for (auto it = packetSamples.rbegin(); it != packetSamples.rend(); ++it) {
+              for (auto it = diagnosticsPresentation.packetSamples.rbegin();
+                   it != diagnosticsPresentation.packetSamples.rend(); ++it) {
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0); ImGui::Text("%.2f", it->timeSeconds);
                 ImGui::TableSetColumnIndex(1); ImGui::Text("%d", it->bytes);
@@ -6699,6 +7311,7 @@ int main(int argc, char* argv[]) {
             assetDiagnostics = collectAssetDiagnostics(scene);
             assetDiagnosticsDirty = false;
             stats.unresolvedAssets = unresolvedAssetCount(scene);
+            diagnosticsPresentation.unresolvedAssets = stats.unresolvedAssets;
           }
           ImGui::SameLine();
           if (drawIconTextButton(uiIcons, TcpViewerIconKind::Export, "Export Scene JSON", "export_scene_json")) {
@@ -6711,7 +7324,8 @@ int main(int argc, char* argv[]) {
             }
             exportSceneJson(path, scene, assetDiagnostics, captureStatus);
           }
-          ImGui::TextDisabled("%zu assets | %zu unresolved", assetDiagnostics.size(), stats.unresolvedAssets);
+          ImGui::TextDisabled("%zu assets | %zu unresolved", assetDiagnostics.size(),
+            diagnosticsPresentation.unresolvedAssets);
           const float assetHeight = ImGui::GetFontSize() * 9.0f;
           if (ImGui::BeginChild("##AssetDiagnostics", ImVec2(diagnosticsContentWidth, assetHeight), true)) {
             if (assetDiagnostics.empty()) {
@@ -6849,6 +7463,9 @@ int main(int argc, char* argv[]) {
             objectName = "unnamed";
           }
 
+          const auto selectedSensors = scene.getSensorsForTag(selectedTag);
+          if (ImGui::BeginTabBar("##selected_object_tabs")) {
+            if (ImGui::BeginTabItem("Object")) {
           if (ImGui::BeginTable("##selected_props", 2, ImGuiTableFlags_SizingFixedFit)) {
             ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthFixed);
             ImGui::TableSetupColumn("value", ImGuiTableColumnFlags_WidthStretch);
@@ -6970,6 +7587,44 @@ int main(int argc, char* argv[]) {
             ImGui::EndTable();
           }
 
+          if (selectedSignals.size() >= 2) {
+            std::vector<float> linearSpeeds;
+            std::vector<float> angularSpeeds;
+            std::vector<float> generalizedSpeeds;
+            std::vector<float> contactCounts;
+            linearSpeeds.reserve(selectedSignals.size());
+            angularSpeeds.reserve(selectedSignals.size());
+            generalizedSpeeds.reserve(selectedSignals.size());
+            contactCounts.reserve(selectedSignals.size());
+            for (const auto& sample : selectedSignals) {
+              linearSpeeds.push_back(sample.linearSpeed);
+              angularSpeeds.push_back(sample.angularSpeed);
+              generalizedSpeeds.push_back(sample.generalizedSpeed);
+              contactCounts.push_back(sample.contactCount);
+            }
+            const ImVec2 plotSize(std::max(240.0f, ImGui::GetContentRegionAvail().x),
+                                  ImGui::GetFontSize() * 4.5f);
+            ImGui::SeparatorText("Live Signals");
+            const auto drawSignalPlot = [&](SelectedSignalKind kind,
+                                            const std::vector<float>& values) {
+              const SelectedSignalPresentation presentation = selectedSignalPresentation(kind);
+              ImGui::TextUnformatted(presentation.title);
+              char currentValue[64];
+              std::snprintf(currentValue, sizeof(currentValue),
+                presentation.currentValueFormat, values.back());
+              ImGui::PlotLines(presentation.plotId, values.data(),
+                static_cast<int>(values.size()), 0, currentValue, 0.0f, FLT_MAX, plotSize);
+            };
+            drawSignalPlot(SelectedSignalKind::LinearSpeed, linearSpeeds);
+            drawSignalPlot(SelectedSignalKind::AngularSpeed, angularSpeeds);
+            if (selectedEntry->isArticulated) {
+              drawSignalPlot(SelectedSignalKind::GeneralizedSpeed, generalizedSpeeds);
+            }
+            if (scene.serverSupportsContactObjectTags()) {
+              drawSignalPlot(SelectedSignalKind::Contacts, contactCounts);
+            }
+          }
+
           if (selectedEntry->isArticulated) {
             ImGui::SeparatorText("Joints");
             if (selectedInfo.valid && selectedInfo.isArticulated && selectedInfo.tag == selectedTag &&
@@ -6983,6 +7638,9 @@ int main(int argc, char* argv[]) {
                 for (size_t i = 0; i < selectedInfo.jointNames.size(); ++i) {
                   ImGui::TableNextRow();
                   ImGui::TableSetColumnIndex(0);
+                  const int32_t type = i < selectedInfo.jointTypes.size() ?
+                    selectedInfo.jointTypes[i] : int32_t(raisim::Joint::Type::FIXED);
+                  drawJointTypeIcon(uiIcons, type);
                   ImGui::TextUnformatted(selectedInfo.jointNames[i].c_str());
                   ImGui::TableSetColumnIndex(1);
                   const float angle =
@@ -6994,6 +7652,20 @@ int main(int argc, char* argv[]) {
             } else {
               ImGui::TextDisabled("Joint data not available");
             }
+          }
+              ImGui::EndTabItem();
+            }
+            if (!selectedSensors.empty()) {
+              const std::string sensorTabLabel =
+                "Sensors (" + std::to_string(selectedSensors.size()) + ")";
+              if (ImGui::BeginTabItem(sensorTabLabel.c_str())) {
+                drawObjectSensors(
+                  uiIcons, selectedSensors, sensorRenderer.previewsForTag(selectedTag),
+                  cameraFrustums);
+                ImGui::EndTabItem();
+              }
+            }
+            ImGui::EndTabBar();
           }
         }
       }
@@ -7041,7 +7713,8 @@ int main(int argc, char* argv[]) {
         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
         ImGuiWindowFlags_NoNavFocus;
       if (ImGui::Begin("Raisim Inspector##Overlay", nullptr, inspectorFlags)) {
-        ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImVec4(0.66f, 0.71f, 0.78f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TextDisabled,
+          raionrobotics_imgui_secondary_text_color());
         // Title row — mirrors the "Status" line in the connection panel.
         const std::filesystem::path src(inspector.sourceFile);
         if (const TcpViewerIcon* robotIcon = uiIcons.get(TcpViewerIconKind::Robot)) {
@@ -7097,6 +7770,7 @@ int main(int argc, char* argv[]) {
               case raisim::Joint::Type::SPHERICAL: typeLabel = "sph  quat"; break;
               case raisim::Joint::Type::FLOATING: typeLabel = "float  pos  quat"; break;
             }
+            drawJointTypeIcon(uiIcons, static_cast<int32_t>(j.type));
             ImGui::Text("%s  [%s]", j.name.c_str(), typeLabel);
             if (j.type == raisim::Joint::Type::REVOLUTE ||
                 j.type == raisim::Joint::Type::PRISMATIC) {
@@ -7255,6 +7929,7 @@ int main(int argc, char* argv[]) {
   raisimLogo.release();
   uiIcons.release();
   client.disconnect();
+  clearCameraFrustums(*viewer, cameraFrustums);
   scene.shutdown();
   viewer.reset();
 

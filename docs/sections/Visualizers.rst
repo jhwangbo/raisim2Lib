@@ -37,9 +37,9 @@ viewer binary:
 
 The TCP viewer receives world state from ``RaisimServer`` and renders it with
 rayrai. Use it for normal debugging, camera control, collision-body inspection,
-object selection, and server-based examples. The viewer is intentionally a
-visualization client: it does not write RGB/depth images back into RaiSim
-sensors.
+object selection, server-based examples, and viewer-rendered manual RGB/depth
+cameras. The selected-object Sensors tab shows camera previews and frustums;
+the completed BGRA/depth buffers are returned to ``RaisimServer``.
 
 In-process rayrai
 =================

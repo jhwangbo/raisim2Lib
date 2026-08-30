@@ -1,12 +1,12 @@
 # RaiSim2
 
-<img src="docs/image/rayrai_complete_showcase.png" alt="rayrai complete showcase" width="100%">
+<img src="docs/image/rayrai_complete_showcase.gif" alt="rayrai complete showcase" width="100%">
 
-<img src="docs/image/granular_media.png" alt="granular media example" width="100%">
+<img src="docs/image/granular_media.gif" alt="granular media example" width="100%">
 
-<img src="docs/image/deformable_objects.png" alt="deformable objects example" width="100%">
+<img src="docs/image/deformable_objects.gif" alt="deformable objects example" width="100%">
 
-<img src="docs/image/procedural_heightmap.png" alt="procedural heightmap example" width="100%">
+<img src="docs/image/procedural_heightmap.gif" alt="procedural heightmap example" width="100%">
 
 RaiSim is a physics engine for robotics and artificial intelligence research. The public distribution is provided as binary packages with headers, libraries, examples, rayrai viewer sources, and documentation.
 

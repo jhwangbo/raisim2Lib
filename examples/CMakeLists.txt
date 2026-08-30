@@ -221,4 +221,33 @@ target_sources(rayrai_tcp_viewer PRIVATE
     src/rayrai/tools/TcpViewerScreenshot.cpp
     src/rayrai/tools/TcpViewerSession.cpp
     src/rayrai/tools/TcpViewerDiscovery.cpp
+    src/rayrai/tools/TcpViewerSensors.cpp
     src/rayrai/tools/TcpViewerSettings.cpp)
+
+# Optional desktop integration: install a launcher for the viewer into
+# ~/.local/share/applications and pin it to the GNOME / Ubuntu dock after each
+# Release build. Off by default because a build should not normally rearrange
+# the user's desktop; the flag is cached, so configuring once with
+# -DRAISIM_EXAMPLE_DESKTOP_LAUNCHER=ON keeps it enabled for that build tree.
+# The script skips itself on non-Linux hosts, on non-Release configurations and
+# on machines with no graphical session, and never fails the build.
+option(RAISIM_EXAMPLE_DESKTOP_LAUNCHER
+    "Install and pin a desktop launcher for rayrai_tcp_viewer (Linux, Release builds)" OFF)
+
+if(RAISIM_EXAMPLE_DESKTOP_LAUNCHER AND UNIX AND NOT APPLE)
+    set(_viewer_launcher_script
+        "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/install_rayrai_viewer_launcher.sh")
+    if(EXISTS "${_viewer_launcher_script}")
+        add_custom_command(TARGET rayrai_tcp_viewer POST_BUILD
+            COMMAND "${_viewer_launcher_script}"
+                    --viewer "$<TARGET_FILE:rayrai_tcp_viewer>"
+                    --repo "${CMAKE_CURRENT_SOURCE_DIR}/.."
+                    --config "$<CONFIG>"
+                    --pin
+            COMMENT "Installing rayrai_tcp_viewer desktop launcher"
+            VERBATIM)
+    else()
+        message(WARNING
+            "RAISIM_EXAMPLE_DESKTOP_LAUNCHER is ON but ${_viewer_launcher_script} is missing")
+    endif()
+endif()

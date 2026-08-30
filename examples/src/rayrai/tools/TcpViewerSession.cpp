@@ -3,6 +3,7 @@
 
 #include "TcpViewerSession.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <limits>
 #include <system_error>
@@ -155,6 +156,13 @@ bool loadSessionFile(const std::filesystem::path& path, std::vector<RecordedFram
   }
   status = "loaded replay " + path.string() + " (" + std::to_string(frames.size()) + " frames)";
   return !frames.empty();
+}
+
+size_t findSessionFrameAtOrAfter(const std::vector<RecordedFrame>& frames, uint64_t timeMicros) {
+  return static_cast<size_t>(std::lower_bound(frames.begin(), frames.end(), timeMicros,
+    [](const RecordedFrame& frame, uint64_t value) {
+      return frame.timeMicros < value;
+    }) - frames.begin());
 }
 
 } // namespace raisin::tcp_viewer
