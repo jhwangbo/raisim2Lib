@@ -2631,8 +2631,11 @@ struct CameraFrustumUiState {
   raisim::Sensor::Type type = raisim::Sensor::Type::UNKNOWN;
   std::string sensorName;
   std::string visualName;
+  std::string frameName;
   bool visible = false;
+  bool frameVisible = false;
   std::shared_ptr<raisin::CameraFrustum> frustum;
+  std::shared_ptr<raisin::CoordinateFrame> frame;
 };
 
 using CameraFrustumUiStates = std::unordered_map<std::string, CameraFrustumUiState>;
@@ -2654,6 +2657,13 @@ float cameraFrustumFarDistance(const SensorInfo& sensor) {
   return 10.0f;
 }
 
+std::string cameraSensorRangeLabel(const SensorInfo& sensor) {
+  if (sensor.type != raisim::Sensor::Type::DEPTH) return {};
+  char label[64];
+  std::snprintf(label, sizeof(label), "%.3f~%.3f", sensor.clipNear, sensor.clipFar);
+  return label;
+}
+
 float cameraFrustumHorizontalFov(const SensorInfo& sensor) {
   if (!std::isfinite(sensor.hFov) || sensor.hFov <= 0.0) {
     return glm::radians(60.0f);
@@ -2667,20 +2677,40 @@ void removeCameraFrustum(raisin::RayraiWindow& viewer, CameraFrustumUiState& sta
   state.frustum.reset();
 }
 
+void removeCameraSensorFrame(raisin::RayraiWindow& viewer, CameraFrustumUiState& state) {
+  if (!state.frame) return;
+  viewer.removeCoordinateFrame(state.frameName);
+  state.frame.reset();
+}
+
 void clearCameraFrustums(raisin::RayraiWindow& viewer, CameraFrustumUiStates& states) {
   for (auto& [key, state] : states) {
     (void)key;
     removeCameraFrustum(viewer, state);
+    removeCameraSensorFrame(viewer, state);
   }
   states.clear();
+}
+
+raisin::CoordinateFrame::Pose cameraSensorFramePose(const SensorInfo& sensor) {
+  raisin::CoordinateFrame::Pose pose;
+  pose.position = sensor.position;
+  pose.quaternion = glm::quat(sensor.orientation.w, sensor.orientation.x,
+    sensor.orientation.y, sensor.orientation.z);
+  const float norm = glm::length(pose.quaternion);
+  pose.quaternion = std::isfinite(norm) && norm > 1.0e-6f
+    ? pose.quaternion / norm
+    : glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+  return pose;
 }
 
 void updateCameraFrustums(raisin::RayraiWindow& viewer, const RemoteScene& scene,
                           CameraFrustumUiStates& states) {
   for (auto& [key, state] : states) {
     (void)key;
-    if (!state.visible) {
+    if (!state.visible && !state.frameVisible) {
       removeCameraFrustum(viewer, state);
+      removeCameraSensorFrame(viewer, state);
       continue;
     }
     const auto sensors = scene.getSensorsForTag(state.parentTag);
@@ -2689,23 +2719,38 @@ void updateCameraFrustums(raisin::RayraiWindow& viewer, const RemoteScene& scene
     });
     if (sensor == sensors.end() || !isCameraSensorType(sensor->type)) {
       removeCameraFrustum(viewer, state);
+      removeCameraSensorFrame(viewer, state);
       continue;
     }
-    if (!state.frustum) {
-      const glm::vec4 color = sensor->type == raisim::Sensor::Type::RGB
-        ? glm::vec4(0.25f, 0.78f, 1.0f, 1.0f)
-        : glm::vec4(1.0f, 0.66f, 0.20f, 1.0f);
-      state.frustum = viewer.addCameraFrustum(state.visualName, color);
-      state.frustum->setDetectable(false);
+    if (state.visible) {
+      if (!state.frustum) {
+        const glm::vec4 color = sensor->type == raisim::Sensor::Type::RGB
+          ? glm::vec4(0.25f, 0.78f, 1.0f, 1.0f)
+          : glm::vec4(1.0f, 0.66f, 0.20f, 1.0f);
+        state.frustum = viewer.addCameraFrustum(state.visualName, color);
+        state.frustum->setDetectable(false);
+      }
+      const float aspect = sensor->width > 0 && sensor->height > 0
+        ? static_cast<float>(sensor->width) / static_cast<float>(sensor->height)
+        : 1.0f;
+      const glm::quat orientation(sensor->orientation.w, sensor->orientation.x,
+                                  sensor->orientation.y, sensor->orientation.z);
+      state.frustum->updatePerspective(sensor->position, orientation,
+        cameraFrustumHorizontalFov(*sensor), aspect,
+        static_cast<float>(sensor->clipNear), cameraFrustumFarDistance(*sensor));
+    } else {
+      removeCameraFrustum(viewer, state);
     }
-    const float aspect = sensor->width > 0 && sensor->height > 0
-      ? static_cast<float>(sensor->width) / static_cast<float>(sensor->height)
-      : 1.0f;
-    const glm::quat orientation(sensor->orientation.w, sensor->orientation.x,
-                                sensor->orientation.y, sensor->orientation.z);
-    state.frustum->updatePerspective(sensor->position, orientation,
-      cameraFrustumHorizontalFov(*sensor), aspect,
-      static_cast<float>(sensor->clipNear), cameraFrustumFarDistance(*sensor));
+
+    if (state.frameVisible) {
+      if (!state.frame) {
+        state.frame = viewer.addCoordinateFrame(state.frameName);
+      }
+      state.frame->poses.assign(1, cameraSensorFramePose(*sensor));
+      state.frame->frameSize = 0.3;
+    } else {
+      removeCameraSensorFrame(viewer, state);
+    }
   }
 }
 
@@ -2732,12 +2777,16 @@ void drawObjectSensors(const TcpViewerIcons& icons, const std::vector<SensorInfo
         if (state.visualName.empty()) {
           state.visualName = "__tcp_sensor_frustum:" + frustumKey;
         }
-        ImGui::Checkbox("Show frustum", &state.visible);
+        if (state.frameName.empty()) {
+          state.frameName = "__tcp_sensor_frame:" + frustumKey;
+        }
+        ImGui::Checkbox("Frustum", &state.visible);
         ImGui::SameLine();
-        if (sensor.type == raisim::Sensor::Type::RGB) {
-          ImGui::TextDisabled("10 m display range");
-        } else {
-          ImGui::TextDisabled("%.3f m depth range", cameraFrustumFarDistance(sensor));
+        ImGui::Checkbox("Frame", &state.frameVisible);
+        const std::string rangeLabel = cameraSensorRangeLabel(sensor);
+        if (!rangeLabel.empty()) {
+          ImGui::SameLine();
+          ImGui::TextDisabled("%s", rangeLabel.c_str());
         }
         ImGui::TextDisabled("%dx%d | clip %.3f .. %.3f m",
           sensor.width, sensor.height, sensor.clipNear, sensor.clipFar);
