@@ -193,6 +193,7 @@ create_rayrai_executable(rayrai_complete_showcase src/rayrai/getting_started/ray
 # Sensors.
 create_rayrai_executable(rayrai_rgb_camera src/rayrai/sensors/rayrai_rgb_camera.cpp)
 create_rayrai_executable(rayrai_depth_camera src/rayrai/sensors/rayrai_depth_camera.cpp)
+create_rayrai_executable(rayrai_heightmap_replacement src/rayrai/sensors/rayrai_heightmap_replacement.cpp)
 create_rayrai_executable(rayrai_lidar_pointcloud src/rayrai/sensors/rayrai_lidar_pointcloud.cpp)
 create_rayrai_executable(rayrai_aruco_marker src/rayrai/sensors/rayrai_aruco_marker.cpp)
 
