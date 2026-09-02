@@ -75,6 +75,9 @@ TCP viewer.
 - `rayrai_basic_scene`: minimal in-process rayrai rendering.
 - `rayrai_complete_showcase`: broad rayrai feature overview.
 - `rayrai_depth_camera`: rayrai depth capture plus CPU depth-camera comparison.
+- `rayrai_heightmap_replacement`: visualize stale deleted-heightmap geometry in a
+  robot's front and rear depth images by pressing Space to replace the terrain
+  and randomized primitive populations.
 - `rayrai_rgb_camera`: in-process rayrai RGB capture.
 - `rayrai_rolling_spinning_friction`: rolling and spinning friction on a grid
   of spheres and cylinders.
