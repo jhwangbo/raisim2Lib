@@ -1,0 +1,500 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Performance notes and the C++ API reference &mdash; raisim 2.5.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=b6430375" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=1fd526c0"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Rayrai TCP Viewer" href="../RayraiTcpViewer.html" />
+    <link rel="prev" title="Example targets" href="Examples.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html">
+            
+              <img src="../../_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../QuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Visualization.html">Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FeatureMap.html">Feature Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BuildAndTest.html">Build, Test, and Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ProjectLayout.html">Project Layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Performance.html">Performance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Benchmark.html">Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../License.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Acknowledgement.html">Acknowledgement</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">RaiSim C++</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ConventionsAndNotations.html">Conventions and Notations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Determinism.html">Determinism</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Math.html">Math Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../LoggingSystem.html">Logging System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../WorldSystem.html">World</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../WorldConfigurationFile.html">World Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../RsceneFile.html">.rscene File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../OpenUSD.html">OpenUSD Loading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../RaisimServer.html">Raisim Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Object.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Contact.html">Contact and Collision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CollisionDetection.html">Collision Detection and Colliders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MaterialSystem.html">Material System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../HeightMap.html">Height Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Constraints.html">Constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Constraints.html#length-constraints-use-tendons">Length constraints use tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Constraints.html#migrating-the-former-wire-api">Migrating the former wire API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Constraints.html#pin-constraints">Pin constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Tendons.html">Tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../RayTest.html">Ray Test</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Sensors.html">Sensors</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Related software</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../Rayrai.html">rayrai Visualizer</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../Rayrai.html#overview">Overview</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="RenderQuality.html">Render quality, tone mapping, color grading</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Lighting.html">Lighting, shadows, and HDR/IBL</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Materials.html">PBR materials</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Visuals.html">Custom visuals, instancing, and scene helpers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="PostProcess.html">Post-process effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Weather.html">Weather and atmospherics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Capture.html">Capture, diagnostics, and headless rendering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Sensors.html">Sensors and depth/LiDAR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html">Example targets</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Performance notes and the C++ API reference</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#performance-notes">Performance notes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#shared-mesh-buffers-across-contexts">Shared mesh buffers across contexts</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#shader-binary-cache-and-multi-threaded-prewarming">Shader binary cache and multi-threaded prewarming</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#additional-tips">Additional tips</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#api">API</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../Rayrai.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Rayrai.html#source-built-tcp-viewer-recommended">Source-built TCP viewer (recommended)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Rayrai.html#build-and-link">Build and link</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Rayrai.html#minimal-usage">Minimal usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Rayrai.html#threading-contract">Threading contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Rayrai.html#lifetime-and-error-model">Lifetime and error model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Rayrai.html#example-custom-visuals-background-color">Example: custom visuals + background color</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Rayrai.html#where-to-go-next">Where to go next</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../RayraiTcpViewer.html">Rayrai TCP Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../RaisimEngine2.html">RaiSim Engine 2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../RaisimGymTorch.html">RaisimGymTorch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../RaiSimPy.html">RaisimPy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../RaiSimMatlab.html">RaisimMatlab</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../LegacyIntegrations.html">Legacy Integrations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">raisim</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../Rayrai.html">rayrai Visualizer</a></li>
+      <li class="breadcrumb-item active">Performance notes and the C++ API reference</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="performance-notes-and-the-c-api-reference">
+<h1>Performance notes and the C++ API reference<a class="headerlink" href="#performance-notes-and-the-c-api-reference" title="Link to this heading"></a></h1>
+<section id="performance-notes">
+<h2>Performance notes<a class="headerlink" href="#performance-notes" title="Link to this heading"></a></h2>
+<p>rayrai defaults to one simulation/render thread. Applications that explicitly
+opt into <code class="docutils literal notranslate"><span class="pre">ThreadingMode::MultiThread</span></code> use one renderer and current OpenGL
+context per worker, as described in <a class="reference internal" href="../Rayrai.html"><span class="doc">rayrai Visualizer</span></a>. The renderer keeps the
+main performance controls explicit:</p>
+<ul class="simple">
+<li><p>Disable shadows for high-throughput camera observations when shadows are not part
+of the desired output. Use <code class="docutils literal notranslate"><span class="pre">RenderOverrides::doShadows</span> <span class="pre">=</span> <span class="pre">false</span></code> or disable the
+light’s shadow map globally.</p></li>
+<li><p>Prefer <code class="docutils literal notranslate"><span class="pre">addInstancedVisuals</span></code> for repeated primitives or meshes. A single
+instanced visual renders many copies with one instance buffer instead of many
+separate visual objects.</p></li>
+<li><p>Opaque RaiSim single-body primitives are internally batched on non-shadowed color
+renders. This helps high-throughput observation rendering while keeping shadowed
+rendering on the conservative per-object path.</p></li>
+<li><p>TCP viewer scenes synthesize repeated articulated mesh visuals into internal
+<code class="docutils literal notranslate"><span class="pre">InstancedVisuals</span></code> batches when mesh path, scale, color policy, and color match.
+<code class="docutils literal notranslate"><span class="pre">RemoteScene::tcpMeshBatchCount()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">tcpMeshBatchMeshColorCount()</span></code> expose diagnostics for this path.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">InstancedVisuals::setMaxRenderedInstances</span></code> and
+<code class="docutils literal notranslate"><span class="pre">PointCloud::setMaxRenderedPoints</span></code> as simple LOD caps for debug overlays,
+particles, scans, or dense markers that do not need full density in every frame.</p></li>
+<li><p>Keep non-visible debug geometry outside the camera frustum when possible. rayrai
+performs coarse frustum culling for RaiSim objects, custom visuals, instanced
+visuals, and point clouds, so off-camera content is skipped before draw submission.
+Mesh-local bounds are used when available, so offset meshes, articulated links,
+deformables, and heightmaps cull and frame from their rendered bounds rather
+than only from the object origin.</p></li>
+<li><p>If the world topology is stable, repeated <code class="docutils literal notranslate"><span class="pre">updateObjectLists()</span></code> calls are cheap:
+rayrai refreshes appearances without rebuilding the object cache unless objects
+were added or removed.</p></li>
+<li><p>RGB/depth CPU readback supports an optional PBO-backed asynchronous path. The
+synchronous path remains the deterministic default for simple RL loops.</p></li>
+<li><p>Dynamic point clouds and instanced visuals support partial buffer updates for
+streaming changes.</p></li>
+<li><p>Deformable TCP streaming sends topology/indices only during initialization or topology
+changes; normal frames send vertex positions only.</p></li>
+</ul>
+</section>
+<section id="shared-mesh-buffers-across-contexts">
+<h2>Shared mesh buffers across contexts<a class="headerlink" href="#shared-mesh-buffers-across-contexts" title="Link to this heading"></a></h2>
+<p>In 2.5.8, compatible OpenGL contexts reuse immutable indexed mesh buffers for
+primitives and file-backed assets. To create compatible contexts, make the root
+SDL OpenGL context current before calling
+<code class="docutils literal notranslate"><span class="pre">RayraiWindow::createOffscreenGlContext</span></code> for each child. Each call makes the
+new context current, so rebind the root when creating the next child. Creating
+a context on a thread with no current context creates an independent share
+group and cannot provide this reuse.</p>
+<p>Keep each renderer’s context current for rendering and resource destruction.
+Do not use one context concurrently on multiple threads. Mesh vertex/index
+buffers can be shared; VAOs, framebuffers, and camera targets remain specific
+to each context. The cache retains weak references, so reuse requires an
+existing owner to keep the mesh alive.</p>
+<p>The public diagnostics can be read without changing rendering behavior:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">stats</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">raisin</span><span class="o">::</span><span class="n">RayraiGlobalAsset</span><span class="o">::</span><span class="n">sharedGpuAssetStats</span><span class="p">();</span>
+<span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">uploadedBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stats</span><span class="p">.</span><span class="n">gpuBufferBytesUploaded</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">reusedBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stats</span><span class="p">.</span><span class="n">gpuBufferBytesReused</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>These are cumulative mesh-buffer counters, not total or live GPU memory.
+Textures, VAOs, and render targets are excluded. Use
+<code class="docutils literal notranslate"><span class="pre">resetSharedGpuAssetStats()</span></code> before a controlled measurement, and
+<code class="docutils literal notranslate"><span class="pre">setSharedGpuAssetCacheEnabled(false)</span></code> before loading assets for a comparison
+with separate uploads. Restore it to <code class="docutils literal notranslate"><span class="pre">true</span></code> before the shared-cache run.</p>
+</section>
+<section id="shader-binary-cache-and-multi-threaded-prewarming">
+<h2>Shader binary cache and multi-threaded prewarming<a class="headerlink" href="#shader-binary-cache-and-multi-threaded-prewarming" title="Link to this heading"></a></h2>
+<p>rayrai’s PBR shaders compile in 10-30 seconds on first run depending on the
+GL driver. v2.3.0 adds two features that eliminate that wait in production
+RL pipelines:</p>
+<ol class="arabic simple">
+<li><p><strong>Persistent shader binary cache.</strong> Compiled GL programs are written to a
+per-driver cache directory and reloaded on subsequent runs.</p></li>
+<li><p><strong>Static prewarm helper</strong> for multi-threaded RL setups where many worker
+threads will each construct their own <code class="docutils literal notranslate"><span class="pre">RayraiWindow</span></code> — one thread can
+pre-compile every shader, then every worker thread reads from the cache.</p></li>
+</ol>
+<p>Both are wired through the <code class="docutils literal notranslate"><span class="pre">RayraiWindow</span></code> constructor:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">raisin</span><span class="o">::</span><span class="n">RayraiWindow</span><span class="w"> </span><span class="n">viewer</span><span class="p">(</span>
+<span class="w">  </span><span class="n">world</span><span class="p">,</span>
+<span class="w">  </span><span class="cm">/*width=*/</span><span class="mi">1280</span><span class="p">,</span><span class="w"> </span><span class="cm">/*height=*/</span><span class="mi">720</span><span class="p">,</span>
+<span class="w">  </span><span class="n">raisin</span><span class="o">::</span><span class="n">RayraiWindow</span><span class="o">::</span><span class="n">ThreadingMode</span><span class="o">::</span><span class="n">SingleThread</span><span class="p">,</span>
+<span class="w">  </span><span class="cm">/*shaderCompileThreadCount=*/</span><span class="mi">1</span><span class="p">,</span><span class="w">            </span><span class="c1">// 1 = matches rayrai&#39;s default</span>
+<span class="w">  </span><span class="cm">/*shaderBinaryCacheEnabled=*/</span><span class="nb">true</span><span class="p">,</span><span class="w">         </span><span class="c1">// on by default</span>
+<span class="w">  </span><span class="cm">/*shaderBinaryCacheDirectory=*/</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="w">          </span><span class="c1">// empty → $HOME/.raisim/rayrai</span>
+<span class="w">  </span><span class="cm">/*logShaderBinaryCache=*/</span><span class="nb">false</span><span class="p">);</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">shaderCompileThreadCount</span></code> is passed to
+<code class="docutils literal notranslate"><span class="pre">glMaxShaderCompilerThreadsARB</span></code> and only takes effect on drivers that
+expose <code class="docutils literal notranslate"><span class="pre">KHR/ARB_parallel_shader_compile</span></code>. Raise it only when the host
+application is itself multi-threaded.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">shaderBinaryCacheEnabled</span> <span class="pre">=</span> <span class="pre">true</span></code> (the default) writes program binaries
+under the cache directory keyed by GL vendor / renderer / version + GLSL
+source. On the next run, identical configurations are loaded directly,
+skipping the GLSL compile entirely.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">shaderBinaryCacheDirectory</span> <span class="pre">=</span> <span class="pre">&quot;&quot;</span></code> uses <code class="docutils literal notranslate"><span class="pre">$XDG_CACHE_HOME/raisim/rayrai</span></code>
+(or <code class="docutils literal notranslate"><span class="pre">$HOME/.raisim/rayrai</span></code> on Linux/macOS).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">logShaderBinaryCache</span> <span class="pre">=</span> <span class="pre">true</span></code> prints every hit/miss/store to stderr —
+useful for verifying the cache is actually being consulted.</p></li>
+</ul>
+<p>Cache statistics (per process, across all <code class="docutils literal notranslate"><span class="pre">Shader::compile</span></code> calls):</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">raisin</span><span class="o">::</span><span class="n">Shader</span><span class="o">::</span><span class="n">binaryCacheStats</span><span class="p">();</span>
+<span class="n">std</span><span class="o">::</span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;hits=%llu misses=%llu stores=%llu coordinated_waits=%llu</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">hits</span><span class="p">),</span>
+<span class="w">            </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">misses</span><span class="p">),</span>
+<span class="w">            </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">stores</span><span class="p">),</span>
+<span class="w">            </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">coordinatedWaits</span><span class="p">));</span>
+<span class="n">raisin</span><span class="o">::</span><span class="n">Shader</span><span class="o">::</span><span class="n">resetBinaryCacheStats</span><span class="p">();</span><span class="w">  </span><span class="c1">// scope a measurement window</span>
+</pre></div>
+</div>
+<p>Pre-warming for parallel RL can be done with the <code class="docutils literal notranslate"><span class="pre">rayrai_shader_prewarm</span></code>
+utility when it is available in the rayrai package. The utility creates an
+offscreen context and compiles every built-in shader into the persistent binary
+cache:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rayrai_shader_prewarm<span class="w"> </span>--cache-dir<span class="w"> </span>/tmp/rayrai-cache<span class="w"> </span>--compile-threads<span class="w"> </span><span class="m">4</span><span class="w"> </span>--multi-thread
+rayrai_shader_prewarm<span class="w"> </span>--log-cache
+</pre></div>
+</div>
+<p>For an embedded application, spawn one background thread, give it its own
+offscreen GL context, call <code class="docutils literal notranslate"><span class="pre">prewarmShadersForCurrentContext</span></code> once. Worker
+threads that later construct their own <code class="docutils literal notranslate"><span class="pre">RayraiWindow</span></code> will find the heavy
+shaders already cached (or briefly block on a per-shader compile mutex if
+the warm-up is still in flight):</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="p">([]{</span>
+<span class="w">  </span><span class="n">SDL_Window</span><span class="o">*</span><span class="w"> </span><span class="n">w</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">nullptr</span><span class="p">;</span><span class="w"> </span><span class="n">SDL_GLContext</span><span class="w"> </span><span class="n">gl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">nullptr</span><span class="p">;</span>
+<span class="w">  </span><span class="n">raisin</span><span class="o">::</span><span class="n">RayraiWindow</span><span class="o">::</span><span class="n">createOffscreenGlContext</span><span class="p">(</span><span class="n">w</span><span class="p">,</span><span class="w"> </span><span class="n">gl</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;rayrai_prewarm&quot;</span><span class="p">);</span>
+<span class="w">  </span><span class="n">raisin</span><span class="o">::</span><span class="n">RayraiWindow</span><span class="o">::</span><span class="n">makeOffscreenContextCurrent</span><span class="p">(</span><span class="n">w</span><span class="p">,</span><span class="w"> </span><span class="n">gl</span><span class="p">);</span>
+<span class="w">  </span><span class="n">raisin</span><span class="o">::</span><span class="n">RayraiWindow</span><span class="o">::</span><span class="n">prewarmShadersForCurrentContext</span><span class="p">(</span>
+<span class="w">    </span><span class="n">raisin</span><span class="o">::</span><span class="n">RayraiWindow</span><span class="o">::</span><span class="n">ThreadingMode</span><span class="o">::</span><span class="n">MultiThread</span><span class="p">);</span>
+<span class="w">  </span><span class="n">SDL_GL_MakeCurrent</span><span class="p">(</span><span class="k">nullptr</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span>
+<span class="w">  </span><span class="n">SDL_GL_DeleteContext</span><span class="p">(</span><span class="n">gl</span><span class="p">);</span>
+<span class="w">  </span><span class="n">SDL_DestroyWindow</span><span class="p">(</span><span class="n">w</span><span class="p">);</span>
+<span class="p">}).</span><span class="n">detach</span><span class="p">();</span>
+</pre></div>
+</div>
+<p>Across the whole process, each shader’s GLSL→binary compile runs exactly
+once regardless of the number of worker threads.</p>
+<p>When you only want to warm a specific subset:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Names of every program registered with the running RayraiWindow.</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">names</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">viewer</span><span class="p">.</span><span class="n">linkedShaderNames</span><span class="p">();</span>
+
+<span class="c1">// Compile the heaviest authored-content shader explicitly.</span>
+<span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">ms</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">viewer</span><span class="p">.</span><span class="n">compileShaderByName</span><span class="p">(</span><span class="s">&quot;pbrMeshHigh&quot;</span><span class="p">);</span>
+<span class="n">std</span><span class="o">::</span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;pbrMeshHigh warmup: %lld ms</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ms</span><span class="p">);</span>
+
+<span class="c1">// Iterate every program, one per call. `done` flips true when all are</span>
+<span class="c1">// linked; useful for spreading shader work across multiple frames.</span>
+<span class="kt">bool</span><span class="w"> </span><span class="n">done</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">done</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">viewer</span><span class="p">.</span><span class="n">warmupNextShader</span><span class="p">(</span><span class="n">done</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>For diagnostics on the cost of the lazy-compile pipeline (how long each
+program took on first use, how many are linked so far), call
+<code class="docutils literal notranslate"><span class="pre">shaderWarmupDiagnostics()</span></code>.</p>
+</section>
+<section id="additional-tips">
+<h2>Additional tips<a class="headerlink" href="#additional-tips" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>If you add/remove RaiSim objects after constructing the viewer, call
+<code class="docutils literal notranslate"><span class="pre">RayraiWindow::updateObjectLists()</span></code> so the renderer refreshes its cache.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">setShowCollisionBodies(true)</span></code> for debug visualization of collision shapes.</p></li>
+<li><p>If you want rayrai overlays to use your ImGui font, pass it via <code class="docutils literal notranslate"><span class="pre">setExternalFont</span></code>.</p></li>
+</ul>
+</section>
+<section id="api">
+<h2>API<a class="headerlink" href="#api" title="Link to this heading"></a></h2>
+<section id="core-types">
+<h3>Core types<a class="headerlink" href="#core-types" title="Link to this heading"></a></h3>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+</section>
+<section id="visuals-and-geometry">
+<h3>Visuals and geometry<a class="headerlink" href="#visuals-and-geometry" title="Link to this heading"></a></h3>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygennamespace: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+</section>
+<section id="scene-helpers">
+<h3>Scene helpers<a class="headerlink" href="#scene-helpers" title="Link to this heading"></a></h3>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenenum: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+</section>
+<section id="rendering-and-materials">
+<h3>Rendering and materials<a class="headerlink" href="#rendering-and-materials" title="Link to this heading"></a></h3>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenenum: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenenum: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenenum: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenenum: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+</section>
+<section id="weather-scene-effects-and-reflections">
+<h3>Weather, scene effects, and reflections<a class="headerlink" href="#weather-scene-effects-and-reflections" title="Link to this heading"></a></h3>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenenum: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+<p>Render quality, weather, capture, reflection-probe, and diagnostics helpers are
+exposed through <code class="docutils literal notranslate"><span class="pre">raisin::RayraiWindow</span></code> and the public headers included by
+<code class="docutils literal notranslate"><span class="pre">rayrai/RayraiWindow.hpp</span></code>. The sections above document the intended entry
+points and the fast-path boundaries for those APIs.</p>
+</section>
+<section id="raisim-integration">
+<h3>RaiSim integration<a class="headerlink" href="#raisim-integration" title="Link to this heading"></a></h3>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Examples.html" class="btn btn-neutral float-left" title="Example targets" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../RayraiTcpViewer.html" class="btn btn-neutral float-right" title="Rayrai TCP Viewer" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, RaiSim Tech Inc..</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

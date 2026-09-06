@@ -23,203 +23,128 @@
  */
 
 #include "nanobind_helpers.hpp"
-
-#include "raisim/math.hpp"   // contains the definitions of Vec, Mat, etc.
-#include "raisim/object/Object.hpp"
-#include "raisim/constraints/Constraints.hpp"
-#include "raisim/constraints/LengthConstraint.hpp"
-#include "raisim/constraints/StiffLengthConstraint.hpp"
-#include "raisim/constraints/CompliantLengthConstraint.hpp"
-#include "raisim/constraints/CustomLengthConstraint.hpp"
+#include <nanobind/stl/array.h>
+#include "raisim/constraints/Tendon.hpp"
 #include "raisim/constraints/PinConstraint.hpp"
-#include "raisim/contact/BisectionContactSolver.hpp"
-
-#include "converter.hpp"  // contains code that allows to convert between the Vec, Mat to numpy arrays.
+#include "raisim/World.hpp"
+#include "converter.hpp"
 
 namespace py = nanobind;
 using namespace raisim;
 
-
 void init_constraints(py::module_ &m) {
-
-
-    // create submodule
-    py::module_ constraints_module = m.def_submodule("constraints", "RaiSim contact submodule.");
-
-    py::enum_<raisim::LengthConstraint::StretchType>(m, "StretchType", py::is_arithmetic())
-        .value("STRETCH_RESISTANT_ONLY", raisim::LengthConstraint::StretchType::STRETCH_RESISTANT_ONLY)
-        .value("COMPRESSION_RESISTANT_ONLY", raisim::LengthConstraint::StretchType::COMPRESSION_RESISTANT_ONLY)
-        .value("BOTH", raisim::LengthConstraint::StretchType::BOTH);
-    py::enum_<raisim::LengthConstraint::WireType>(m, "WireType", py::is_arithmetic())
-        .value("STIFF", raisim::LengthConstraint::WireType::STIFF)
-        .value("COMPLIANT", raisim::LengthConstraint::WireType::COMPLIANT)
-        .value("CUSTOM", raisim::LengthConstraint::WireType::CUSTOM);
-    /**************/
-    /* Constraint */
-    /**************/
-    py::class_<raisim::Constraints>(constraints_module, "Constraints", "Raisim Constraints from which all other constraints inherit from.")
-        .def("getColor", [](const raisim::Constraints &self) {
-            return convert_vec_to_np(self.getColor());
-        })
-        .def("setColor", [](raisim::Constraints &self, NDArray color) {
-            self.setColor(convert_np_to_vec<4>(color));
-        }, py::arg("color"))
-        .def("lockMutex", &raisim::Constraints::lockMutex)
-        .def("unlockMutex", &raisim::Constraints::unlockMutex)
-        .def("lock", &raisim::Constraints::lock)
-        .def("unlock", &raisim::Constraints::unlock);
-
-
-    /********/
-    /* Wire */
-    /********/
-    py::class_<raisim::LengthConstraint, raisim::Constraints>(constraints_module, "LengthConstraint", "Raisim LengthConstraint constraint class; it creates a LengthConstraint constraint between 2 bodies.")
-
-        .def("update", [](raisim::LengthConstraint &self,
-                          const std::vector<raisim::contact::Single3DContactProblem> &problems) {
-            raisim::contact::ContactProblems contact_problems;
-            contact_problems.reserve(problems.size());
-            for (const auto &problem : problems)
-                contact_problems.push_back(problem);
-            self.update(contact_problems);
-            std::vector<raisim::contact::Single3DContactProblem> out(contact_problems.begin(), contact_problems.end());
-            return out;
-        }, "update internal variables (called by `integrate1()`).",
-             py::arg("contact_problems"))
-
-
-        .def("getLength", &raisim::LengthConstraint::getLength, R"mydelimiter(
-	    Get the length of the LengthConstraint constraint.
-
-	    Returns:
-	        float: length of the LengthConstraint constraint.
-	    )mydelimiter")
-        .def("getVisualizationWidth", &raisim::LengthConstraint::getVisualizationWidth)
-        .def("setVisualizationWidth", &raisim::LengthConstraint::setVisualizationWidth, py::arg("width"))
-        .def("getDistance", &raisim::LengthConstraint::getDistance)
-
-
-        .def("getP1", [](raisim::LengthConstraint &self) {
-            Vec<3> p1 = self.getP1();
-            return convert_vec_to_np(p1);
-        }, R"mydelimiter(
-	    Return the first attachment point in the World frame.
-
-	    Returns:
-	        np.array[float[3]]: first point position expressed in the world frame.
-	    )mydelimiter")
-
-
-	    .def("getP2", [](raisim::LengthConstraint &self) {
-            Vec<3> p2 = self.getP2();
-            return convert_vec_to_np(p2);
-        }, R"mydelimiter(
-	    Return the second attachment point in the World frame.
-
-	    Returns:
-	        np.array[float[3]]: second point position expressed in the world frame.
-	    )mydelimiter")
-
-
-        .def("getBody1", &raisim::LengthConstraint::getBody1, R"mydelimiter(
-	    Return the first object to which the LengthConstraint is attached.
-
-	    Returns:
-	        Object: first object.
-	    )mydelimiter")
-
-
-        .def("getBody2", &raisim::LengthConstraint::getBody2, R"mydelimiter(
-	    Return the second object to which the LengthConstraint is attached.
-
-	    Returns:
-	        Object: second object.
-	    )mydelimiter")
-
-
-        .def("getNorm", [](raisim::LengthConstraint &self) {
-            Vec<3> normal = self.getNorm();
-            return convert_vec_to_np(normal);
-        }, R"mydelimiter(
-	    Return the direction of the normal (i.e., p2-p1 normalized)
-
-	    Returns:
-	        np.array[float[3]]: direction of the normal.
-	    )mydelimiter")
-
-
-        .def("getLocalIdx1", &raisim::LengthConstraint::getLocalIdx1, R"mydelimiter(
-	    Return the local index of object1.
-
-	    Returns:
-	        int: local index of object1.
-	    )mydelimiter")
-
-
-        .def("getLocalIdx2", &raisim::LengthConstraint::getLocalIdx2, R"mydelimiter(
-	    Return the local index of object2.
-
-	    Returns:
-	        int: local index of object2.
-	    )mydelimiter")
-
-
-        .def("getStretch", &raisim::LengthConstraint::getStretch, R"mydelimiter(
-	    Return the stretch length (i.e., constraint violation).
-
-	    Returns:
-	        float: stretch length.
-	    )mydelimiter")
-
-        .def("setStretchType", &raisim::LengthConstraint::setStretchType, R"mydelimiter(
-	    Return the stretch type (i.e., constraint violation).
-
-	    Returns:
-	        stretch_type: stretch type.
-	    )mydelimiter")
-        .def("getStretchType", &raisim::LengthConstraint::getStretchType)
-        .def("getWireType", &raisim::LengthConstraint::getWireType)
-        .def("getOb1MountPos", [](const raisim::LengthConstraint &self) {
-            return convert_vec_to_np(self.getOb1MountPos());
-        })
-        .def("getOb2MountPos", [](const raisim::LengthConstraint &self) {
-            return convert_vec_to_np(self.getOb2MountPos());
-        })
-
-        .def_prop_rw("name", &raisim::LengthConstraint::getName, &raisim::LengthConstraint::setName)
-	    .def("getName", &raisim::LengthConstraint::getName, "Get the LengthConstraint constraint's name.")
-	    .def("setName", &raisim::LengthConstraint::setName, "Set the LengthConstraint constraint's name.", py::arg("name"))
-	    .def_rw("isActive", &raisim::LengthConstraint::isActive)
-    ;
-
-
-    /*************/
-    /* StiffLengthConstraint */
-    /*************/
-
-    py::class_<raisim::StiffLengthConstraint, raisim::LengthConstraint>(constraints_module, "StiffLengthConstraint", "Raisim StiffLengthConstraint constraint class; it creates a stiff wire constraint between 2 bodies.");
-
-
-    /*************/
-    /* CustomLengthConstraint */
-    /*************/
-    py::class_<raisim::CustomLengthConstraint, raisim::LengthConstraint>(constraints_module, "CustomLengthConstraint", "Raisim CustomLengthConstraint class; it creates a stiff wire constraint between 2 bodies.")
-        .def("setTension", &raisim::CustomLengthConstraint::setTension, "Set the tension in the wire.\n"
-                                                                        "Args:\n"
-                                                                        "   tension (float): tension in the wire", py::arg("tension"));
-
-  /*****************/
-    /* CompliantLengthConstraint */
-    /*****************/
-
-    py::class_<raisim::CompliantLengthConstraint, raisim::LengthConstraint>(constraints_module, "CompliantLengthConstraint", "Raisim Compliant Wire constraint class; it creates a compliant wire constraint between 2 bodies.")
-        .def("getStiffness", &raisim::CompliantLengthConstraint::getStiffness)
-        .def("getPotentialEnergy", &raisim::CompliantLengthConstraint::getPotentialEnergy)
-        .def("getTension", [](const raisim::CompliantLengthConstraint &self) {
-            return convert_vec_to_np(self.getTension());
-        });
-
-    /*****************/
+    auto constraints_module = m.def_submodule("constraints", "Closed-loop pin constraints.");
+    auto tendon = py::class_<Tendon>(m, "Tendon");
+    py::enum_<Tendon::Type>(tendon, "Type")
+        .value("Spatial", Tendon::Type::Spatial).value("Fixed", Tendon::Type::Fixed);
+    py::class_<Tendon::Site>(tendon, "Site")
+        .def("__init__", [](Tendon::Site* self, Object* object, size_t localIndex,
+                           const std::array<double, 3>& position) {
+            new (self) Tendon::Site{object, localIndex, {position[0], position[1], position[2]}};
+        }, py::arg("object").none() = nullptr, py::arg("localIndex") = 0,
+           py::arg("position") = std::array<double, 3>{0., 0., 0.})
+        .def_rw("object", &Tendon::Site::object)
+        .def_rw("localIndex", &Tendon::Site::localIndex)
+        .def_prop_rw("position", [](const Tendon::Site& self) { return convert_vec_to_np(self.position); },
+            [](Tendon::Site& self, const std::array<double, 3>& p) { self.position = {p[0], p[1], p[2]}; });
+    auto path = py::class_<Tendon::PathElement>(tendon, "PathElement");
+    py::enum_<Tendon::PathElement::Kind>(path, "Kind")
+        .value("Site", Tendon::PathElement::Kind::Site)
+        .value("Sphere", Tendon::PathElement::Kind::Sphere)
+        .value("Cylinder", Tendon::PathElement::Kind::Cylinder)
+        .value("Pulley", Tendon::PathElement::Kind::Pulley);
+    path.def(py::init<>())
+        .def_static("via", &Tendon::PathElement::via, py::arg("site"))
+        .def_static("sphere", &Tendon::PathElement::sphere, py::arg("center"), py::arg("radius"))
+        .def_static("cylinder", [](const Tendon::Site& center, double radius, const std::array<double, 3>& axis) {
+            return Tendon::PathElement::cylinder(center, radius, {axis[0], axis[1], axis[2]});
+        }, py::arg("center"), py::arg("radius"), py::arg("axis") = std::array<double, 3>{0., 0., 1.})
+        .def_static("pulley", &Tendon::PathElement::pulley, py::arg("divisor"))
+        .def("withSideSite", &Tendon::PathElement::withSideSite, py::arg("side"), py::rv_policy::reference_internal)
+        .def_rw("kind", &Tendon::PathElement::kind)
+        .def_rw("site", &Tendon::PathElement::site)
+        .def_rw("radius", &Tendon::PathElement::radius)
+        .def_rw("hasSideSite", &Tendon::PathElement::hasSideSite)
+        .def_rw("sideSite", &Tendon::PathElement::sideSite)
+        .def_rw("divisor", &Tendon::PathElement::divisor)
+        .def_prop_rw("axis", [](const Tendon::PathElement& self) { return convert_vec_to_np(self.axis); },
+            [](Tendon::PathElement& self, const std::array<double, 3>& a) { self.axis = {a[0], a[1], a[2]}; });
+    py::class_<Tendon::JointTerm>(tendon, "JointTerm")
+        .def(py::init<ArticulatedSystem*, std::string, double>(),
+             py::arg("system"), py::arg("joint"), py::arg("coefficient") = 1.)
+        .def_rw("system", &Tendon::JointTerm::system)
+        .def_rw("joint", &Tendon::JointTerm::joint)
+        .def_rw("coefficient", &Tendon::JointTerm::coefficient);
+    py::class_<Tendon::Properties>(tendon, "Properties")
+        .def(py::init<>())
+        .def_rw("stiffness", &Tendon::Properties::stiffness)
+        .def_rw("damping", &Tendon::Properties::damping)
+        .def_rw("springLower", &Tendon::Properties::springLower)
+        .def_rw("springUpper", &Tendon::Properties::springUpper)
+        .def_rw("lowerLimit", &Tendon::Properties::lowerLimit)
+        .def_rw("upperLimit", &Tendon::Properties::upperLimit)
+        .def_rw("limitMargin", &Tendon::Properties::limitMargin)
+        .def_rw("limitCompliance", &Tendon::Properties::limitCompliance)
+        .def_rw("frictionLoss", &Tendon::Properties::frictionLoss)
+        .def_rw("frictionCompliance", &Tendon::Properties::frictionCompliance)
+        .def_rw("armature", &Tendon::Properties::armature)
+        .def_rw("positionCorrection", &Tendon::Properties::positionCorrection)
+        .def_rw("actuationLower", &Tendon::Properties::actuationLower)
+        .def_rw("actuationUpper", &Tendon::Properties::actuationUpper)
+        .def_rw("width", &Tendon::Properties::width)
+        .def_prop_rw("color", [](const Tendon::Properties& self) { return convert_vec_to_np(self.color); },
+            [](Tendon::Properties& self, const std::array<double, 4>& c) { self.color = {c[0], c[1], c[2], c[3]}; });
+    py::class_<Tendon::Drive>(tendon, "Drive")
+        .def(py::init<>())
+        .def_rw("force", &Tendon::Drive::force)
+        .def_rw("targetLength", &Tendon::Drive::targetLength)
+        .def_rw("targetVelocity", &Tendon::Drive::targetVelocity)
+        .def_rw("positionGain", &Tendon::Drive::positionGain)
+        .def_rw("velocityGain", &Tendon::Drive::velocityGain)
+        .def_rw("activationTime", &Tendon::Drive::activationTime);
+    py::class_<Tendon::VisualSegment>(tendon, "VisualSegment")
+        .def_prop_ro("start", [](const Tendon::VisualSegment& self) { return convert_vec_to_np(self.start); })
+        .def_prop_ro("end", [](const Tendon::VisualSegment& self) { return convert_vec_to_np(self.end); })
+        .def_ro("wrapped", &Tendon::VisualSegment::wrapped);
+    tendon
+        .def("getType", &Tendon::getType)
+        .def("getName", &Tendon::getName)
+        .def("getLength", &Tendon::getLength)
+        .def("getVelocity", &Tendon::getVelocity)
+        .def("getReferenceLength", &Tendon::getReferenceLength)
+        .def("getForce", &Tendon::getForce)
+        .def("getTension", &Tendon::getTension)
+        .def("getActuationForce", &Tendon::getActuationForce)
+        .def("getLimitForce", &Tendon::getLimitForce)
+        .def("getFrictionForce", &Tendon::getFrictionForce)
+        .def("getPotentialEnergy", &Tendon::getPotentialEnergy)
+        .def("getKineticEnergy", &Tendon::getKineticEnergy)
+        .def("isEnabled", &Tendon::isEnabled)
+        .def("setName", &Tendon::setName, py::arg("name"))
+        .def("setProperties", &Tendon::setProperties, py::arg("properties"))
+        .def("setDrive", &Tendon::setDrive, py::arg("drive"))
+        .def("setTension", &Tendon::setTension, py::arg("tension"))
+        .def("setActuationForce", &Tendon::setActuationForce, py::arg("force"))
+        .def("setEnabled", &Tendon::setEnabled, py::arg("enabled"))
+        .def("getProperties", &Tendon::getProperties, py::rv_policy::copy)
+        .def("getDrive", &Tendon::getDrive, py::rv_policy::copy)
+        .def("getPath", &Tendon::getPath, py::rv_policy::copy)
+        .def("getJoints", &Tendon::getJoints, py::rv_policy::copy)
+        .def("getVisualSegments", &Tendon::getVisualSegments, py::rv_policy::copy)
+        .def("updateGeometry", &Tendon::updateGeometry, py::arg("visuals") = false);
+    auto coupling = py::class_<TendonCoupling>(m, "TendonCoupling");
+    py::class_<TendonCoupling::Properties>(coupling, "Properties")
+        .def(py::init<>())
+        .def_rw("coefficients", &TendonCoupling::Properties::coefficients)
+        .def_rw("compliance", &TendonCoupling::Properties::compliance)
+        .def_rw("positionCorrection", &TendonCoupling::Properties::positionCorrection)
+        .def_rw("enabled", &TendonCoupling::Properties::enabled);
+    coupling.def("getName", &TendonCoupling::getName)
+        .def("getFirst", &TendonCoupling::getFirst, py::rv_policy::reference_internal)
+        .def("getSecond", &TendonCoupling::getSecond, py::rv_policy::reference_internal)
+        .def("getProperties", &TendonCoupling::getProperties, py::rv_policy::copy)
+        .def("setProperties", &TendonCoupling::setProperties, py::arg("properties"))
+        .def("getForce", &TendonCoupling::getForce);
     /* PinConstraint */
     /*****************/
     py::class_<raisim::PinConstraintDefinition>(constraints_module, "PinConstraintDefinition")

@@ -1,0 +1,250 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Constraints &mdash; raisim 2.5.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b6430375" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=1fd526c0"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="StiffLengthConstraint migration" href="StiffLengthConstraint.html" />
+    <link rel="prev" title="Height Map Using a Text File" href="HeightMap_example_txt.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html">
+            
+              <img src="../_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="QuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Visualization.html">Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FeatureMap.html">Feature Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BuildAndTest.html">Build, Test, and Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ProjectLayout.html">Project Layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Performance.html">Performance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Benchmark.html">Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="License.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Acknowledgement.html">Acknowledgement</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">RaiSim C++</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ConventionsAndNotations.html">Conventions and Notations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Determinism.html">Determinism</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Math.html">Math Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LoggingSystem.html">Logging System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="WorldSystem.html">World</a></li>
+<li class="toctree-l1"><a class="reference internal" href="WorldConfigurationFile.html">World Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RsceneFile.html">.rscene File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="OpenUSD.html">OpenUSD Loading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaisimServer.html">Raisim Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Object.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Contact.html">Contact and Collision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CollisionDetection.html">Collision Detection and Colliders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MaterialSystem.html">Material System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HeightMap.html">Height Map</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#length-constraints-use-tendons">Length constraints use tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#migrating-the-former-wire-api">Migrating the former wire API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#historical-class-links">Historical class links</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="StiffLengthConstraint.html">StiffLengthConstraint migration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="CompliantLengthConstraint.html">CompliantLengthConstraint migration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="CustomLengthConstraint.html">CustomLengthConstraint migration</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#pin-constraints">Pin constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Tendons.html">Tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RayTest.html">Ray Test</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Sensors.html">Sensors</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Related software</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Rayrai.html">rayrai Visualizer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RayraiTcpViewer.html">Rayrai TCP Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaisimEngine2.html">RaiSim Engine 2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaisimGymTorch.html">RaisimGymTorch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaiSimPy.html">RaisimPy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaiSimMatlab.html">RaisimMatlab</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LegacyIntegrations.html">Legacy Integrations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">raisim</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Constraints</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="constraints">
+<h1>Constraints<a class="headerlink" href="#constraints" title="Link to this heading"></a></h1>
+</section>
+<section id="length-constraints-use-tendons">
+<h1>Length constraints use tendons<a class="headerlink" href="#length-constraints-use-tendons" title="Link to this heading"></a></h1>
+<p>A straight length constraint is a spatial tendon with two sites. Use
+<code class="docutils literal notranslate"><span class="pre">World::addSpatialTendon</span></code> for hard limits, a length lock, springs, or commanded
+tension. Routed cables and fixed joint transmissions use the same properties,
+solver, inspection, rendering, checkpoint, and removal interfaces. See
+<a class="reference internal" href="Tendons.html"><span class="doc">Tendons</span></a>, <a class="reference internal" href="tendons/CodeExamples.html"><span class="doc">Tendon code examples</span></a>, and <a class="reference internal" href="tendons/Physics.html"><span class="doc">Tendon physics</span></a>.</p>
+</section>
+<section id="migrating-the-former-wire-api">
+<h1>Migrating the former wire API<a class="headerlink" href="#migrating-the-former-wire-api" title="Link to this heading"></a></h1>
+<p>The C++ and Python <code class="docutils literal notranslate"><span class="pre">addStiffWire</span></code>, <code class="docutils literal notranslate"><span class="pre">addCompliantWire</span></code>, <code class="docutils literal notranslate"><span class="pre">addCustomWire</span></code>,
+<code class="docutils literal notranslate"><span class="pre">getWire</span></code>, <code class="docutils literal notranslate"><span class="pre">getWires</span></code>, and <code class="docutils literal notranslate"><span class="pre">LengthConstraint</span></code> types have been removed.
+Use <code class="docutils literal notranslate"><span class="pre">addSpatialTendon</span></code>, <code class="docutils literal notranslate"><span class="pre">getTendon</span></code>, <code class="docutils literal notranslate"><span class="pre">getTendons</span></code>, and <code class="docutils literal notranslate"><span class="pre">removeTendon</span></code>.
+Recompile applications and bindings against matching headers and libraries.</p>
+<table class="docutils align-default" id="id1">
+<caption><span class="caption-text">Configure a two-site Tendon with target length L</span><a class="headerlink" href="#id1" title="Link to this table"></a></caption>
+<colgroup>
+<col style="width: 40.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Former behavior</p></th>
+<th class="head"><p>Tendon properties or command</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Stiff, stretch only</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">upperLimit</span> <span class="pre">=</span> <span class="pre">L</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Stiff, compression only</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">lowerLimit</span> <span class="pre">=</span> <span class="pre">L</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Stiff, both directions</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">lowerLimit</span> <span class="pre">=</span> <span class="pre">upperLimit</span> <span class="pre">=</span> <span class="pre">L</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Compliant, stretch only</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">stiffness</span> <span class="pre">=</span> <span class="pre">k;</span> <span class="pre">springLower</span> <span class="pre">=</span> <span class="pre">0;</span> <span class="pre">springUpper</span> <span class="pre">=</span> <span class="pre">L</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Compliant, compression only</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">stiffness</span> <span class="pre">=</span> <span class="pre">k;</span> <span class="pre">springLower</span> <span class="pre">=</span> <span class="pre">L;</span> <span class="pre">springUpper</span> <span class="pre">=</span> <span class="pre">+infinity</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Compliant, both directions</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">stiffness</span> <span class="pre">=</span> <span class="pre">k;</span> <span class="pre">springLower</span> <span class="pre">=</span> <span class="pre">springUpper</span> <span class="pre">=</span> <span class="pre">L</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Custom tension</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">tendon-&gt;setTension(T)</span></code>; positive T pulls</p></td>
+</tr>
+</tbody>
+</table>
+<p>Other properties keep their defaults in this table. A spring interval imposes
+no hard bound. Add limits explicitly if the model needs both elasticity and a
+maximum or minimum length. <code class="docutils literal notranslate"><span class="pre">getLength()</span></code> reports the current transmission
+coordinate; the configured target is in <code class="docutils literal notranslate"><span class="pre">getProperties()</span></code>. Call
+<code class="docutils literal notranslate"><span class="pre">updateGeometry()</span></code> after manually changing object positions before reading it.
+<code class="docutils literal notranslate"><span class="pre">getTension()</span></code> is a signed scalar, positive in tension. <code class="docutils literal notranslate"><span class="pre">getForce()</span></code> has the
+opposite sign. Appearance is set through <code class="docutils literal notranslate"><span class="pre">Properties::width</span></code> and <code class="docutils literal notranslate"><span class="pre">color</span></code>.
+The world owns tendons; removal invalidates their pointers and also removes
+couplings that reference them. Removing an attached object removes its tendons.</p>
+<p>Existing RaiSim XML <code class="docutils literal notranslate"><span class="pre">&lt;wire&gt;</span></code> elements remain readable. The loader converts
+them immediately into ordinary two-site tendons, including stretch mode, body
+attachments, nominal length, stiffness, and appearance. A custom wire’s optional
+<code class="docutils literal notranslate"><span class="pre">tension</span></code> attribute becomes its tension command; absent commands default to
+zero. New XML exports write only <code class="docutils literal notranslate"><span class="pre">&lt;tendon&gt;</span></code> elements. Legacy XML support is an
+import conversion, with no second runtime type or API.</p>
+<p>The mapping preserves the intended physical model, but does not promise
+identical trajectories. Former compliant wires applied explicit spring forces;
+tendon springs and damping use the implicit velocity solve described in
+<a class="reference internal" href="tendons/Physics.html"><span class="doc">Tendon physics</span></a>. Hard bounds also use tendon constraint rows now. Recheck
+timestep, damping, and tolerances when migrating a tuned simulation.</p>
+<section id="historical-class-links">
+<h2>Historical class links<a class="headerlink" href="#historical-class-links" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="StiffLengthConstraint.html">StiffLengthConstraint migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CompliantLengthConstraint.html">CompliantLengthConstraint migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CustomLengthConstraint.html">CustomLengthConstraint migration</a></li>
+</ul>
+</div>
+</section>
+</section>
+<section id="pin-constraints">
+<h1>Pin constraints<a class="headerlink" href="#pin-constraints" title="Link to this heading"></a></h1>
+<p>Pin constraints impose coincidence of attachment points in closed-loop systems
+and are specified under URDF <code class="docutils literal notranslate"><span class="pre">&lt;constraints&gt;</span></code>. They retain their independent
+API because they constrain vector position, whereas a tendon constrains one
+scalar transmission coordinate.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="HeightMap_example_txt.html" class="btn btn-neutral float-left" title="Height Map Using a Text File" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="StiffLengthConstraint.html" class="btn btn-neutral float-right" title="StiffLengthConstraint migration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, RaiSim Tech Inc..</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

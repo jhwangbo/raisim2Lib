@@ -81,19 +81,23 @@ ball4.setPosition(2.9, 0.0, 3.0)
 box = world.addBox(.1, .1, .1, 1)
 box.setPosition(0.9, 0.0, 4.2)
 
-world.addStiffWire(pin1, 0, np.zeros(3), ball1, 0, np.zeros(3), 2.0)
-world.addStiffWire(pin2, 0, np.zeros(3), ball2, 0, np.zeros(3), 2.0)
-world.addStiffWire(pin3, 0, np.zeros(3), ball3, 0, np.zeros(3), 2.0)
-world.addStiffWire(pin4, 0, np.zeros(3), ball4, 0, np.zeros(3), 2.0)
+Path = raisim.Tendon.PathElement
+Site = raisim.Tendon.Site
+cable = raisim.Tendon.Properties()
+cable.upperLimit = 2.0
+cable.width = 0.02
+for index, (pin, ball) in enumerate([(pin1, ball1), (pin2, ball2), (pin3, ball3), (pin4, ball4)]):
+    world.addSpatialTendon(f"cradle_{index}", [Path.via(Site(pin)), Path.via(Site(ball))], cable)
 
-wire5 = world.addCompliantWire(pin5, 0, np.zeros(3), box, 0, np.zeros(3), 2.0, 200)
-wire5.setStretchType(raisim.StretchType.BOTH)
-
-wire6 = world.addCompliantWire(pin6, 0, np.zeros(3), anymalC, 0, np.zeros(3), 2.0, 1000)
-wire6.setStretchType(raisim.StretchType.BOTH)
-
-wire7 = world.addCustomWire(pin7, 0, np.zeros(3), anymalB, 0, np.zeros(3), 2.0)
-wire7.setTension(310)
+spring = raisim.Tendon.Properties()
+spring.springLower = spring.springUpper = 2.0
+spring.stiffness = 200.0
+spring.width = 0.02
+world.addSpatialTendon("box_spring", [Path.via(Site(pin5)), Path.via(Site(box))], spring)
+spring.stiffness = 1000.0
+world.addSpatialTendon("robot_spring", [Path.via(Site(pin6)), Path.via(Site(anymalC))], spring)
+actuator = world.addSpatialTendon("robot_lift", [Path.via(Site(pin7)), Path.via(Site(anymalB))])
+actuator.setTension(310.0)
 
 server = raisim.RaisimServer(world)
 server.launchServer(8080)
@@ -102,6 +106,6 @@ for i in range(500000):
     time.sleep(0.001)
     server.integrateWorldThreadSafe()
     if i == 5000:
-        world.removeObject(wire7)
+        world.removeTendon(actuator)
 
 server.killServer()

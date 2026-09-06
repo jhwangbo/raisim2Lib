@@ -1,0 +1,302 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RaiSim v2.5.8 &mdash; raisim 2.5.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b6430375" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=1fd526c0"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Quick Start" href="sections/QuickStart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#">
+            
+              <img src="_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sections/QuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Visualization.html">Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/FeatureMap.html">Feature Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/BuildAndTest.html">Build, Test, and Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/ProjectLayout.html">Project Layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Performance.html">Performance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Benchmark.html">Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/License.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Acknowledgement.html">Acknowledgement</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">RaiSim C++</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sections/Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/ConventionsAndNotations.html">Conventions and Notations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Determinism.html">Determinism</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Math.html">Math Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/LoggingSystem.html">Logging System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/WorldSystem.html">World</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/WorldConfigurationFile.html">World Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RsceneFile.html">.rscene File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/OpenUSD.html">OpenUSD Loading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RaisimServer.html">Raisim Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Object.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Contact.html">Contact and Collision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/CollisionDetection.html">Collision Detection and Colliders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/MaterialSystem.html">Material System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/HeightMap.html">Height Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Constraints.html">Constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Constraints.html#length-constraints-use-tendons">Length constraints use tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Constraints.html#migrating-the-former-wire-api">Migrating the former wire API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Constraints.html#pin-constraints">Pin constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Tendons.html">Tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RayTest.html">Ray Test</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Sensors.html">Sensors</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Related software</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sections/Rayrai.html">rayrai Visualizer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RayraiTcpViewer.html">Rayrai TCP Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RaisimEngine2.html">RaiSim Engine 2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RaisimGymTorch.html">RaisimGymTorch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RaiSimPy.html">RaisimPy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RaiSimMatlab.html">RaisimMatlab</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/LegacyIntegrations.html">Legacy Integrations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">raisim</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">RaiSim v2.5.8</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="raisim-raisim-version-title">
+<h1>RaiSim v2.5.8<a class="headerlink" href="#raisim-raisim-version-title" title="Link to this heading"></a></h1>
+<table class="docutils align-center">
+<colgroup>
+<col style="width: 50.0%" />
+<col style="width: 50.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><img alt="_images/rayrai_complete_showcase.gif" src="_images/rayrai_complete_showcase.gif" />
+<dl class="field-list simple">
+<dt class="field-odd">alt<span class="colon">:</span></dt>
+<dd class="field-odd"><p>rayrai_complete_showcase animated example</p>
+</dd>
+<dt class="field-even">width<span class="colon">:</span></dt>
+<dd class="field-even"><p>100%</p>
+</dd>
+</dl>
+</td>
+<td><img alt="_images/granular_media.gif" src="_images/granular_media.gif" />
+<dl class="field-list simple">
+<dt class="field-odd">alt<span class="colon">:</span></dt>
+<dd class="field-odd"><p>granular_media animated example</p>
+</dd>
+<dt class="field-even">width<span class="colon">:</span></dt>
+<dd class="field-even"><p>100%</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-even"><td><img alt="_images/deformable_objects.gif" src="_images/deformable_objects.gif" />
+<dl class="field-list simple">
+<dt class="field-odd">alt<span class="colon">:</span></dt>
+<dd class="field-odd"><p>deformable_objects animated example</p>
+</dd>
+<dt class="field-even">width<span class="colon">:</span></dt>
+<dd class="field-even"><p>100%</p>
+</dd>
+</dl>
+</td>
+<td><img alt="_images/procedural_heightmap.gif" src="_images/procedural_heightmap.gif" />
+<dl class="field-list simple">
+<dt class="field-odd">alt<span class="colon">:</span></dt>
+<dd class="field-odd"><p>procedural_heightmap animated example</p>
+</dd>
+<dt class="field-even">width<span class="colon">:</span></dt>
+<dd class="field-even"><p>100%</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p>RaiSim is a cross-platform multi-body physics engine for robotics and AI. The
+binary package includes rigid bodies, articulated systems, deformable bodies,
+granular particles, rayrai RGB/depth sensor rendering, deterministic CPU ray
+sensors for headless fallback, <code class="docutils literal notranslate"><span class="pre">RaisimServer</span></code> streaming, and the rayrai
+OpenGL visualizer.</p>
+<p>Use this documentation in this order if you are new to RaiSim:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 28.0%" />
+<col style="width: 72.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Goal</p></th>
+<th class="head"><p>Start here</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Install and run one example</p></td>
+<td><p><a class="reference internal" href="sections/QuickStart.html"><span class="doc">Quick Start</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Find the right example target</p></td>
+<td><p><a class="reference internal" href="sections/Examples.html"><span class="doc">Examples</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Visualize a running <code class="docutils literal notranslate"><span class="pre">RaisimServer</span></code> scene</p></td>
+<td><p><a class="reference internal" href="sections/Visualization.html"><span class="doc">Visualization</span></a>, <a class="reference internal" href="sections/RaisimServer.html"><span class="doc">Raisim Server</span></a>, and
+<a class="reference internal" href="sections/Rayrai.html"><span class="doc">rayrai Visualizer</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Add objects, contacts, sensors, or materials</p></td>
+<td><p><a class="reference internal" href="sections/WorldSystem.html"><span class="doc">World</span></a>, <a class="reference internal" href="sections/Object.html"><span class="doc">Objects</span></a>,
+<a class="reference internal" href="sections/Contact.html"><span class="doc">Contact and Collision</span></a>, <a class="reference internal" href="sections/Sensors.html"><span class="doc">Sensors</span></a>, and
+<a class="reference internal" href="sections/MaterialSystem.html"><span class="doc">Material System</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Build examples, run timing examples, or tune a binary package scene</p></td>
+<td><p><a class="reference internal" href="sections/FeatureMap.html"><span class="doc">Feature Map</span></a>, <a class="reference internal" href="sections/BuildAndTest.html"><span class="doc">Build, Test, and Benchmark</span></a>,
+<a class="reference internal" href="sections/ProjectLayout.html"><span class="doc">Project Layout</span></a>, and <a class="reference internal" href="sections/Performance.html"><span class="doc">Performance</span></a></p></td>
+</tr>
+</tbody>
+</table>
+<a class="reference internal image-reference" href="_images/examples_overview.png"><img alt="Current RaiSim and rayrai example overview" src="_images/examples_overview.png" style="width: 100%;" />
+</a>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Get started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sections/QuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Visualization.html">Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/FeatureMap.html">Feature Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/BuildAndTest.html">Build, Test, and Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/ProjectLayout.html">Project Layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Performance.html">Performance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Benchmark.html">Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/License.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Acknowledgement.html">Acknowledgement</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">RaiSim C++</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sections/Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/ConventionsAndNotations.html">Conventions and Notations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Determinism.html">Determinism</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Math.html">Math Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/LoggingSystem.html">Logging System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/WorldSystem.html">World</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/WorldConfigurationFile.html">World Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RsceneFile.html">.rscene File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/OpenUSD.html">OpenUSD Loading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RaisimServer.html">Raisim Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Object.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Contact.html">Contact and Collision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/CollisionDetection.html">Collision Detection and Colliders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/MaterialSystem.html">Material System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/HeightMap.html">Height Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Constraints.html">Constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Constraints.html#length-constraints-use-tendons">Length constraints use tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Constraints.html#migrating-the-former-wire-api">Migrating the former wire API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Constraints.html#pin-constraints">Pin constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Tendons.html">Tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RayTest.html">Ray Test</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/Sensors.html">Sensors</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Related software</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sections/Rayrai.html">rayrai Visualizer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RayraiTcpViewer.html">Rayrai TCP Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RaisimEngine2.html">RaiSim Engine 2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RaisimGymTorch.html">RaisimGymTorch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RaiSimPy.html">RaisimPy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/RaiSimMatlab.html">RaisimMatlab</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/LegacyIntegrations.html">Legacy Integrations</a></li>
+</ul>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="sections/QuickStart.html" class="btn btn-neutral float-right" title="Quick Start" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, RaiSim Tech Inc..</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -27,7 +27,8 @@ import raisimGymTorch.algo.ppo.ppo as PPO
 from raisimGymTorch.env.RaisimGymVecEnv import RaisimGymVecEnv as VecEnv
 from raisimGymTorch.env.RewardAnalyzer import RewardAnalyzer
 from raisimGymTorch.env.bin import rsg_anymal
-from raisimGymTorch.helper.raisim_gym_helper import ConfigurationSaver, load_param, tensorboard_launcher
+from raisimGymTorch.helper.raisim_gym_helper import (
+    ConfigurationSaver, load_param, save_scripted_policy, script_policy, tensorboard_launcher)
 
 
 # task specification
@@ -144,6 +145,10 @@ ppo = PPO.PPO(actor=actor,
               shuffle_batch=False,
               shared_observations=True,
               returns_calculator=getattr(rsg_anymal, 'compute_returns', None),
+              # Compiling the update pays off only once a minibatch is large
+              # enough to amortize the compiled dispatch: measured 9% faster at
+              # 40k samples per minibatch and 20% slower at 10k.
+              compile_networks=False,
               )
 
 reward_analyzer = RewardAnalyzer(env, ppo.writer)
@@ -163,7 +168,7 @@ if device.type == 'cpu':
     # policy calls. PPO evaluation/backpropagation still uses the original
     # eager module and parameters.
     try:
-        actor.set_scripted_policy(torch.jit.script(actor.architecture.architecture))
+        actor.set_scripted_policy(script_policy(actor.architecture.architecture))
     except Exception as error:
         print(f'[RAISIM_GYM] Policy is not TorchScript compatible; using eager rollout: {error}')
 
@@ -187,25 +192,33 @@ for update in range(1000000):
             try:
                 cpp_evaluation_policy = build_evaluation_network(
                     actor.architecture, 'cpu')
-                scripted_evaluation_policy = torch.jit.script(
-                    cpp_evaluation_policy)
+                scripted_evaluation_policy = script_policy(cpp_evaluation_policy)
             except Exception as error:
                 print(f'[RAISIM_GYM] C++ policy export failed; using Python evaluation: {error}')
 
         env.turn_on_visualization()
         env.start_video_recording(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + "policy_"+str(update)+'.mp4')
 
+        evaluated_in_cpp = False
         if (CppTorchPolicyRunner is not None and
                 scripted_evaluation_policy is not None and
                 args.eval_backend != 'python'):
-            policy_path = os.path.join(saver.data_dir, 'evaluation_policy.pt')
-            torch.jit.save(scripted_evaluation_policy, policy_path)
-            cpp_policy_runner = CppTorchPolicyRunner(env.wrapper, policy_path)
-            cpp_policy_runner.run(
-                reward_info_history, cfg['environment']['control_dt'])
-            reward_analyzer.add_reward_info(
-                reward_info_history.reshape(-1, reward_info_history.shape[-1]))
-        else:
+            # Serializing and loading the policy is the only part of training
+            # that depends on TorchScript surviving. Falling back keeps a future
+            # removal from ending the run at its first evaluation.
+            try:
+                policy_path = os.path.join(saver.data_dir, 'evaluation_policy.pt')
+                save_scripted_policy(scripted_evaluation_policy, policy_path)
+                cpp_policy_runner = CppTorchPolicyRunner(env.wrapper, policy_path)
+                cpp_policy_runner.run(
+                    reward_info_history, cfg['environment']['control_dt'])
+                reward_analyzer.add_reward_info(
+                    reward_info_history.reshape(-1, reward_info_history.shape[-1]))
+                evaluated_in_cpp = True
+            except Exception as error:
+                print(f'[RAISIM_GYM] C++ evaluation failed; evaluating in Python: {error}')
+
+        if not evaluated_in_cpp:
             with torch.inference_mode():
                 for step in range(n_steps):
                     frame_start = time.time()

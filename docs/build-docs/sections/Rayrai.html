@@ -1,0 +1,367 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rayrai Visualizer &mdash; raisim 2.5.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b6430375" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=1fd526c0"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Render quality, tone mapping, color grading" href="rayrai/RenderQuality.html" />
+    <link rel="prev" title="Sensors" href="Sensors.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html">
+            
+              <img src="../_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="QuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Visualization.html">Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FeatureMap.html">Feature Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BuildAndTest.html">Build, Test, and Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ProjectLayout.html">Project Layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Performance.html">Performance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Benchmark.html">Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="License.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Acknowledgement.html">Acknowledgement</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">RaiSim C++</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ConventionsAndNotations.html">Conventions and Notations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Determinism.html">Determinism</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Math.html">Math Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LoggingSystem.html">Logging System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="WorldSystem.html">World</a></li>
+<li class="toctree-l1"><a class="reference internal" href="WorldConfigurationFile.html">World Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RsceneFile.html">.rscene File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="OpenUSD.html">OpenUSD Loading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaisimServer.html">Raisim Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Object.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Contact.html">Contact and Collision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CollisionDetection.html">Collision Detection and Colliders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MaterialSystem.html">Material System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HeightMap.html">Height Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Constraints.html">Constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Constraints.html#length-constraints-use-tendons">Length constraints use tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Constraints.html#migrating-the-former-wire-api">Migrating the former wire API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Constraints.html#pin-constraints">Pin constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Tendons.html">Tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RayTest.html">Ray Test</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Sensors.html">Sensors</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Related software</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">rayrai Visualizer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rayrai/RenderQuality.html">Render quality, tone mapping, color grading</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai/Lighting.html">Lighting, shadows, and HDR/IBL</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai/Materials.html">PBR materials</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai/Visuals.html">Custom visuals, instancing, and scene helpers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai/PostProcess.html">Post-process effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai/Weather.html">Weather and atmospherics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai/Capture.html">Capture, diagnostics, and headless rendering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai/Sensors.html">Sensors and depth/LiDAR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai/Examples.html">Example targets</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai/Performance.html">Performance notes and the C++ API reference</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#source-built-tcp-viewer-recommended">Source-built TCP viewer (recommended)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#build-and-link">Build and link</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#minimal-usage">Minimal usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#threading-contract">Threading contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lifetime-and-error-model">Lifetime and error model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-custom-visuals-background-color">Example: custom visuals + background color</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#where-to-go-next">Where to go next</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="RayraiTcpViewer.html">Rayrai TCP Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaisimEngine2.html">RaiSim Engine 2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaisimGymTorch.html">RaisimGymTorch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaiSimPy.html">RaisimPy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaiSimMatlab.html">RaisimMatlab</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LegacyIntegrations.html">Legacy Integrations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">raisim</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">rayrai Visualizer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="rayrai-visualizer">
+<h1>rayrai Visualizer<a class="headerlink" href="#rayrai-visualizer" title="Link to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>rayrai is an in-process C++ renderer for RaiSim. It renders into an offscreen OpenGL
+texture and is designed to embed in custom UIs (ImGui, Qt, etc.) or headless pipelines.
+RaisimUnity and RaisimUnreal are no longer supported; rayrai is the supported
+visualization path. It runs inside the simulation process and exposes direct
+access to render targets, picking, and custom visuals.</p>
+<p>Key characteristics:</p>
+<ul class="simple">
+<li><p>In-process rendering with direct OpenGL texture access, plus the standalone TCP viewer for <code class="docutils literal notranslate"><span class="pre">RaisimServer</span></code> scenes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Fast</span></code>/<code class="docutils literal notranslate"><span class="pre">Balanced</span></code>/<code class="docutils literal notranslate"><span class="pre">High</span></code>/<code class="docutils literal notranslate"><span class="pre">Ultra</span></code> quality presets with explicit settings for shadows, post-process, render scale, and texture filtering</p></li>
+<li><p>glTF/GLB visual-scene import with PBR materials, normal maps, authored lights, HDR image-based lighting, reflection probes, and planar reflections</p></li>
+<li><p>Weather and scene effects: time-of-day sky, fog/local fog, rain, snow, lightning diagnostics, wet/snow material response, projected decals, and irradiance volumes</p></li>
+<li><p>Capture and diagnostics helpers for screenshots, debug passes, GPU pass timings, exposure/luminance analysis, and JSON reports</p></li>
+<li><p>Support for RGB/depth sensor alignment, GPU LiDAR slices, point clouds, coordinate frames, camera frustums, and picking</p></li>
+<li><p>Automatic spatial tendon rendering with wrapped routes and independent pulley branches; see <a class="reference internal" href="tendons/Examples.html"><span class="doc">Tendon examples and Rayrai</span></a></p></li>
+<li><p>Direct ImGui/SDL2 integration patterns and headless/offscreen workflows</p></li>
+</ul>
+<p>The public API lives in the <cite>raisin</cite> namespace (note the spelling). The primary entry
+point is <code class="docutils literal notranslate"><span class="pre">raisin::RayraiWindow</span></code>.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">rayrai topics</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="rayrai/RenderQuality.html">Render quality, tone mapping, color grading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rayrai/Lighting.html">Lighting, shadows, and HDR/IBL</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rayrai/Materials.html">PBR materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rayrai/Visuals.html">Custom visuals, instancing, and scene helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rayrai/PostProcess.html">Post-process effects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rayrai/Weather.html">Weather and atmospherics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rayrai/Capture.html">Capture, diagnostics, and headless rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rayrai/Sensors.html">Sensors and depth/LiDAR</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rayrai/Examples.html">Example targets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rayrai/Performance.html">Performance notes and the C++ API reference</a></li>
+</ul>
+</div>
+</section>
+<section id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading"></a></h2>
+<p>rayrai depends on SDL2, OpenGL, glbinding, glm, assimp, stb, and imgui. The
+current package uses the flat <code class="docutils literal notranslate"><span class="pre">rayrai</span></code> prefix and ships the headers,
+libraries, and CMake configuration for these dependencies there.</p>
+</section>
+<section id="source-built-tcp-viewer-recommended">
+<h2>Source-built TCP viewer (recommended)<a class="headerlink" href="#source-built-tcp-viewer-recommended" title="Link to this heading"></a></h2>
+<p>For most users, the easiest way to use rayrai is the source-built TCP viewer
+at <code class="docutils literal notranslate"><span class="pre">build-examples/examples/rayrai_tcp_viewer</span></code>. It connects to a
+running <code class="docutils literal notranslate"><span class="pre">RaisimServer</span></code> and provides full PBR rendering, scene inspection,
+interactive pause / step / force application, screenshots, and session
+recording.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./build-examples/examples/rayrai_tcp_viewer
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="RayraiTcpViewer.html"><span class="doc">Rayrai TCP Viewer</span></a> for the full UI tour, command-line options,
+the sim-control workflow, authentication setup, and the wire-format
+reference for writing custom clients.</p>
+</section>
+<section id="build-and-link">
+<h2>Build and link<a class="headerlink" href="#build-and-link" title="Link to this heading"></a></h2>
+<p>rayrai installs a CMake package under <code class="docutils literal notranslate"><span class="pre">rayrai</span></code>. Add it to
+<code class="docutils literal notranslate"><span class="pre">CMAKE_PREFIX_PATH</span></code> and link the <code class="docutils literal notranslate"><span class="pre">rayrai</span></code> target.</p>
+<div class="highlight-cmake notranslate"><div class="highlight"><pre><span></span><span class="nb">find_package</span><span class="p">(</span><span class="s">rayrai</span><span class="w"> </span><span class="s">CONFIG</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
+
+<span class="nb">add_executable</span><span class="p">(</span><span class="s">my_app</span><span class="w"> </span><span class="s">main.cpp</span><span class="p">)</span>
+<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">my_app</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="s">rayrai</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In practice, you will also set the Raisim prefix (for example, <code class="docutils literal notranslate"><span class="pre">-DCMAKE_PREFIX_PATH</span></code>)
+to include both <code class="docutils literal notranslate"><span class="pre">raisim</span></code> and <code class="docutils literal notranslate"><span class="pre">rayrai</span></code>.</p>
+</section>
+<section id="minimal-usage">
+<h2>Minimal usage<a class="headerlink" href="#minimal-usage" title="Link to this heading"></a></h2>
+<p>The typical workflow is:</p>
+<ol class="arabic simple">
+<li><p>Create a RaiSim world.</p></li>
+<li><p>Construct a <code class="docutils literal notranslate"><span class="pre">raisin::RayraiWindow</span></code> for that world.</p></li>
+<li><p>Update the renderer each frame and consume the output texture.</p></li>
+</ol>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;memory&gt;</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;raisim/World.hpp&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;rayrai/RayraiWindow.hpp&gt;</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">world</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">raisim</span><span class="o">::</span><span class="n">World</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">  </span><span class="n">raisin</span><span class="o">::</span><span class="n">RayraiWindow</span><span class="w"> </span><span class="n">viewer</span><span class="p">(</span><span class="n">world</span><span class="p">,</span><span class="w"> </span><span class="mi">1280</span><span class="p">,</span><span class="w"> </span><span class="mi">720</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// glm::vec4 colour overload (preferred in new code).</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">sphere</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">viewer</span><span class="p">.</span><span class="n">addVisualSphere</span><span class="p">(</span><span class="s">&quot;goal&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span><span class="w"> </span><span class="n">glm</span><span class="o">::</span><span class="n">vec4</span><span class="p">(</span><span class="mf">0.9f</span><span class="p">,</span><span class="w"> </span><span class="mf">0.2f</span><span class="p">,</span><span class="w"> </span><span class="mf">0.2f</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0f</span><span class="p">));</span>
+<span class="w">  </span><span class="n">sphere</span><span class="o">-&gt;</span><span class="n">setPosition</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">);</span>
+
+<span class="w">  </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="nb">true</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">world</span><span class="o">-&gt;</span><span class="n">integrate</span><span class="p">();</span>
+<span class="w">    </span><span class="n">viewer</span><span class="p">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1280</span><span class="p">,</span><span class="w"> </span><span class="mi">720</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">tex</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">viewer</span><span class="p">.</span><span class="n">getImageTexture</span><span class="p">();</span>
+<span class="w">    </span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">tex</span><span class="p">;</span><span class="w"> </span><span class="c1">// use the texture in your UI or pipeline</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../_images/rayrai_minimal_usage.png"><img alt="Minimal usage output — a red sphere above a ground plane" src="../_images/rayrai_minimal_usage.png" style="width: 100%;" />
+</a>
+<p>If you are integrating with an existing OpenGL context, see <a class="reference internal" href="rayrai/Capture.html"><span class="doc">Capture, diagnostics, and headless rendering</span></a> for
+<code class="docutils literal notranslate"><span class="pre">RayraiWindow::createOffscreenGlContext</span></code> / <code class="docutils literal notranslate"><span class="pre">makeOffscreenContextCurrent</span></code> and a
+full headless capture-to-PNG example.</p>
+</section>
+<section id="threading-contract">
+<h2>Threading contract<a class="headerlink" href="#threading-contract" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">RayraiWindow</span></code> is single-threaded by default. Construct it with the default
+<code class="docutils literal notranslate"><span class="pre">RayraiWindow::ThreadingMode::SingleThread</span></code> when the simulation and renderer
+live on one thread, which is the normal RaiSim workflow.</p>
+<p><code class="docutils literal notranslate"><span class="pre">ThreadingMode::MultiThread</span></code> is an explicit opt-in for batch/offscreen render
+setups that create one <code class="docutils literal notranslate"><span class="pre">RayraiWindow</span></code> per worker thread, each with its own
+OpenGL context. Do not mix threading modes inside one process; all windows must
+use the same mode. A threading-mode mismatch at construction is treated as a
+fatal error (<code class="docutils literal notranslate"><span class="pre">RSFATAL</span></code>).</p>
+</section>
+<section id="lifetime-and-error-model">
+<h2>Lifetime and error model<a class="headerlink" href="#lifetime-and-error-model" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">RayraiWindow</span></code> does not own the <code class="docutils literal notranslate"><span class="pre">raisim::World</span></code> passed to its constructor.
+The world must outlive the window. Either the <code class="docutils literal notranslate"><span class="pre">raisim::World*</span></code> or
+<code class="docutils literal notranslate"><span class="pre">std::shared_ptr&lt;raisim::World&gt;</span></code> constructor is acceptable; the shared-pointer
+overload uses a non-owning deleter internally.</p>
+<p>Mutation methods that target an entity by name — for example,
+<code class="docutils literal notranslate"><span class="pre">removeVisualObject</span></code>, <code class="docutils literal notranslate"><span class="pre">clearAdditionalLights</span></code>, <code class="docutils literal notranslate"><span class="pre">clearLocalFogVolumes</span></code> —
+are silent no-ops when the target does not exist. They never throw and never
+return a failure code, so callers can invoke them unconditionally without an
+existence check.</p>
+<p>Resource-creation methods signal failure with a zero GL handle, a null
+<code class="docutils literal notranslate"><span class="pre">shared_ptr</span></code>, or an <code class="docutils literal notranslate"><span class="pre">isComplete()</span> <span class="pre">==</span> <span class="pre">false</span></code> <code class="docutils literal notranslate"><span class="pre">PbrEnvironment</span></code> and log an
+error to stderr. The list includes <code class="docutils literal notranslate"><span class="pre">loadColorTextureWithTiling</span></code>,
+<code class="docutils literal notranslate"><span class="pre">loadDataTextureWithTiling</span></code>, <code class="docutils literal notranslate"><span class="pre">loadHdrEquirectangularCubemap</span></code>,
+<code class="docutils literal notranslate"><span class="pre">createHdrIrradianceCubemap</span></code>, <code class="docutils literal notranslate"><span class="pre">createHdrPrefilteredEnvironmentCubemap</span></code>,
+<code class="docutils literal notranslate"><span class="pre">createSplitSumBrdfLut</span></code>, <code class="docutils literal notranslate"><span class="pre">PbrEnvironment::loadFromHdrFile</span></code>,
+<code class="docutils literal notranslate"><span class="pre">addVisualMesh</span></code>, <code class="docutils literal notranslate"><span class="pre">addVisualCustomMesh</span></code>, and <code class="docutils literal notranslate"><span class="pre">importVisualScene</span></code>.</p>
+<p>Built-in shader programs are registered during construction and compiled
+lazily on first use. <code class="docutils literal notranslate"><span class="pre">shaderWarmupDiagnostics</span></code> reports the measured
+compile/link cost and linked program count so both startup stalls and
+first-use stalls (when an effect is enabled for the first time) can be
+tracked.</p>
+</section>
+<section id="example-custom-visuals-background-color">
+<h2>Example: custom visuals + background color<a class="headerlink" href="#example-custom-visuals-background-color" title="Link to this heading"></a></h2>
+<p>This example adds a custom box, renders an RGB texture each frame, and reads the
+image texture handle for UI integration. New code should prefer explicit color-range
+APIs such as <code class="docutils literal notranslate"><span class="pre">setBackgroundColorRgb255</span></code> or <code class="docutils literal notranslate"><span class="pre">setBackgroundColorLinear</span></code>.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;memory&gt;</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;raisim/World.hpp&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;rayrai/RayraiWindow.hpp&gt;</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">world</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">raisim</span><span class="o">::</span><span class="n">World</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">  </span><span class="n">world</span><span class="o">-&gt;</span><span class="n">addGround</span><span class="p">();</span>
+
+<span class="w">  </span><span class="n">raisin</span><span class="o">::</span><span class="n">RayraiWindow</span><span class="w"> </span><span class="n">viewer</span><span class="p">(</span><span class="n">world</span><span class="p">,</span><span class="w"> </span><span class="mi">1280</span><span class="p">,</span><span class="w"> </span><span class="mi">720</span><span class="p">);</span>
+<span class="w">  </span><span class="n">viewer</span><span class="p">.</span><span class="n">setBackgroundColorRgb255</span><span class="p">({</span><span class="mi">40</span><span class="p">,</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span><span class="w"> </span><span class="mi">55</span><span class="p">,</span><span class="w"> </span><span class="mi">255</span><span class="p">});</span>
+
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">box</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">viewer</span><span class="p">.</span><span class="n">addVisualBox</span><span class="p">(</span><span class="s">&quot;marker&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.4</span><span class="p">,</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span>
+<span class="w">    </span><span class="n">glm</span><span class="o">::</span><span class="n">vec4</span><span class="p">(</span><span class="mf">0.9f</span><span class="p">,</span><span class="w"> </span><span class="mf">0.6f</span><span class="p">,</span><span class="w"> </span><span class="mf">0.1f</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0f</span><span class="p">));</span>
+<span class="w">  </span><span class="n">box</span><span class="o">-&gt;</span><span class="n">setPosition</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.3</span><span class="p">);</span>
+
+<span class="w">  </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="nb">true</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">world</span><span class="o">-&gt;</span><span class="n">integrate</span><span class="p">();</span>
+<span class="w">    </span><span class="n">viewer</span><span class="p">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1280</span><span class="p">,</span><span class="w"> </span><span class="mi">720</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">colorTex</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">viewer</span><span class="p">.</span><span class="n">getImageTexture</span><span class="p">();</span>
+<span class="w">    </span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">colorTex</span><span class="p">;</span><span class="w"> </span><span class="c1">// feed into your UI or pipeline</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../_images/rayrai_custom_visuals.png"><img alt="Marker prop on a tinted background" src="../_images/rayrai_custom_visuals.png" style="width: 100%;" />
+</a>
+</section>
+<section id="where-to-go-next">
+<h2>Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Choose a render preset and tone curve — <a class="reference internal" href="rayrai/RenderQuality.html"><span class="doc">Render quality, tone mapping, color grading</span></a></p></li>
+<li><p>Light the scene and set up HDR/IBL reflections — <a class="reference internal" href="rayrai/Lighting.html"><span class="doc">Lighting, shadows, and HDR/IBL</span></a></p></li>
+<li><p>Apply PBR materials and authored asset imports — <a class="reference internal" href="rayrai/Materials.html"><span class="doc">PBR materials</span></a></p></li>
+<li><p>Add visual primitives, instanced visuals, and overlays — <a class="reference internal" href="rayrai/Visuals.html"><span class="doc">Custom visuals, instancing, and scene helpers</span></a></p></li>
+<li><p>Enable cinematic post-process / SSR / SSAO / DoF — <a class="reference internal" href="rayrai/PostProcess.html"><span class="doc">Post-process effects</span></a></p></li>
+<li><p>Drive weather and atmospherics — <a class="reference internal" href="rayrai/Weather.html"><span class="doc">Weather and atmospherics</span></a></p></li>
+<li><p>Run headlessly, capture screenshots, and run diagnostics — <a class="reference internal" href="rayrai/Capture.html"><span class="doc">Capture, diagnostics, and headless rendering</span></a></p></li>
+<li><p>Align to RGB/depth/LiDAR sensors and pick objects — <a class="reference internal" href="rayrai/Sensors.html"><span class="doc">Sensors and depth/LiDAR</span></a></p></li>
+<li><p>Write a custom TCP client — <a class="reference internal" href="RayraiTcpViewer.html"><span class="doc">Rayrai TCP Viewer</span></a></p></li>
+<li><p>List of shipped example targets — <a class="reference internal" href="rayrai/Examples.html"><span class="doc">Example targets</span></a></p></li>
+<li><p>Performance notes and the full C++ API reference — <a class="reference internal" href="rayrai/Performance.html"><span class="doc">Performance notes and the C++ API reference</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Sensors.html" class="btn btn-neutral float-left" title="Sensors" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="rayrai/RenderQuality.html" class="btn btn-neutral float-right" title="Render quality, tone mapping, color grading" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, RaiSim Tech Inc..</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -153,6 +153,7 @@ create_executable(length_constraints_newtons_cradle src/server/dynamics/length_c
 create_executable(spring_damper_joints src/server/dynamics/spring_damper_joints.cpp)
 create_executable(kinematic_platform src/server/dynamics/kinematic_platform.cpp)
 create_executable(dzhanibekov_effect src/server/dynamics/dzhanibekov_effect.cpp)
+include(cmake/tendon_examples.cmake)
 
 # Visualization.
 create_executable(visual_objects_showcase src/server/visualization/visual_objects_showcase.cpp)
@@ -219,6 +220,8 @@ create_rayrai_executable(rayrai_swept_ccd src/rayrai/collision/rayrai_swept_ccd.
 # Tools.
 create_rayrai_executable(rayrai_tcp_viewer src/rayrai/tools/rayrai_tcp_viewer.cpp)
 target_sources(rayrai_tcp_viewer PRIVATE
+    src/rayrai/tools/TcpViewerSimulationWorker.cpp
+    src/rayrai/tools/TcpViewerSimulation.cpp
     src/rayrai/tools/TcpViewerScreenshot.cpp
     src/rayrai/tools/TcpViewerSession.cpp
     src/rayrai/tools/TcpViewerDiscovery.cpp
@@ -251,4 +254,8 @@ if(RAISIM_EXAMPLE_DESKTOP_LAUNCHER AND UNIX AND NOT APPLE)
         message(WARNING
             "RAISIM_EXAMPLE_DESKTOP_LAUNCHER is ON but ${_viewer_launcher_script} is missing")
     endif()
+endif()
+
+if(WIN32)
+  target_link_libraries(rayrai_tcp_viewer PRIVATE shell32 ws2_32)
 endif()

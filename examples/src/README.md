@@ -81,6 +81,10 @@ TCP viewer.
 - `rayrai_rgb_camera`: in-process rayrai RGB capture.
 - `rayrai_rolling_spinning_friction`: rolling and spinning friction on a grid
   of spheres and cylinders.
+- `tendon_elastic`, `tendon_pulleys`, and `tendon_coupling`: procedural tendon
+  simulations streamed to the TCP viewer.
+- `rayrai_tendons`: the same tendon scenes with automatic local drawing and
+  interactive controls. See the [tendon examples guide](../TENDONS.md).
 - `deformable_objects`: cloth, mesh deformables, filled particles, struts,
   compliance, and elastic modulus.
 - `model_asset_pipeline`: mesh preprocessing and OBJ asset export.

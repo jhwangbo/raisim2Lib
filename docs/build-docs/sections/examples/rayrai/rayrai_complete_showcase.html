@@ -1,0 +1,280 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rayrai Example: Complete Showcase &mdash; raisim 2.5.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=b6430375" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=1fd526c0"></script>
+      <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="rayrai_blender_scene_import" href="rayrai_blender_scene_import.html" />
+    <link rel="prev" title="Rayrai Example: Basic Scene" href="rayrai_basic_scene.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html">
+            
+              <img src="../../../_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../QuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Visualization.html">Visualization</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../Examples.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../Examples.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../Examples.html#run">Run</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../Examples.html#visualization-modes">Visualization modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../Examples.html#example-layout">Example layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../Examples.html#choosing-an-example">Choosing an example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../Examples.html#runtime-assets">Runtime assets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../Examples.html#current-package-examples">Current Package Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../Examples.html#benchmark-examples">Benchmark Examples</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../../Examples.html#rayrai-tools-and-examples">Rayrai Tools And Examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="rayrai_basic_scene.html">Rayrai Example: Basic Scene</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Rayrai Example: Complete Showcase</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#screenshot">Screenshot</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#target">Target</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#run">Run</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#details">Details</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#frame-capture">Frame capture</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_blender_scene_import.html">rayrai_blender_scene_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_rgb_camera.html">Rayrai Example: RGB Camera</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_depth_camera.html">Rayrai Example: Depth Camera</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_heightmap_replacement.html">Rayrai Example: Heightmap Replacement</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_lidar_pointcloud.html">Rayrai Example: LiDAR Pointcloud</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_aruco_marker.html">Rayrai Example: Aruco Marker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_custom_visuals.html">Rayrai Example: Custom Visuals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_instancing_grid.html">Rayrai Example: Instancing Grid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_pointcloud_animation.html">Rayrai Example: Pointcloud Animation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_pbr_material_grid.html">Rayrai Example: PBR Material Grid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_pbr_texture_maps.html">Rayrai Example: PBR Texture Maps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_quality_lighting.html">Rayrai Example: Quality Lighting and FXAA</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_visual_asset_support.html">rayrai_visual_asset_support</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_coacd_mesh_approximation.html">Rayrai Example: CoACD Mesh Approximation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_runtime_scene_editing.html">Rayrai Example: Runtime Scene Editing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_rolling_spinning_friction.html">Rayrai Example: Rolling And Spinning Friction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_swept_ccd.html">Rayrai Example: Swept CCD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rayrai_tcp_viewer.html">Rayrai Example: TCP Viewer</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../Examples.html#server-examples">Server Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../Examples.html#xml-examples">XML Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../FeatureMap.html">Feature Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../BuildAndTest.html">Build, Test, and Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ProjectLayout.html">Project Layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Performance.html">Performance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Benchmark.html">Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../License.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Acknowledgement.html">Acknowledgement</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">RaiSim C++</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ConventionsAndNotations.html">Conventions and Notations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Determinism.html">Determinism</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Math.html">Math Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../LoggingSystem.html">Logging System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../WorldSystem.html">World</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../WorldConfigurationFile.html">World Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../RsceneFile.html">.rscene File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../OpenUSD.html">OpenUSD Loading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../RaisimServer.html">Raisim Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Object.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Contact.html">Contact and Collision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../CollisionDetection.html">Collision Detection and Colliders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../MaterialSystem.html">Material System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../HeightMap.html">Height Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Constraints.html">Constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Constraints.html#length-constraints-use-tendons">Length constraints use tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Constraints.html#migrating-the-former-wire-api">Migrating the former wire API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Constraints.html#pin-constraints">Pin constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Tendons.html">Tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../RayTest.html">Ray Test</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Sensors.html">Sensors</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Related software</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../Rayrai.html">rayrai Visualizer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../RayraiTcpViewer.html">Rayrai TCP Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../RaisimEngine2.html">RaiSim Engine 2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../RaisimGymTorch.html">RaisimGymTorch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../RaiSimPy.html">RaisimPy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../RaiSimMatlab.html">RaisimMatlab</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../LegacyIntegrations.html">Legacy Integrations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">raisim</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../Examples.html">Examples</a></li>
+      <li class="breadcrumb-item active">Rayrai Example: Complete Showcase</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="rayrai-example-complete-showcase">
+<h1>Rayrai Example: Complete Showcase<a class="headerlink" href="#rayrai-example-complete-showcase" title="Link to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>Comprehensive rayrai showcase with Go1, Livox LiDAR, D455 RGB/depth sensors, heightmap terrain, YCB objects, custom visuals, instanced geometry, and a live LiDAR point cloud. Use it as an end-to-end check for rayrai and sensor rendering.</p>
+</section>
+<section id="screenshot">
+<h2>Screenshot<a class="headerlink" href="#screenshot" title="Link to this heading"></a></h2>
+<a class="reference internal image-reference" href="../../../_images/rayrai_complete_showcase.png"><img alt="rayrai_complete_showcase example" src="../../../_images/rayrai_complete_showcase.png" style="width: 100%;" />
+</a>
+</section>
+<section id="target">
+<h2>Target<a class="headerlink" href="#target" title="Link to this heading"></a></h2>
+<p>CMake target: <code class="docutils literal notranslate"><span class="pre">rayrai_complete_showcase</span></code>.</p>
+</section>
+<section id="run">
+<h2>Run<a class="headerlink" href="#run" title="Link to this heading"></a></h2>
+<p>Run the build-tree executable:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./build-examples/examples/rayrai_complete_showcase
+</pre></div>
+</div>
+<p>On Windows, run <code class="docutils literal notranslate"><span class="pre">rayrai_complete_showcase.exe</span></code> instead.
+This example uses the in-process rayrai renderer (no external client required).</p>
+</section>
+<section id="details">
+<h2>Details<a class="headerlink" href="#details" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Loads a sensored ANYmal, heightmap terrain, primitives, and YCB objects.</p></li>
+<li><p>Updates LiDAR scans into a point cloud and renders RGB/depth sensors.</p></li>
+<li><p>Shows camera frustums and raw sensor buffers in ImGui.</p></li>
+</ul>
+</section>
+<section id="frame-capture">
+<h2>Frame capture<a class="headerlink" href="#frame-capture" title="Link to this heading"></a></h2>
+<p>The example can write its rendered frames (scene plus the sensor panels) to disk
+so the documentation GIF can be regenerated. Capture is off unless
+<code class="docutils literal notranslate"><span class="pre">RAYRAI_SHOWCASE_CAPTURE_DIR</span></code> is set; a normal run never reads the framebuffer
+back. Frames are written as binary PPM, which <code class="docutils literal notranslate"><span class="pre">ffmpeg</span></code> reads directly.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 40.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Environment variable</p></th>
+<th class="head"><p>Effect</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RAYRAI_SHOWCASE_CAPTURE_DIR</span></code></p></td>
+<td><p>Output directory. Setting it enables capture; the example exits once the
+requested frame count is written.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RAYRAI_SHOWCASE_CAPTURE_FRAMES</span></code></p></td>
+<td><p>Number of frames to write (default 150).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RAYRAI_SHOWCASE_CAPTURE_SKIP</span></code></p></td>
+<td><p>Rendered frames to skip before capturing (default 90), so assets and
+sensor buffers are populated in the first captured frame.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RAYRAI_SHOWCASE_CAPTURE_EVERY</span></code></p></td>
+<td><p>Capture every <code class="docutils literal notranslate"><span class="pre">N</span></code>-th frame (default 1). The loop advances one physics
+step per rendered frame, so a stride above 1 is what keeps the captured
+sequence from playing back in slow motion. At the default 5 ms time step,
+stride 16 puts 80 ms of simulation in every frame, which is exactly real
+time at 12.5 fps.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">RAYRAI_SHOWCASE_CAPTURE_DIR</span><span class="o">=</span>/tmp/showcase_frames<span class="w"> </span><span class="se">\</span>
+<span class="nv">RAYRAI_SHOWCASE_CAPTURE_FRAMES</span><span class="o">=</span><span class="m">75</span><span class="w"> </span><span class="se">\</span>
+<span class="nv">RAYRAI_SHOWCASE_CAPTURE_SKIP</span><span class="o">=</span><span class="m">120</span><span class="w"> </span><span class="se">\</span>
+<span class="nv">RAYRAI_SHOWCASE_CAPTURE_EVERY</span><span class="o">=</span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>./build-examples/examples/rayrai_complete_showcase
+
+ffmpeg<span class="w"> </span>-framerate<span class="w"> </span><span class="m">12</span>.5<span class="w"> </span>-i<span class="w"> </span>/tmp/showcase_frames/frame_%04d.ppm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-filter_complex<span class="w"> </span><span class="s2">&quot;[0:v] scale=954:540:flags=lanczos,split [a][b];\</span>
+<span class="s2">                   [a] palettegen=stats_mode=diff [p];\</span>
+<span class="s2">                   [b][p] paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-loop<span class="w"> </span><span class="m">0</span><span class="w"> </span>docs/image/rayrai_complete_showcase.gif
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="rayrai_basic_scene.html" class="btn btn-neutral float-left" title="Rayrai Example: Basic Scene" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="rayrai_blender_scene_import.html" class="btn btn-neutral float-right" title="rayrai_blender_scene_import" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, RaiSim Tech Inc..</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

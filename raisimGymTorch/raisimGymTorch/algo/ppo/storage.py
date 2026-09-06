@@ -23,56 +23,101 @@ def split_and_pad_trajectories(tensor: torch.Tensor, dones: torch.Tensor):
 
 
 class RolloutStorage:
+    """Rollout buffer whose per-transition tensors live on the training device.
+
+    Every consumer of a transition -- the PPO update and the value pass -- runs
+    on the device, so the buffer is allocated there and the update no longer
+    re-uploads it (47 MB per update with 400 environments and 400 transitions).
+
+    How a transition gets in depends on the producer. A rollout policy that runs
+    on the device writes into the buffers itself; call use_device_writes() and
+    the storage keeps no host copy of them. Any other producer hands over host
+    arrays, which are staged in pinned memory and uploaded once per update:
+    per-step uploads of a few tens of kilobytes are dominated by launch latency
+    and cost several times more than a single bulk transfer.
+
+    Rewards, dones and the generalized-advantage outputs always stay in host
+    memory, because the advantage recurrence runs natively on the CPU.
+    """
+
     def __init__(self, num_envs, num_transitions_per_env, actor_obs_shape, critic_obs_shape,
                  actions_shape, device, shared_observations=False, returns_calculator=None):
         self.device = device
+        self.device_type = torch.device(device).type
         self.shared_observations = shared_observations
         self.returns_calculator = returns_calculator
         if shared_observations and actor_obs_shape != critic_obs_shape:
             raise ValueError("shared actor/critic observations must have identical shapes")
 
+        self.num_transitions_per_env = num_transitions_per_env
+        self.num_envs = num_envs
+        self.host_buffers = {}
+
         # Core
-        self.actor_obs = np.zeros([num_transitions_per_env, num_envs, *actor_obs_shape], dtype=np.float32)
-        self.critic_obs = (self.actor_obs if shared_observations else
-                           np.zeros([num_transitions_per_env, num_envs, *critic_obs_shape], dtype=np.float32))
-        self.rewards = np.zeros([num_transitions_per_env, num_envs, 1], dtype=np.float32)
-        self.actions = np.zeros([num_transitions_per_env, num_envs, *actions_shape], dtype=np.float32)
-        self.dones = np.zeros([num_transitions_per_env, num_envs, 1], dtype=bool)
+        self.actor_obs, self.actor_obs_tc = self._staged_buffer('actor_obs', *actor_obs_shape)
+        if shared_observations:
+            self.critic_obs, self.critic_obs_tc = self.actor_obs, self.actor_obs_tc
+        else:
+            self.critic_obs, self.critic_obs_tc = self._staged_buffer('critic_obs', *critic_obs_shape)
+        self.actions, self.actions_tc = self._staged_buffer('actions', *actions_shape)
 
         # For PPO
-        self.actions_log_prob = np.zeros([num_transitions_per_env, num_envs, 1], dtype=np.float32)
-        self.values = np.zeros([num_transitions_per_env, num_envs, 1], dtype=np.float32)
-        self.returns = np.zeros([num_transitions_per_env, num_envs, 1], dtype=np.float32)
-        self.advantages = np.zeros([num_transitions_per_env, num_envs, 1], dtype=np.float32)
-        self.mu = np.zeros([num_transitions_per_env, num_envs, *actions_shape], dtype=np.float32)
-        self.sigma = np.zeros([num_transitions_per_env, num_envs, *actions_shape], dtype=np.float32)
+        self.actions_log_prob, self.actions_log_prob_tc = self._staged_buffer('actions_log_prob', 1)
+        self.mu, self.mu_tc = self._staged_buffer('mu', *actions_shape)
+        self.sigma, self.sigma_tc = self._staged_buffer('sigma', *actions_shape)
 
-        # torch variables
-        self.actor_obs_tc = torch.from_numpy(self.actor_obs).to(self.device)
-        self.critic_obs_tc = (self.actor_obs_tc if shared_observations else
-                              torch.from_numpy(self.critic_obs).to(self.device))
-        self.actions_tc = torch.from_numpy(self.actions).to(self.device)
-        self.actions_log_prob_tc = torch.from_numpy(self.actions_log_prob).to(self.device)
-        self.values_tc = torch.from_numpy(self.values).to(self.device)
-        self.returns_tc = torch.from_numpy(self.returns).to(self.device)
-        self.advantages_tc = torch.from_numpy(self.advantages).to(self.device)
-        self.mu_tc = torch.from_numpy(self.mu).to(self.device)
-        self.sigma_tc = torch.from_numpy(self.sigma).to(self.device)
+        # The transition fields a device-side rollout policy can write itself.
+        # A shared critic observation is an alias, not a buffer of its own.
+        self.transition_fields = ['actor_obs', 'actions', 'actions_log_prob', 'mu', 'sigma']
+        if not shared_observations:
+            self.transition_fields.append('critic_obs')
+
+        # Read and written by the host-side advantage recurrence.
+        self.rewards = np.zeros([num_transitions_per_env, num_envs, 1], dtype=np.float32)
+        self.dones = np.zeros([num_transitions_per_env, num_envs, 1], dtype=bool)
+        self.values, self.values_tc = self._staged_buffer('values', 1)
+        self.returns, self.returns_tc = self._staged_buffer('returns', 1)
+        self.advantages, self.advantages_tc = self._staged_buffer('advantages', 1)
 
         # saved hidden states for recurrent policies
         self.saved_hidden_state_a = None
         self.saved_hidden_state_c = None
 
-        self.num_transitions_per_env = num_transitions_per_env
-        self.num_envs = num_envs
-        self.device = device
-
         self.step = 0
+
+    def _staged_buffer(self, name, *trailing):
+        """Allocate one buffer as a host/device pair.
+
+        On a CPU device the two share storage, so staging costs nothing.
+        """
+        shape = (self.num_transitions_per_env, self.num_envs, *trailing)
+        if self.device_type == 'cpu':
+            host = torch.zeros(*shape, dtype=torch.float32)
+            device_tensor = host
+        else:
+            host = torch.zeros(*shape, dtype=torch.float32, pin_memory=True)
+            device_tensor = torch.zeros(*shape, dtype=torch.float32, device=self.device)
+        self.host_buffers[name] = host
+        return host.numpy(), device_tensor
+
+    def use_device_writes(self):
+        """Declare that transitions are produced directly in the device buffers.
+
+        Releases the host staging of every field the producer writes, so nothing
+        is uploaded before an update.
+        """
+        for name in self.transition_fields:
+            self.host_buffers.pop(name, None)
+            setattr(self, name, None)
+        self.transition_fields = []
+        self.critic_obs = None
 
     def add_transitions(self, actor_obs, critic_obs, actions, mu, sigma, rewards, dones, actions_log_prob,
                         hidden_state_a=None, hidden_state_c=None):
         if self.step >= self.num_transitions_per_env:
             raise AssertionError("Rollout buffer overflow")
+        if self.actor_obs is None:
+            raise RuntimeError("this storage expects transitions to be written on the device")
         if self.shared_observations:
             if actor_obs is not critic_obs:
                 raise ValueError("shared observations require the same actor and critic input")
@@ -82,10 +127,21 @@ class RolloutStorage:
         self.actions[self.step] = actions
         self.mu[self.step] = mu
         self.sigma[self.step] = sigma
+        self.actions_log_prob[self.step] = np.asarray(actions_log_prob).reshape(-1, 1)
+        self.record_step_rewards(rewards, dones)
+        self._save_hidden_states(hidden_state_a, hidden_state_c)
+        self.step += 1
+
+    def record_step_rewards(self, rewards, dones):
+        """Record the host-side signals of the current transition.
+
+        Under use_device_writes() the rest of the transition is written by the
+        rollout policy, which already holds it on the device.
+        """
         self.rewards[self.step] = rewards.reshape(-1, 1)
         self.dones[self.step] = dones.reshape(-1, 1)
-        self.actions_log_prob[self.step] = actions_log_prob.reshape(-1, 1)
-        self._save_hidden_states(hidden_state_a, hidden_state_c)
+
+    def advance(self):
         self.step += 1
 
     def clear(self):
@@ -102,11 +158,11 @@ class RolloutStorage:
 
         if self.saved_hidden_state_a is None and hidden_state_a is not None:
             self.saved_hidden_state_a = [
-                torch.zeros(self.actor_obs.shape[0], *h.shape, device=self.device) for h in hidden_state_a
+                torch.zeros(self.num_transitions_per_env, *h.shape, device=self.device) for h in hidden_state_a
             ]
         if self.saved_hidden_state_c is None and hidden_state_c is not None:
             self.saved_hidden_state_c = [
-                torch.zeros(self.actor_obs.shape[0], *h.shape, device=self.device) for h in hidden_state_c
+                torch.zeros(self.num_transitions_per_env, *h.shape, device=self.device) for h in hidden_state_c
             ]
 
         if hidden_state_a is not None:
@@ -117,27 +173,28 @@ class RolloutStorage:
                 self.saved_hidden_state_c[i][self.step].copy_(hidden_state_c[i])
 
     def compute_returns(self, last_values, critic, gamma, lam):
+        if self.device_type != 'cpu':
+            for name in self.transition_fields:
+                getattr(self, name + '_tc').copy_(self.host_buffers[name], non_blocking=True)
+
         with torch.no_grad():
             if getattr(critic.architecture, "is_recurrent", False):
-                values = []
                 hidden = torch.zeros(1,
                                      self.num_envs,
                                      critic.architecture.hidden_size,
                                      device=self.device,
                                      dtype=torch.float32)
+                dones_tc = torch.from_numpy(self.dones).to(self.device, dtype=torch.float32)
                 for t in range(self.num_transitions_per_env):
-                    done_mask = torch.from_numpy(self.dones[t].astype(float)).to(self.device).view(1, -1, 1)
-                    if done_mask.dtype != hidden.dtype:
-                        done_mask = done_mask.to(dtype=hidden.dtype)
-                    hidden = hidden * (1.0 - done_mask)
-                    obs_t = torch.from_numpy(self.critic_obs[t]).to(self.device, dtype=torch.float32)
-                    if hidden.dtype != obs_t.dtype:
-                        hidden = hidden.to(dtype=obs_t.dtype)
-                    val_t, hidden = critic.predict_recurrent(obs_t, hidden)
-                    values.append(val_t.cpu().numpy())
-                self.values = np.stack(values, axis=0)
+                    hidden = hidden * (1.0 - dones_tc[t].view(1, -1, 1))
+                    val_t, hidden = critic.predict_recurrent(self.critic_obs_tc[t], hidden)
+                    self.values_tc[t].copy_(val_t.view(-1, 1))
             else:
-                self.values = critic.predict(torch.from_numpy(self.critic_obs).to(self.device)).cpu().numpy()
+                self.values_tc.copy_(critic.predict(self.critic_obs_tc).view_as(self.values_tc))
+
+        if self.device_type != 'cpu':
+            # One device-to-host transfer feeds the native advantage recurrence.
+            self.host_buffers['values'].copy_(self.values_tc)
 
         if self.returns_calculator is not None:
             self.returns_calculator(
@@ -149,10 +206,8 @@ class RolloutStorage:
             for step in reversed(range(self.num_transitions_per_env)):
                 if step == self.num_transitions_per_env - 1:
                     next_values = last_values.cpu().numpy()
-                    # next_is_not_terminal = 1.0 - self.dones[step].float()
                 else:
                     next_values = self.values[step + 1]
-                    # next_is_not_terminal = 1.0 - self.dones[step+1].float()
 
                 next_is_not_terminal = 1.0 - self.dones[step]
                 delta = self.rewards[step] + next_is_not_terminal * gamma * next_values - self.values[step]
@@ -160,20 +215,13 @@ class RolloutStorage:
                 self.returns[step] = advantage + self.values[step]
 
         # Compute and normalize the advantages
-        self.advantages = self.returns - self.values
-        self.advantages = (self.advantages - self.advantages.mean()) / (self.advantages.std() + 1e-8)
+        np.subtract(self.returns, self.values, out=self.advantages)
+        self.advantages -= self.advantages.mean()
+        self.advantages /= (self.advantages.std() + 1e-8)
 
-        # Convert to torch variables
-        self.actor_obs_tc = torch.from_numpy(self.actor_obs).to(self.device)
-        self.critic_obs_tc = (self.actor_obs_tc if self.shared_observations else
-                              torch.from_numpy(self.critic_obs).to(self.device))
-        self.actions_tc = torch.from_numpy(self.actions).to(self.device)
-        self.actions_log_prob_tc = torch.from_numpy(self.actions_log_prob).to(self.device)
-        self.values_tc = torch.from_numpy(self.values).to(self.device)
-        self.returns_tc = torch.from_numpy(self.returns).to(self.device)
-        self.advantages_tc = torch.from_numpy(self.advantages).to(self.device)
-        self.sigma_tc = torch.from_numpy(self.sigma).to(self.device)
-        self.mu_tc = torch.from_numpy(self.mu).to(self.device)
+        if self.device_type != 'cpu':
+            self.returns_tc.copy_(self.host_buffers['returns'], non_blocking=True)
+            self.advantages_tc.copy_(self.host_buffers['advantages'], non_blocking=True)
 
     def recurrent_mini_batch_generator(self, num_mini_batches, num_epochs=8):
         dones = torch.from_numpy(self.dones).to(self.device)

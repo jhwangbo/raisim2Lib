@@ -90,21 +90,29 @@ int main(int argc, char **argv) {
   auto box = world.addBox(.1, .1, .1, 1);
   box->setPosition(0.9, 0.0, 4.2);
 
-  auto wire1 = world.addStiffWire(pin1, 0, {0,0,0}, ball1, 0, {0,0,0}, 2.0);
-  wire1->setVisualizationWidth(0.05);
-  wire1->setColor({1, 0, 0, 1});
-  world.addStiffWire(pin2, 0, {0,0,0}, ball2, 0, {0,0,0}, 2.0);
-  world.addStiffWire(pin3, 0, {0,0,0}, ball3, 0, {0,0,0}, 2.0);
-  world.addStiffWire(pin4, 0, {0,0,0}, ball4, 0, {0,0,0}, 2.0);
+  using Path = raisim::Tendon::PathElement;
+  raisim::Tendon::Properties cable;
+  cable.upperLimit = 2.0;
+  cable.width = 0.02;
+  cable.color = {1., 1., 1., 1.};
+  auto redCable = cable;
+  redCable.width = 0.05;
+  redCable.color = {1., 0., 0., 1.};
+  world.addSpatialTendon("cradle_1", {Path::via({pin1}), Path::via({ball1})}, redCable);
+  world.addSpatialTendon("cradle_2", {Path::via({pin2}), Path::via({ball2})}, cable);
+  world.addSpatialTendon("cradle_3", {Path::via({pin3}), Path::via({ball3})}, cable);
+  world.addSpatialTendon("cradle_4", {Path::via({pin4}), Path::via({ball4})}, cable);
 
-  auto wire5 = world.addCompliantWire(pin5, 0, {0,0,0}, box, 0, {0., 0, 0}, 2.0, 200);
-  wire5->setStretchType(raisim::LengthConstraint::StretchType::BOTH);
+  raisim::Tendon::Properties spring;
+  spring.springLower = spring.springUpper = 2.0;
+  spring.stiffness = 200.;
+  spring.width = 0.02;
+  world.addSpatialTendon("box_spring", {Path::via({pin5}), Path::via({box})}, spring);
+  spring.stiffness = 1000.;
+  world.addSpatialTendon("robot_spring", {Path::via({pin6}), Path::via({anymalC})}, spring);
 
-  auto wire6 = world.addCompliantWire(pin6, 0, {0,0,0}, anymalC, 0, {0., 0, 0}, 2.0, 1000);
-  wire6->setStretchType(raisim::LengthConstraint::StretchType::BOTH);
-
-  auto wire7 = world.addCustomWire(pin7, 0, {0,0,0}, anymalB, 0, {0., 0, 0}, 2.0);
-  wire7->setTension(310);
+  auto* actuator = world.addSpatialTendon("robot_lift", {Path::via({pin7}), Path::via({anymalB})});
+  actuator->setTension(310.);
 
   /// launch raisim server
   raisim::RaisimServer server(&world);
@@ -121,7 +129,7 @@ int main(int argc, char **argv) {
     }
 
     if (i == 5000)
-      world.removeObject(wire7);
+      world.removeTendon(actuator);
   }
 
   server.killServer();

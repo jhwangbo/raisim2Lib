@@ -1,0 +1,384 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Raisim Server &mdash; raisim 2.5.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b6430375" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=1fd526c0"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Objects" href="Object.html" />
+    <link rel="prev" title="OpenUSD Loading" href="OpenUSD.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html">
+            
+              <img src="../_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="QuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Visualization.html">Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FeatureMap.html">Feature Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BuildAndTest.html">Build, Test, and Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ProjectLayout.html">Project Layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Performance.html">Performance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Benchmark.html">Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="License.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Acknowledgement.html">Acknowledgement</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">RaiSim C++</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ConventionsAndNotations.html">Conventions and Notations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Determinism.html">Determinism</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Math.html">Math Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LoggingSystem.html">Logging System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="WorldSystem.html">World</a></li>
+<li class="toctree-l1"><a class="reference internal" href="WorldConfigurationFile.html">World Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RsceneFile.html">.rscene File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="OpenUSD.html">OpenUSD Loading</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Raisim Server</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#typical-usage">Typical usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#thread-safety-and-lifecycle">Thread safety and lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sensor-measurements">Sensor measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#synchronous-updates-optional">Synchronous updates (optional)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#protocol-versioning-and-deformable-streaming">Protocol versioning and deformable streaming</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interactive-sim-control">Interactive sim control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#custom-mutation-under-the-world-mutex">Custom mutation under the world mutex</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#default-bind-address">Default bind address</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#discovery-beacons">Discovery beacons</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#raisimserver-api">RaisimServer API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#visuals-api">Visuals API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#polyline-api">Polyline API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#articulatedsystemvisual-api">ArticulatedSystemVisual API</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Object.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Contact.html">Contact and Collision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CollisionDetection.html">Collision Detection and Colliders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MaterialSystem.html">Material System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HeightMap.html">Height Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Constraints.html">Constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Constraints.html#length-constraints-use-tendons">Length constraints use tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Constraints.html#migrating-the-former-wire-api">Migrating the former wire API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Constraints.html#pin-constraints">Pin constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Tendons.html">Tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RayTest.html">Ray Test</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Sensors.html">Sensors</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Related software</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Rayrai.html">rayrai Visualizer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RayraiTcpViewer.html">Rayrai TCP Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaisimEngine2.html">RaiSim Engine 2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaisimGymTorch.html">RaisimGymTorch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaiSimPy.html">RaisimPy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaiSimMatlab.html">RaisimMatlab</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LegacyIntegrations.html">Legacy Integrations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">raisim</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Raisim Server</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="raisim-server">
+<h1>Raisim Server<a class="headerlink" href="#raisim-server" title="Link to this heading"></a></h1>
+<p>RaisimServer serializes <code class="docutils literal notranslate"><span class="pre">raisim::World</span></code> and streams the data to clients via TCP/IP.
+Use <code class="docutils literal notranslate"><span class="pre">rayrai_tcp_viewer</span></code> for supported server-side visualization.
+For older Unity or Unreal visualization workflows, see <a class="reference internal" href="LegacyIntegrations.html"><span class="doc">Legacy Integrations</span></a>.
+For a workflow-level comparison between server-based visualization and
+in-process rayrai rendering, see <a class="reference internal" href="Visualization.html"><span class="doc">Visualization</span></a>.</p>
+<p>In addition to visualizing a <code class="docutils literal notranslate"><span class="pre">raisim::World</span></code>, <code class="docutils literal notranslate"><span class="pre">raisim::RaisimServer</span></code> can visualize additional objects.
+The legacy visual-object showcase is displayed as follows; use the current
+examples index for runnable source targets:</p>
+<img alt="../_images/visuals.gif" src="../_images/visuals.gif" />
+<section id="typical-usage">
+<h2>Typical usage<a class="headerlink" href="#typical-usage" title="Link to this heading"></a></h2>
+<p>Create the server, launch it, and advance the world through the thread-safe
+integration helper:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">raisim</span><span class="o">::</span><span class="n">World</span><span class="w"> </span><span class="n">world</span><span class="p">;</span>
+<span class="n">raisim</span><span class="o">::</span><span class="n">RaisimServer</span><span class="w"> </span><span class="nf">server</span><span class="p">(</span><span class="o">&amp;</span><span class="n">world</span><span class="p">);</span>
+<span class="n">server</span><span class="p">.</span><span class="n">launchServer</span><span class="p">(</span><span class="mi">8080</span><span class="p">);</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(;;)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">server</span><span class="p">.</span><span class="n">integrateWorldThreadSafe</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">integrateWorldThreadSafe()</span></code> locks the world mutex, drains pending
+client requests, decides whether this call is allowed to advance the world
+(pause / step state), applies active client forces only on advancing ticks,
+runs any callback overload, integrates the world when allowed, and unlocks
+the mutex.</p>
+</section>
+<section id="thread-safety-and-lifecycle">
+<h2>Thread safety and lifecycle<a class="headerlink" href="#thread-safety-and-lifecycle" title="Link to this heading"></a></h2>
+<p>The server reads the world state from a background thread. If you modify the
+world manually while the server is running, guard it with the visualization
+mutex (<code class="docutils literal notranslate"><span class="pre">lockVisualizationServerMutex()</span></code> / <code class="docutils literal notranslate"><span class="pre">unlockVisualizationServerMutex()</span></code>)
+to avoid races.</p>
+<p>The server can be paused with <code class="docutils literal notranslate"><span class="pre">hibernate()</span></code> and resumed with <code class="docutils literal notranslate"><span class="pre">wakeup()</span></code>.
+Call <code class="docutils literal notranslate"><span class="pre">killServer()</span></code> to stop the server thread and disconnect the client.</p>
+</section>
+<section id="sensor-measurements">
+<h2>Sensor measurements<a class="headerlink" href="#sensor-measurements" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">RaisimServer</span></code> can request manual RGB/depth measurements from the current
+rayrai TCP viewer. When a <code class="docutils literal notranslate"><span class="pre">MeasurementSource::MANUAL</span></code> camera reaches its
+update period, the normal scene response includes its pose, lens model,
+resolution, and clipping range. The viewer renders a complete camera pass and
+returns BGRA pixels or metric depth values in a <code class="docutils literal notranslate"><span class="pre">REQUEST_SENSOR_UPDATE</span></code>
+frame. The server validates every entry before replacing sensor buffers and
+updating timestamps.</p>
+<p>IMU and spinning LiDAR remain RaiSim-side measurements; their metadata is
+streamed for inspection but the viewer does not return their samples. Use
+<code class="docutils literal notranslate"><span class="pre">MeasurementSource::RAISIM</span></code> for RaiSim-computed sensors and manual RGB/depth
+when the connected viewer should provide the render. See
+<a class="reference internal" href="RayraiTcpViewer.html#tcp-viewer-sensor-round-trip"><span class="std std-ref">RGB/depth sensor round trip</span></a> on the TCP viewer page.</p>
+</section>
+<section id="synchronous-updates-optional">
+<h2>Synchronous updates (optional)<a class="headerlink" href="#synchronous-updates-optional" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">processRequests()</span></code> implements a synchronous request/response loop used by
+clients that explicitly pull world-state updates. It returns <code class="docutils literal notranslate"><span class="pre">false</span></code> if the
+client does not respond or rejects the protocol version.</p>
+</section>
+<section id="protocol-versioning-and-deformable-streaming">
+<h2>Protocol versioning and deformable streaming<a class="headerlink" href="#protocol-versioning-and-deformable-streaming" title="Link to this heading"></a></h2>
+<p>The TCP wire protocol is explicitly versioned. Each request starts with a
+protocol header that advertises the negotiated feature set, and the server
+rejects newer or otherwise unsupported protocol versions with a clear error
+rather than misparsing the stream. The current feature flags are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">PROTOCOL_FEATURE_EXPLICIT_HEADER</span></code>: the client and server exchange the
+explicit version header before each request.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PROTOCOL_FEATURE_DEFORMABLE_DELTA</span></code>: deformable mesh topology is sent only
+during initialization or when the topology changes; normal frames send
+vertex positions only.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PROTOCOL_FEATURE_SIM_CONTROL</span></code>: when both ends advertise this bit, the
+client may pause / resume / step the simulation and push external forces,
+torques, body poses, and articulated-system generalized coordinates over the
+wire. The server applies no authentication — if the connection is open, the
+client can drive it. See <a class="reference internal" href="#interactive-sim-control">Interactive sim control</a> below.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PROTOCOL_FEATURE_CONTACT_OBJECT_TAGS</span></code>: each streamed contact identifies
+both participating objects, enabling per-object contact counts and plots.</p></li>
+</ul>
+<p>The rayrai TCP viewer negotiates all four flags automatically. Custom clients
+can opt into any flag through the <code class="docutils literal notranslate"><span class="pre">RaisimServer</span></code> and <code class="docutils literal notranslate"><span class="pre">RaisimTcpCommon</span></code>
+headers.</p>
+</section>
+<section id="interactive-sim-control">
+<span id="id1"></span><h2>Interactive sim control<a class="headerlink" href="#interactive-sim-control" title="Link to this heading"></a></h2>
+<p>When the <code class="docutils literal notranslate"><span class="pre">SIM_CONTROL</span></code> feature is negotiated, a connected client (such as
+<code class="docutils literal notranslate"><span class="pre">rayrai_tcp_viewer</span></code>) can drive the simulation from its UI rather than
+just observing it. The viewer’s <strong>Object</strong> tab gets a <em>Simulation</em> row with
+icon-text buttons for Pause / Resume / Step / Step 10.</p>
+<p>Client requests added by this feature:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">CR_PAUSE</span></code> / <code class="docutils literal notranslate"><span class="pre">CR_RESUME</span></code> — toggle a flag consulted in
+<code class="docutils literal notranslate"><span class="pre">integrateWorldThreadSafe()</span></code>. While paused, <code class="docutils literal notranslate"><span class="pre">world_-&gt;integrate()</span></code> is not
+called even though the network thread keeps streaming state.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CR_STEP_N</span></code> — queue <em>N</em> single-step integrations to advance while paused.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CR_APPLY_FORCE</span></code> — apply an external force at a world-space application
+point on a body. Drained at the next integration tick.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CR_APPLY_TORQUE</span></code> — apply an external torque on a body.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CR_SET_POSE</span></code> — teleport a single-body object to a position + quaternion.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CR_SET_GC</span></code> — set the generalized coordinate of an articulated system.</p></li>
+</ul>
+<p>There is no authentication or per-client authorization — if the connection is
+open, the client can issue any request negotiated by both ends. The bind
+address is the only access control the server provides:</p>
+<p>The same pause / step state is reachable from your own simulation code,
+so a headless server can drive its own loop:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">server</span><span class="p">.</span><span class="n">pauseSimulation</span><span class="p">();</span>
+<span class="c1">// ... do something while the integrator is paused; state streaming keeps running ...</span>
+<span class="n">server</span><span class="p">.</span><span class="n">stepSimulation</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span><span class="w">   </span><span class="c1">// queue 10 single-step integrations</span>
+<span class="c1">// ... or release the brake completely ...</span>
+<span class="n">server</span><span class="p">.</span><span class="n">resumeSimulation</span><span class="p">();</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">server</span><span class="p">.</span><span class="n">isSimulationPaused</span><span class="p">())</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* … */</span><span class="w"> </span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Pose and generalized-coordinate requests are applied when the server drains
+client requests under the world mutex. Force and torque requests refresh an
+active client-force slot, held for 0.12 s of simulation time and applied on
+each integration tick until refreshed or expired. While paused, the slot can
+be refreshed but the force is not applied until a step or resume call allows
+<code class="docutils literal notranslate"><span class="pre">integrateWorldThreadSafe()</span></code> to advance. <code class="docutils literal notranslate"><span class="pre">stepSimulation(N)</span></code> queues N
+single-step integrations that drain one per <code class="docutils literal notranslate"><span class="pre">integrateWorldThreadSafe()</span></code>
+call; <code class="docutils literal notranslate"><span class="pre">resumeSimulation()</span></code> clears any queued steps and resumes normal
+integration.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">raisim</span><span class="o">::</span><span class="n">RaisimServer</span><span class="w"> </span><span class="nf">server</span><span class="p">(</span><span class="o">&amp;</span><span class="n">world</span><span class="p">);</span>
+<span class="n">server</span><span class="p">.</span><span class="n">setBindLoopbackOnly</span><span class="p">(</span><span class="nb">false</span><span class="p">);</span><span class="w">  </span><span class="c1">// expose on all interfaces (off by default)</span>
+<span class="n">server</span><span class="p">.</span><span class="n">launchServer</span><span class="p">();</span>
+</pre></div>
+</div>
+<p>Keep the default (<code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code>-only) for development. Open the bind to a wider
+network only when you trust every host that can reach the port.</p>
+<section id="custom-mutation-under-the-world-mutex">
+<h3>Custom mutation under the world mutex<a class="headerlink" href="#custom-mutation-under-the-world-mutex" title="Link to this heading"></a></h3>
+<p>Examples that need to spawn / move / modify world objects every tick can pass
+a callback to <code class="docutils literal notranslate"><span class="pre">integrateWorldThreadSafe()</span></code>. The callback runs inside the
+world mutex after pending sim-control requests are drained and active client
+forces are applied for advancing ticks. It runs before <code class="docutils literal notranslate"><span class="pre">world_-&gt;integrate()</span></code>
+when the pause / step state allows the tick to advance:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">server</span><span class="p">.</span><span class="n">integrateWorldThreadSafe</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">600</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">auto</span><span class="o">*</span><span class="w"> </span><span class="n">ball</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">world</span><span class="p">.</span><span class="n">addSphere</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">);</span>
+<span class="w">      </span><span class="n">ball</span><span class="o">-&gt;</span><span class="n">setPosition</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">-2</span><span class="p">,</span><span class="w"> </span><span class="mf">0.8</span><span class="p">);</span>
+<span class="w">      </span><span class="n">ball</span><span class="o">-&gt;</span><span class="n">setVelocity</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">});</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The callback overload preserves all the pause / step / force / pose behavior
+of the no-arg version — the viewer can still drive the simulation even when
+the example mutates the world each tick. See
+<code class="docutils literal notranslate"><span class="pre">examples/src/server/dynamic_object_addition.cpp</span></code> and
+<code class="docutils literal notranslate"><span class="pre">examples/src/server/dynamic_heightmap.cpp</span></code> for working uses, and
+<code class="docutils literal notranslate"><span class="pre">examples/src/server/sim_control_demo.cpp</span></code> for a minimal demo of the
+viewer-facing controls.</p>
+</section>
+</section>
+<section id="default-bind-address">
+<h2>Default bind address<a class="headerlink" href="#default-bind-address" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">RaisimServer</span></code> binds to <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code> by default rather than <code class="docutils literal notranslate"><span class="pre">INADDR_ANY</span></code>.
+This prevents accidental exposure to a shared LAN. Opt back into external
+visibility with:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">server</span><span class="p">.</span><span class="n">setBindLoopbackOnly</span><span class="p">(</span><span class="nb">false</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Treat this as a security boundary — once the server is reachable from a wider
+network, every client on that network can pause / step / force-apply /
+spawn-remove. There is no token or authorization layer to fall back on.</p>
+</section>
+<section id="discovery-beacons">
+<h2>Discovery beacons<a class="headerlink" href="#discovery-beacons" title="Link to this heading"></a></h2>
+<p>While the server is running, <code class="docutils literal notranslate"><span class="pre">RaisimServer</span></code> advertises itself with a UDP
+beacon once per second on port <code class="docutils literal notranslate"><span class="pre">59312</span></code>. The beacon payload contains the
+RaiSim TCP protocol version, TCP port, host name, executable name, bind mode
+(<code class="docutils literal notranslate"><span class="pre">loopback</span></code> or <code class="docutils literal notranslate"><span class="pre">all</span></code>), and connection status. <code class="docutils literal notranslate"><span class="pre">rayrai_tcp_viewer</span></code>
+uses these beacons to populate the detected-server list in its <strong>Connection</strong>
+tab.</p>
+<p>With the default loopback bind, beacons are sent only to <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code>. After
+<code class="docutils literal notranslate"><span class="pre">server.setBindLoopbackOnly(false)</span></code>, they are broadcast on the local network
+so another machine can discover the server. Discovery is only a convenience
+layer: clients may always connect directly to the TCP endpoint with
+<code class="docutils literal notranslate"><span class="pre">--connect</span> <span class="pre">host:port</span></code> or equivalent custom-client code.</p>
+<p>For Windows LAN use, allow both the TCP server port (<code class="docutils literal notranslate"><span class="pre">8080</span></code> by default) and
+UDP port <code class="docutils literal notranslate"><span class="pre">59312</span></code> through the firewall. If UDP broadcast is blocked, manual
+TCP connection still works.</p>
+</section>
+<section id="raisimserver-api">
+<h2>RaisimServer API<a class="headerlink" href="#raisimserver-api" title="Link to this heading"></a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+</section>
+<section id="visuals-api">
+<h2>Visuals API<a class="headerlink" href="#visuals-api" title="Link to this heading"></a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+</section>
+<section id="polyline-api">
+<h2>Polyline API<a class="headerlink" href="#polyline-api" title="Link to this heading"></a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+</section>
+<section id="articulatedsystemvisual-api">
+<h2>ArticulatedSystemVisual API<a class="headerlink" href="#articulatedsystemvisual-api" title="Link to this heading"></a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenstruct: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="OpenUSD.html" class="btn btn-neutral float-left" title="OpenUSD Loading" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Object.html" class="btn btn-neutral float-right" title="Objects" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, RaiSim Tech Inc..</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

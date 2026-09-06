@@ -26,6 +26,7 @@ from ruamel.yaml import YAML
 import raisimGymTorch.algo.ppo.module as ppo_module
 from raisimGymTorch.env.RaisimGymVecEnv import RaisimGymVecEnv as VecEnv
 from raisimGymTorch.env.bin import rsg_anymal
+from raisimGymTorch.helper.raisim_gym_helper import save_scripted_policy, script_policy
 
 
 def activation_fn():
@@ -110,10 +111,10 @@ def main():
     if actor_state is not None:
         policy_module.load_state_dict(actor_state)
     policy = policy_module.architecture
-    scripted_policy = torch.jit.script(policy)
+    scripted_policy = script_policy(policy)
     policy_directory = tempfile.TemporaryDirectory(prefix='rsg-anymal-policy-')
     policy_path = os.path.join(policy_directory.name, 'policy.pt')
-    torch.jit.save(scripted_policy, policy_path)
+    save_scripted_policy(scripted_policy, policy_path)
     torch_runner = (rsg_anymal.TorchPolicyRunner(env.wrapper, policy_path)
                     if hasattr(rsg_anymal, 'TorchPolicyRunner') else None)
 

@@ -1,10 +1,96 @@
 from datetime import datetime
+import math
 import os
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from .storage import RolloutStorage
+
+_LOG_SQRT_2PI = 0.5 * math.log(2.0 * math.pi)
+
+
+class CudaGraphRollout:
+    """Replay the whole per-step rollout policy as a single captured CUDA graph.
+
+    A rollout step costs roughly 135 us of launch and synchronization latency
+    against 850 us of simulation: seven eager dispatches for a two-layer MLP, a
+    pageable host-to-device copy of the observation, and two hard
+    synchronizations. Capturing the forward pass, the action sampling and the
+    writes into the rollout buffers leaves five host-visible operations per
+    step, and the transition never leaves the device afterwards.
+
+    The buffer index lives on the device and is incremented inside the graph, so
+    a replay needs no argument. It is re-zeroed whenever a new rollout starts.
+    """
+
+    def __init__(self, actor, storage, device):
+        self.actor = actor
+        self.storage = storage
+        self.device = device
+
+        network = actor.architecture.architecture
+        num_envs = storage.num_envs
+        obs_dim = storage.actor_obs_tc.shape[-1]
+        action_dim = storage.actions_tc.shape[-1]
+        self.log_normalizer = action_dim * _LOG_SQRT_2PI
+
+        self.observation_host = torch.empty(num_envs, obs_dim, dtype=torch.float32, pin_memory=True)
+        self.observation_np = self.observation_host.numpy()
+        self.action_host = torch.empty(num_envs, action_dim, dtype=torch.float32, pin_memory=True)
+        self.action_np = self.action_host.numpy()
+
+        self.observation = torch.zeros(num_envs, obs_dim, dtype=torch.float32, device=device)
+        self.action = torch.zeros(num_envs, action_dim, dtype=torch.float32, device=device)
+        self.index = torch.zeros(1, dtype=torch.long, device=device)
+        self.done = torch.cuda.Event()
+
+        # Capture under no_grad rather than inference mode: the captured
+        # intermediates are replayed from inference-mode rollout loops, and
+        # inference tensors may not be written to from outside inference mode.
+        stream = torch.cuda.Stream()
+        stream.wait_stream(torch.cuda.current_stream())
+        with torch.cuda.stream(stream), torch.no_grad():
+            for _ in range(3):
+                self._body(network)
+        torch.cuda.current_stream().wait_stream(stream)
+
+        self.graph = torch.cuda.CUDAGraph()
+        with torch.no_grad(), torch.cuda.graph(self.graph):
+            self._body(network)
+        self.index.zero_()
+
+    def _body(self, network):
+        std = self.actor.distribution.std
+        mean = network(self.observation)
+        noise = torch.randn_like(mean)
+        action = torch.addcmul(mean, noise, std)
+        log_prob = (noise.square().sum(1) * -0.5) - std.log().sum() - self.log_normalizer
+
+        index = self.index.remainder(self.storage.num_transitions_per_env)
+        self.storage.actor_obs_tc.index_copy_(0, index, self.observation.unsqueeze(0))
+        self.storage.actions_tc.index_copy_(0, index, action.unsqueeze(0))
+        self.storage.mu_tc.index_copy_(0, index, mean.unsqueeze(0))
+        self.storage.actions_log_prob_tc.index_copy_(0, index, log_prob.view(1, -1, 1))
+        self.action.copy_(action)
+        self.index.add_(1)
+
+    def act(self, actor_obs):
+        if self.storage.step == 0:
+            self.index.zero_()
+            # The action standard deviation is a policy parameter, so it is
+            # constant for the whole rollout. Broadcasting it once beats writing
+            # an identical row on every one of the captured steps.
+            self.storage.sigma_tc.copy_(self.actor.distribution.std.detach().view(1, 1, -1))
+
+        np.copyto(self.observation_np, actor_obs)
+        self.observation.copy_(self.observation_host, non_blocking=True)
+        self.graph.replay()
+        self.action_host.copy_(self.action, non_blocking=True)
+        self.done.record()
+        self.done.synchronize()
+        return self.action_np
 
 
 class PPO:
@@ -29,11 +115,14 @@ class PPO:
                  device='cpu',
                  shuffle_batch=True,
                  shared_observations=False,
-                 returns_calculator=None):
+                 returns_calculator=None,
+                 compile_networks=False,
+                 cuda_graph_rollout=True):
 
         # PPO components
         self.actor = actor
         self.critic = critic
+        self.shared_observations = shared_observations
         self.storage = RolloutStorage(
             num_envs, num_transitions_per_env, actor.obs_shape, critic.obs_shape,
             actor.action_shape, device, shared_observations, returns_calculator)
@@ -44,9 +133,26 @@ class PPO:
             self.batch_sampler = self.storage.mini_batch_generator_inorder
 
         self.trainable_parameters = [*self.actor.parameters(), *self.critic.parameters()]
-        self.optimizer = optim.Adam(self.trainable_parameters, lr=learning_rate)
         self.device = device
         self.device_type = torch.device(device).type
+
+        # The adaptive schedule compares the sampled KL against a threshold once
+        # per minibatch. Reading that comparison on the host stalls the pipeline
+        # every minibatch, so on an accelerator the learning rate is kept as a
+        # device tensor and handed to the fused optimizer, which reads it there.
+        self.lr_tensor = None
+        if self.device_type == 'cuda' and learning_rate_schedule == 'adaptive':
+            try:
+                self.lr_tensor = torch.tensor(float(learning_rate), device=self.device)
+                self.optimizer = optim.Adam(self.trainable_parameters, lr=self.lr_tensor, fused=True)
+                self.lr_decay = torch.tensor(1.0 / 1.2, device=self.device)
+                self.lr_growth = torch.tensor(1.2, device=self.device)
+                self.lr_hold = torch.tensor(1.0, device=self.device)
+            except (RuntimeError, ValueError) as error:
+                print(f'[RAISIM_GYM] Device-side learning rate unavailable, adapting on the host: {error}')
+                self.lr_tensor = None
+        if self.lr_tensor is None:
+            self.optimizer = optim.Adam(self.trainable_parameters, lr=learning_rate)
 
         # env parameters
         self.num_transitions_per_env = num_transitions_per_env
@@ -84,6 +190,40 @@ class PPO:
             self.actor_hidden = torch.zeros(1, num_envs, hidden_size, device=self.device, dtype=torch.float32)
             self.critic_hidden = torch.zeros(1, num_envs, hidden_size, device=self.device, dtype=torch.float32)
 
+        if compile_networks:
+            self._compile_networks()
+
+        # The captured rollout owns the actor observation buffer, so it needs the
+        # critic to read the same one. A separate critic observation is only
+        # available on the host, after the graph has already run.
+        self.graph_rollout = None
+        if (cuda_graph_rollout and self.device_type == 'cuda'
+                and not self.is_recurrent and shared_observations):
+            try:
+                self.graph_rollout = CudaGraphRollout(actor, self.storage, self.device)
+                self.storage.use_device_writes()
+                print('[RAISIM_GYM] Rollout policy captured as a CUDA graph')
+            except Exception as error:
+                print(f'[RAISIM_GYM] CUDA graph capture failed; using the eager rollout: {error}')
+                self.graph_rollout = None
+
+    def _compile_networks(self):
+        """Compile the networks used by the PPO update.
+
+        Only the update is compiled: it runs a fixed, large minibatch shape many
+        times per iteration. The rollout keeps the eager modules, which is what
+        the captured graph replays.
+        """
+        if self.is_recurrent:
+            return
+        try:
+            self.actor.set_compiled_architecture(torch.compile(self.actor.architecture.architecture))
+            self.critic.set_compiled_architecture(torch.compile(self.critic.architecture.architecture))
+        except Exception as error:
+            print(f'[RAISIM_GYM] torch.compile unavailable; using eager updates: {error}')
+            self.actor.set_compiled_architecture(None)
+            self.critic.set_compiled_architecture(None)
+
     def act(self, actor_obs):
         with torch.no_grad():
             return self.act_inference(actor_obs)
@@ -91,6 +231,11 @@ class PPO:
     def act_inference(self, actor_obs):
         """Act while the caller owns a surrounding no-grad context."""
         self.actor_obs = actor_obs
+        if self.graph_rollout is not None:
+            # The graph writes the observation, action, mean and log probability
+            # of this transition straight into the rollout buffers.
+            self.actions = self.graph_rollout.act(actor_obs)
+            return self.actions
         obs_tc = torch.from_numpy(actor_obs)
         if obs_tc.dtype != torch.float32 or self.device_type != 'cpu':
             obs_tc = obs_tc.to(self.device, dtype=torch.float32)
@@ -105,6 +250,11 @@ class PPO:
         return self.actions
 
     def step(self, value_obs, rews, dones):
+        if self.graph_rollout is not None:
+            self.storage.record_step_rewards(rews, dones)
+            self.storage.advance()
+            return
+
         hidden_a = None
         hidden_c = None
         if self.is_recurrent:
@@ -124,6 +274,7 @@ class PPO:
             self.critic_hidden = self.critic_hidden * (1.0 - done_mask)
 
     def update(self, actor_obs, value_obs, log_this_iteration, update):
+        self._bind_learning_rate()
         if self.is_recurrent:
             last_values = self._predict_recurrent_last_values(value_obs)
         else:
@@ -140,13 +291,31 @@ class PPO:
         if log_this_iteration:
             self.log({**locals(), **infos, 'it': update})
 
+    def _bind_learning_rate(self):
+        """Keep the optimizer pointing at the device-side learning rate.
+
+        Restoring a checkpoint through optimizer.load_state_dict() replaces the
+        entry with the plain value it was saved as, which would silently freeze
+        the adaptive schedule.
+        """
+        if self.lr_tensor is None:
+            return
+        for param_group in self.optimizer.param_groups:
+            if param_group['lr'] is not self.lr_tensor:
+                self.lr_tensor.fill_(float(param_group['lr']))
+                param_group['lr'] = self.lr_tensor
+
+    def current_learning_rate(self):
+        """Read the learning rate, synchronizing only when it lives on the device."""
+        return self.lr_tensor.item() if self.lr_tensor is not None else self.learning_rate
+
     def log(self, variables):
         self.tot_timesteps += self.num_transitions_per_env * self.num_envs
         mean_std = self.actor.distribution.std.mean()
         self.writer.add_scalar('PPO/value_function', variables['mean_value_loss'], variables['it'])
         self.writer.add_scalar('PPO/surrogate', variables['mean_surrogate_loss'], variables['it'])
         self.writer.add_scalar('PPO/mean_noise_std', mean_std.item(), variables['it'])
-        self.writer.add_scalar('PPO/learning_rate', self.learning_rate, variables['it'])
+        self.writer.add_scalar('PPO/learning_rate', self.current_learning_rate(), variables['it'])
 
     def _train_step(self, log_this_iteration):
         mean_value_loss = 0
@@ -169,13 +338,24 @@ class PPO:
                             torch.log(sigma_batch / old_sigma_batch + 1.e-5) + (torch.square(old_sigma_batch) + torch.square(old_mu_batch - mu_batch)) / (2.0 * torch.square(sigma_batch)) - 0.5, axis=-1)
                         kl_mean = torch.mean(kl)
 
-                        if kl_mean > self.desired_kl * 2.0:
-                            self.learning_rate = max(1e-5, self.learning_rate / 1.2)
-                        elif kl_mean < self.desired_kl / 2.0 and kl_mean > 0.0:
-                            self.learning_rate = min(1e-2, self.learning_rate * 1.2)
+                        if self.lr_tensor is not None:
+                            # Same schedule, applied on the device. Branching on
+                            # kl_mean here instead would synchronize the host
+                            # with the accelerator once per minibatch.
+                            scale = torch.where(
+                                kl_mean > self.desired_kl * 2.0,
+                                self.lr_decay,
+                                torch.where((kl_mean < self.desired_kl / 2.0) & (kl_mean > 0.0),
+                                            self.lr_growth, self.lr_hold))
+                            self.lr_tensor.mul_(scale).clamp_(1e-5, 1e-2)
+                        else:
+                            if kl_mean > self.desired_kl * 2.0:
+                                self.learning_rate = max(1e-5, self.learning_rate / 1.2)
+                            elif kl_mean < self.desired_kl / 2.0 and kl_mean > 0.0:
+                                self.learning_rate = min(1e-2, self.learning_rate * 1.2)
 
-                        for param_group in self.optimizer.param_groups:
-                            param_group['lr'] = self.learning_rate
+                            for param_group in self.optimizer.param_groups:
+                                param_group['lr'] = self.learning_rate
 
                 # Surrogate loss
                 ratio = torch.exp(actions_log_prob_batch - torch.squeeze(old_actions_log_prob_batch))

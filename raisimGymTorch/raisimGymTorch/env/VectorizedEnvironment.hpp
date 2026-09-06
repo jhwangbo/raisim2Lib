@@ -7,6 +7,7 @@
 #define SRC_RAISIMGYMVECENV_HPP
 
 #include <stdexcept>
+#include <thread>
 #include "RaisimGymEnv.hpp"
 #ifdef RAISIMGYM_NO_OPENMP
 #ifndef RAISIMGYM_OPENMP_FALLBACK_HPP
@@ -254,6 +255,19 @@ class VectorizedEnvironment {
   void setNumThreads(int threadCount) {
     if (threadCount < 1)
       throw std::runtime_error("thread count must be positive");
+
+    /// The calling thread is not idle between parallel regions: it runs policy
+    /// inference and waits on the accelerator. Handing every hardware thread to
+    /// the worker pool makes it compete with the pool, which leaves throughput
+    /// unchanged at best and roughly doubles the per-step tail latency.
+    const int hardwareThreads = int(std::thread::hardware_concurrency());
+    if (hardwareThreads > 1 && threadCount >= hardwareThreads) {
+      RSWARN("num_threads=" << threadCount << " requests every one of the "
+             << hardwareThreads << " hardware threads. Using "
+             << hardwareThreads - 1 << " instead to leave one for the caller.")
+      threadCount = hardwareThreads - 1;
+    }
+
     THREAD_COUNT = threadCount;
     omp_set_num_threads(THREAD_COUNT);
   }

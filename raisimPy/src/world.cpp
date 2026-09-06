@@ -1091,93 +1091,18 @@ void init_world(py::module_ &m) {
            py::arg("collision_mode") = raisim::MeshCollisionMode::CONVEXIFY,
            py::rv_policy::reference_internal)
 
-      .def("addStiffWire", [](raisim::World &self, raisim::Object &object1, size_t local_idx1,
-                              NDArray pos_body1, raisim::Object &object2, size_t local_idx2,
-                              NDArray pos_body2, double length) {
-
-             // convert the arrays to Vec<3>
-             raisim::Vec<3> pos1 = convert_np_to_vec<3>(pos_body1);
-             raisim::Vec<3> pos2 = convert_np_to_vec<3>(pos_body2);
-
-             // return the stiff wire instance.
-             return self.addStiffWire(&object1, local_idx1, pos1, &object2, local_idx2, pos2, length);
-           }, R"mydelimiter(
-	    Add a stiff wire constraint between two bodies in the world.
-
-	    Args:
-            object1 (Object): first object/body instance.
-	        local_idx1 (int): local index of the first object/body.
-	        pos_body1 (np.array[float[3]]): position of the constraint on the first body.
-            object2 (Object): second object/body instance.
-	        local_idx2 (int): local index of the second object/body.
-	        pos_body2 (np.array[float[3]]): position of the constraint on the second body.
-            length (float): length of the wire constraint.
-
-	    Returns:
-	        StiffWire: the stiff wire constraint instance.
-	    )mydelimiter",
-           py::arg("object1"), py::arg("local_idx1"), py::arg("pos_body1"), py::arg("object2"), py::arg("local_idx2"),
-           py::arg("pos_body2"), py::arg("length"),
+      .def("addSpatialTendon", &raisim::World::addSpatialTendon,
+           py::arg("name"), py::arg("path"), py::arg("properties") = raisim::Tendon::Properties{},
            py::rv_policy::reference_internal)
-
-      .def("addCustomWire", [](raisim::World &self, raisim::Object &object1, size_t local_idx1,
-                              NDArray pos_body1, raisim::Object &object2, size_t local_idx2,
-                              NDArray pos_body2, double length) {
-
-             // convert the arrays to Vec<3>
-             raisim::Vec<3> pos1 = convert_np_to_vec<3>(pos_body1);
-             raisim::Vec<3> pos2 = convert_np_to_vec<3>(pos_body2);
-
-             // return the stiff wire instance.
-             return self.addCustomWire(&object1, local_idx1, pos1, &object2, local_idx2, pos2, length);
-           }, R"mydelimiter(
-	    Add a custom wire constraint between two bodies in the world.
-
-	    Args:
-            object1 (Object): first object/body instance.
-	        local_idx1 (int): local index of the first object/body.
-	        pos_body1 (np.array[float[3]]): position of the constraint on the first body.
-            object2 (Object): second object/body instance.
-	        local_idx2 (int): local index of the second object/body.
-	        pos_body2 (np.array[float[3]]): position of the constraint on the second body.
-            length (float): length of the wire constraint.
-
-	    Returns:
-	        StiffWire: the stiff wire constraint instance.
-	    )mydelimiter",
-           py::arg("object1"), py::arg("local_idx1"), py::arg("pos_body1"), py::arg("object2"), py::arg("local_idx2"),
-           py::arg("pos_body2"), py::arg("length"),
+      .def("addFixedTendon", &raisim::World::addFixedTendon,
+           py::arg("name"), py::arg("joints"), py::arg("properties") = raisim::Tendon::Properties{},
            py::rv_policy::reference_internal)
-
-      .def("addCompliantWire", [](raisim::World &self, raisim::Object &object1, size_t local_idx1,
-                                  NDArray pos_body1, raisim::Object &object2, size_t local_idx2,
-                                  NDArray pos_body2, double length, double stiffness) {
-
-             // convert the arrays to Vec<3>
-             raisim::Vec<3> pos1 = convert_np_to_vec<3>(pos_body1);
-             raisim::Vec<3> pos2 = convert_np_to_vec<3>(pos_body2);
-
-             // return the compliant wire instance.
-             return self.addCompliantWire(&object1, local_idx1, pos1, &object2, local_idx2, pos2, length, stiffness);
-           }, R"mydelimiter(
-	    Add a compliant wire constraint between two bodies in the world.
-
-	    Args:
-            object1 (Object): first object/body instance.
-	        local_idx1 (int): local index of the first object/body.
-	        pos_body1 (np.array[float[3]]): position of the constraint on the first body.
-            object2 (Object): second object/body instance.
-	        local_idx2 (int): local index of the second object/body.
-	        pos_body2 (np.array[float[3]]): position of the constraint on the second body.
-            length (float): length of the wire constraint.
-            stiffness (float): stiffness of the wire.
-
-	    Returns:
-	        CompliantWire: the compliant wire constraint instance.
-	    )mydelimiter",
-           py::arg("object1"), py::arg("local_idx1"), py::arg("pos_body1"), py::arg("object2"), py::arg("local_idx2"),
-           py::arg("pos_body2"), py::arg("length"), py::arg("stiffness"),
-           py::rv_policy::reference_internal)
+      .def("addTendonCoupling", &raisim::World::addTendonCoupling,
+           py::arg("name"), py::arg("first"), py::arg("second").none() = nullptr,
+           py::arg("properties") = raisim::TendonCoupling::Properties{}, py::rv_policy::reference_internal)
+      .def("getTendon", &raisim::World::getTendon, py::arg("name"), py::rv_policy::reference_internal)
+      .def("removeTendon", &raisim::World::removeTendon, py::arg("tendon"))
+      .def("removeTendonCoupling", &raisim::World::removeTendonCoupling, py::arg("coupling"))
 
       .def("getObject", py::overload_cast<const std::string &>(&raisim::World::getObject), R"mydelimiter(
 	    Get the specified object instance from its unique name.
@@ -1203,30 +1128,6 @@ void init_world(py::module_ &m) {
            py::arg("world_index"),
            py::rv_policy::reference_internal)
 
-      .def("getConstraint", &raisim::World::getConstraint, R"mydelimiter(
-	    Get the specified constraint instance from its unique name.
-
-	    Args:
-            name (str): unique name of the constraint instance we want to get.
-
-	    Returns:
-	        Constraints, None: the specified constraint instance. None, if it didn't find the constraint.
-	    )mydelimiter",
-           py::arg("name"),
-           py::rv_policy::reference_internal)
-
-      .def("getWire", &raisim::World::getWire, R"mydelimiter(
-	    Get the specified wire instance from its unique name.
-
-	    Args:
-            name (str): unique name of the wire instance we want to get.
-
-	    Returns:
-	        Constraints: the specified wire instance. None, if it didn't find the wire.
-	    )mydelimiter",
-           py::arg("name"),
-           py::rv_policy::reference_internal)
-
       .def("getConfigurationNumber", &raisim::World::getConfigurationNumber, R"mydelimiter(
 	    Get the number of elements that are in the world. The returned number is updated everytime that we add or
 	    remove an object from the world.
@@ -1242,14 +1143,6 @@ void init_world(py::module_ &m) {
 	        obj (Object): the object to be removed from the world.
 	    )mydelimiter",
            py::arg("obj"))
-
-      .def("removeObject", py::overload_cast<raisim::LengthConstraint *>(&raisim::World::removeObject), R"mydelimiter(
-	    Remove dynamically a wire from the world.
-
-	    Args:
-	        wire: the wire to be removed from the world.
-	    )mydelimiter",
-           py::arg("wire"))
 
       .def("integrate",
            &raisim::World::integrate,
@@ -1461,12 +1354,15 @@ void init_world(py::module_ &m) {
         py::arg("closestOnly") = true, py::arg("objectId") = size_t(-10),
         py::arg("localId") = size_t(-10), py::arg("collisionMask") = raisim::CollisionGroup(-1),
         py::rv_policy::reference_internal)
-      .def("getWires", [](raisim::World &self) {
-        std::vector<raisim::LengthConstraint *> wires;
-        wires.reserve(self.getWires().size());
-        for (auto &wire : self.getWires())
-          wires.push_back(wire.get());
-        return wires;
+      .def("getTendons", [](raisim::World& self) {
+        std::vector<raisim::Tendon*> result;
+        for (const auto& tendon : self.getTendons()) result.push_back(tendon.get());
+        return result;
+      }, py::rv_policy::reference_internal)
+      .def("getTendonCouplings", [](raisim::World& self) {
+        std::vector<raisim::TendonCoupling*> result;
+        for (const auto& coupling : self.getTendonCouplings()) result.push_back(coupling.get());
+        return result;
       }, py::rv_policy::reference_internal)
       .def("lockMutex", &raisim::World::lockMutex)
       .def("unlockMutex", &raisim::World::unlockMutex)

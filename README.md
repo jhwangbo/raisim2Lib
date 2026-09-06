@@ -1,16 +1,16 @@
 # RaiSim2
 
-<img src="docs/image/rayrai_complete_showcase.gif" alt="rayrai complete showcase" width="100%">
+<p align="center">
+  <img src="docs/image/rayrai_complete_showcase.gif" alt="rayrai complete showcase" width="49%" />
+  <img src="docs/image/granular_media.gif" alt="granular media example" width="49%" />
+  <br />
+  <img src="docs/image/deformable_objects.gif" alt="deformable objects example" width="49%" />
+  <img src="docs/image/procedural_heightmap.gif" alt="procedural heightmap example" width="49%" />
+</p>
 
-<img src="docs/image/granular_media.gif" alt="granular media example" width="100%">
-
-<img src="docs/image/deformable_objects.gif" alt="deformable objects example" width="100%">
-
-<img src="docs/image/procedural_heightmap.gif" alt="procedural heightmap example" width="100%">
+For full documentation, see the [RaiSim documentation](https://raisim.com/sections/Simulator.html).
 
 RaiSim is a physics engine for robotics and artificial intelligence research. The public distribution is provided as binary packages with headers, libraries, examples, rayrai viewer sources, and documentation.
-
-[![RaiSim video](https://img.youtube.com/vi/CN0ah5-OWik/0.jpg)](https://www.youtube.com/watch?v=CN0ah5-OWik)
 
 ## Install
 

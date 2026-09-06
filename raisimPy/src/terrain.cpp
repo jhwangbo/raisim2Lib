@@ -173,8 +173,7 @@ void init_terrain(py::module_ &m) {
 	    )mydelimiter",
 	    py::arg("x_samples"), py::arg("y_samples"), py::arg("x_scale"), py::arg("y_scale"), py::arg("x_center"),
 	    py::arg("y_center"))
-        .def("getHeightMap", py::overload_cast<>(&raisim::HeightMap::getHeightMap))
-        .def("getHeightMap", py::overload_cast<>(&raisim::HeightMap::getHeightMap, py::const_))
+        .def("getHeightMap", &raisim::HeightMap::getHeightMap)
 
 	    .def("getHeight", &raisim::HeightMap::getHeight, R"mydelimiter(
 	    Get the height at the given location.

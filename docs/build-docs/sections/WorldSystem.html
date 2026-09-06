@@ -1,0 +1,470 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>World &mdash; raisim 2.5.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b6430375" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=1fd526c0"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="World Configuration File" href="WorldConfigurationFile.html" />
+    <link rel="prev" title="Logging System" href="LoggingSystem.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html">
+            
+              <img src="../_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="QuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Visualization.html">Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FeatureMap.html">Feature Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BuildAndTest.html">Build, Test, and Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ProjectLayout.html">Project Layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Performance.html">Performance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Benchmark.html">Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="License.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Acknowledgement.html">Acknowledgement</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">RaiSim C++</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ConventionsAndNotations.html">Conventions and Notations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Determinism.html">Determinism</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Math.html">Math Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LoggingSystem.html">Logging System</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">World</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#adding-new-objects">Adding New Objects</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#stable-object-identifiers">Stable object identifiers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#snapshots-and-cloning">Snapshots and cloning</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#saving-the-world-to-an-xml-file">Saving the World to an XML File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#stepping-and-time">Stepping and time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#collision-detection-and-broadphase">Collision Detection and Broadphase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#contact-solver-settings">Contact Solver Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sleeping-islands">Sleeping islands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#api">API</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="WorldConfigurationFile.html">World Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RsceneFile.html">.rscene File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="OpenUSD.html">OpenUSD Loading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaisimServer.html">Raisim Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Object.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Contact.html">Contact and Collision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CollisionDetection.html">Collision Detection and Colliders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MaterialSystem.html">Material System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HeightMap.html">Height Map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Constraints.html">Constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Constraints.html#length-constraints-use-tendons">Length constraints use tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Constraints.html#migrating-the-former-wire-api">Migrating the former wire API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Constraints.html#pin-constraints">Pin constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Tendons.html">Tendons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RayTest.html">Ray Test</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Sensors.html">Sensors</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Related software</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Rayrai.html">rayrai Visualizer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RayraiTcpViewer.html">Rayrai TCP Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaisimEngine2.html">RaiSim Engine 2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaisimGymTorch.html">RaisimGymTorch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaiSimPy.html">RaisimPy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="RaiSimMatlab.html">RaisimMatlab</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LegacyIntegrations.html">Legacy Integrations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">raisim</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">World</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="world">
+<h1>World<a class="headerlink" href="#world" title="Link to this heading"></a></h1>
+<p>The <code class="code docutils literal notranslate"><span class="pre">raisim::World</span></code> class owns simulation resources: objects, constraints,
+materials, collision detection, contact solving, sensors, time, and gravity. All
+objects within a single World instance can collide with one another unless their
+collision group and mask settings disable that pair. See <a class="reference internal" href="Contact.html"><span class="doc">Contact and Collision</span></a> and
+<a class="reference internal" href="CollisionDetection.html"><span class="doc">Collision Detection and Colliders</span></a> for contact and collision details.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">raisim::World</span></code> can be instantiated in three ways:</p>
+<ol class="arabic">
+<li><p><strong>From a USD scene file (recommended default).</strong> Pass a <code class="docutils literal notranslate"><span class="pre">.usd</span></code>, <code class="docutils literal notranslate"><span class="pre">.usda</span></code>,
+<code class="docutils literal notranslate"><span class="pre">.usdc</span></code>, or <code class="docutils literal notranslate"><span class="pre">.usdz</span></code> path to the constructor. RaiSim opens the USD
+stage, imports the rigid bodies, articulated systems, and supported
+collision shapes, and the world is ready to step. See <a class="reference internal" href="OpenUSD.html"><span class="doc">OpenUSD Loading</span></a> for
+the full import semantics and tooling story.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">raisim</span><span class="o">::</span><span class="n">World</span><span class="w"> </span><span class="n">world</span><span class="p">(</span><span class="s">&quot;scene.usd&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>This is the preferred entry point because the scene is portable across
+public USD-native tools such as Isaac Sim, Omniverse, and Blender.</p>
+</li>
+<li><p><strong>From a RaiSim XML or MuJoCo MJCF configuration file.</strong> Pass an <code class="docutils literal notranslate"><span class="pre">.xml</span></code>
+or <code class="docutils literal notranslate"><span class="pre">.mjcf</span></code> path to the same constructor; the file’s root tag
+(<code class="docutils literal notranslate"><span class="pre">&lt;raisim&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">&lt;mujoco&gt;</span></code>) selects the loader. Use this when the
+scene is hand-edited, template-driven, or already lives in one of those
+formats. See <a class="reference internal" href="WorldConfigurationFile.html"><span class="doc">World Configuration File</span></a> for the XML schema.</p></li>
+<li><p><strong>Programmatically.</strong> Default-construct an empty world and add objects
+in code:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">raisim</span><span class="o">::</span><span class="n">World</span><span class="w"> </span><span class="n">world</span><span class="p">;</span>
+<span class="n">world</span><span class="p">.</span><span class="n">addGround</span><span class="p">();</span>
+<span class="k">auto</span><span class="o">*</span><span class="w"> </span><span class="n">box</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">world</span><span class="p">.</span><span class="n">addBox</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">);</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p>These methods can be combined: load an initial USD or XML scene and then
+add or remove objects in code before stepping.</p>
+<p>An experimental MJCF (MuJoCo file format) reader is also available. MJCF files
+can be loaded with the same
+<code class="docutils literal notranslate"><span class="pre">raisim::World</span></code> constructor used for RaiSim XML:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">raisim</span><span class="o">::</span><span class="n">World</span><span class="w"> </span><span class="n">world</span><span class="p">(</span><span class="s">&quot;rsc/mjcf/gymnasium/hopper.xml&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>The reader supports the subset used by the bundled MJCF examples: world bodies,
+articulated bodies, free, slide, and hinge joints, primitive geoms, mesh assets,
+inertial tags, defaults, compiler <code class="docutils literal notranslate"><span class="pre">angle</span></code>/<code class="docutils literal notranslate"><span class="pre">eulerseq</span></code> settings,
+<code class="docutils literal notranslate"><span class="pre">compiler</span> <span class="pre">meshdir</span></code>, and material colors. Mesh asset paths are resolved
+relative to the MJCF file directory, or relative to <code class="docutils literal notranslate"><span class="pre">compiler</span> <span class="pre">meshdir</span></code> when it
+is provided. MJCF files without an <code class="docutils literal notranslate"><span class="pre">asset</span></code> block are accepted. Following the
+MJCF default, a <code class="docutils literal notranslate"><span class="pre">geom</span></code> with no <code class="docutils literal notranslate"><span class="pre">type</span></code> attribute is treated as a sphere and
+must provide at least one <code class="docutils literal notranslate"><span class="pre">size</span></code> value for its radius.</p>
+<p>It is not a complete MuJoCo replacement; advanced MJCF features such as
+<code class="docutils literal notranslate"><span class="pre">include</span></code>, tendons, equality constraints, actuators beyond the supported
+examples, and full simulator options should be validated before relying on them.</p>
+<p>Example targets:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">mjcf_gymnasium_hopper</span></code> loads and actuates Gymnasium’s Hopper model.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mjcf_gymnasium_walker2d</span></code> loads and actuates Gymnasium’s Walker2d model.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mjcf_gymnasium_humanoid</span></code> loads Gymnasium’s Humanoid model and drops it
+from a raised arbitrary configuration.</p></li>
+</ul>
+<p>For callers that already hold a constructed <code class="docutils literal notranslate"><span class="pre">raisim::World</span></code> and want to
+populate it from an MJCF file at runtime (instead of constructing the world
+from the file path), use <code class="docutils literal notranslate"><span class="pre">World::loadMjcfFile</span></code>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">raisim</span><span class="o">::</span><span class="n">World</span><span class="w"> </span><span class="n">world</span><span class="p">;</span>
+<span class="n">world</span><span class="p">.</span><span class="n">loadMjcfFile</span><span class="p">(</span><span class="s">&quot;rsc/mjcf/gymnasium/hopper.xml&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>This is the same dispatch that <code class="docutils literal notranslate"><span class="pre">World(configFile)</span></code> does internally when
+the file’s root is <code class="docutils literal notranslate"><span class="pre">&lt;mujoco&gt;</span></code>. The world should normally be empty before
+calling — MJCF files often declare ground planes, <code class="docutils literal notranslate"><span class="pre">worldbody</span></code> lights, and
+option blocks that overwrite world-level state. The rayrai TCP viewer uses
+this entry point in its drag-drop <strong>Joint Inspector</strong> mode (see
+<a class="reference internal" href="RayraiTcpViewer.html"><span class="doc">Rayrai TCP Viewer</span></a>).</p>
+<section id="adding-new-objects">
+<h2>Adding New Objects<a class="headerlink" href="#adding-new-objects" title="Link to this heading"></a></h2>
+<p>To add a new object of type X, utilize the <code class="code docutils literal notranslate"><span class="pre">addX</span></code> method.
+For example, to add a sphere:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">raisim</span><span class="o">::</span><span class="n">World</span><span class="w"> </span><span class="n">world</span><span class="p">;</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">sphere</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">world</span><span class="p">.</span><span class="n">addSphere</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><code class="code docutils literal notranslate"><span class="pre">sphere</span></code> represents a pointer to the internal resource.
+It facilitates access to and modification of internal variables.</p>
+<p>Most object-creation methods accept optional <code class="code docutils literal notranslate"><span class="pre">material</span></code>, <code class="code docutils literal notranslate"><span class="pre">collisionGroup</span></code>, and <code class="code docutils literal notranslate"><span class="pre">collisionMask</span></code> arguments.
+Static objects such as ground and heightmaps use a fixed collision group and expose only a collision mask.
+Collision variables are detailed in the “Contact and Collision” section.
+The <code class="code docutils literal notranslate"><span class="pre">material</span></code> argument specifies the material governing contact dynamics, as further explained in the “Material System” chapter.</p>
+<p>A comprehensive list of objects is provided in the “Object” chapter.</p>
+<p>Upon object addition, a name may be assigned:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">sphere</span><span class="o">-&gt;</span><span class="n">setName</span><span class="p">(</span><span class="s">&quot;ball&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>An object pointer can be retrieved by name:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="o">*</span><span class="w"> </span><span class="n">ball</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">world</span><span class="p">.</span><span class="n">getObject</span><span class="p">(</span><span class="s">&quot;ball&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>An object may consist of multiple bodies (e.g., an articulated system).
+A <strong>local index</strong> is used to designate individual bodies.
+To maintain API consistency, many methods require the local index argument even for single-body objects.
+For single-body objects, the local index is ignored, and users may pass 0 to comply with the API.</p>
+<section id="stable-object-identifiers">
+<h3>Stable object identifiers<a class="headerlink" href="#stable-object-identifiers" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Object::Id</span></code> (a <code class="docutils literal notranslate"><span class="pre">uint64_t</span></code>) is assigned when an object is added to a world
+and remains valid for the lifetime of that object even when other objects are
+removed. <code class="docutils literal notranslate"><span class="pre">World::getObjectById(id)</span></code> returns a pointer or <code class="docutils literal notranslate"><span class="pre">nullptr</span></code> when the
+object has been removed; <code class="docutils literal notranslate"><span class="pre">isObjectAlive(id)</span></code> returns the same information
+without dereferencing. <code class="docutils literal notranslate"><span class="pre">getIndexInWorld()</span></code> is fine for steady-state lookups,
+but in code that adds and removes objects (RL resets, asset streaming) prefer
+the stable id because indices shift after every removal.</p>
+</section>
+<section id="snapshots-and-cloning">
+<h3>Snapshots and cloning<a class="headerlink" href="#snapshots-and-cloning" title="Link to this heading"></a></h3>
+<p>Single-body objects support a fast capture/restore workflow for RL resets and
+rollback debugging. <code class="docutils literal notranslate"><span class="pre">captureSingleBodySnapshot(obj,</span> <span class="pre">snapshotOut)</span></code> fills a
+<code class="docutils literal notranslate"><span class="pre">SingleBodySnapshot</span></code> (object id, type, body type, pose, linear/angular
+velocity, material, and collision group/mask). <code class="docutils literal notranslate"><span class="pre">restoreSingleBodySnapshot</span></code>
+reapplies it later, either by pointer to the same object or by stable
+<code class="docutils literal notranslate"><span class="pre">ObjectId</span></code>; pass <code class="docutils literal notranslate"><span class="pre">restoreCollisionProperties=false</span></code> to skip material and
+collision filter restoration. The snapshot is plain data and cheap to copy and
+reuse. <code class="docutils literal notranslate"><span class="pre">cloneSingleBodyObject(source,</span> <span class="pre">name)</span></code> produces a new single-body
+object with the same primitive shape, mass, pose, velocity, body type,
+material, collision filter, and appearance; it returns <code class="docutils literal notranslate"><span class="pre">nullptr</span></code> for
+non-primitive single-body types.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">raisim</span><span class="o">::</span><span class="n">World</span><span class="o">::</span><span class="n">SingleBodySnapshot</span><span class="w"> </span><span class="n">snapshot</span><span class="p">;</span>
+<span class="n">world</span><span class="p">.</span><span class="n">captureSingleBodySnapshot</span><span class="p">(</span><span class="n">sphere</span><span class="p">,</span><span class="w"> </span><span class="n">snapshot</span><span class="p">);</span>
+<span class="c1">// ... simulate, then reset:</span>
+<span class="n">world</span><span class="p">.</span><span class="n">restoreSingleBodySnapshot</span><span class="p">(</span><span class="n">sphere</span><span class="p">,</span><span class="w"> </span><span class="n">snapshot</span><span class="p">);</span>
+
+<span class="k">auto</span><span class="o">*</span><span class="w"> </span><span class="n">twin</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">world</span><span class="p">.</span><span class="n">cloneSingleBodyObject</span><span class="p">(</span><span class="n">sphere</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;sphere_copy&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="saving-the-world-to-an-xml-file">
+<h2>Saving the World to an XML File<a class="headerlink" href="#saving-the-world-to-an-xml-file" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">raisim::World::exportToXml(dir,</span> <span class="pre">file)</span></code> (or <code class="docutils literal notranslate"><span class="pre">exportToXml(path)</span></code>) saves the current world state to an XML file.
+The current examples index lists the source targets that exercise world
+creation and asset loading.</p>
+</section>
+<section id="stepping-and-time">
+<h2>Stepping and time<a class="headerlink" href="#stepping-and-time" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">World::integrate()</span></code> advances the world by one timestep. It is equivalent to
+calling <code class="docutils literal notranslate"><span class="pre">integrate1()</span></code> and then <code class="docutils literal notranslate"><span class="pre">integrate2()</span></code>.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 28.0%" />
+<col style="width: 72.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Work performed</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">setTimeStep(dt)</span></code></p></td>
+<td><p>Updates the world timestep, contact solver timestep, and object-local
+timestep state.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">integrate1()</span></code></p></td>
+<td><p>Clears previous contacts, runs collision detection, registers contacts,
+and calls each object’s first pre-solver update hook.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">integrate2()</span></code></p></td>
+<td><p>Runs the second pre-solver update hook, solves contacts, and integrates
+object state.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">integrate()</span></code></p></td>
+<td><p>Runs <code class="docutils literal notranslate"><span class="pre">integrate1();</span> <span class="pre">integrate2();</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">integrateNoContactDetection()</span></code></p></td>
+<td><p>Updates objects without contact detection and contact-problem
+construction.</p></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">getWorldTime()</span></code> returns the integrated simulation time, and
+<code class="docutils literal notranslate"><span class="pre">setWorldTime(time)</span></code> can manually adjust it. For visualization through
+<code class="docutils literal notranslate"><span class="pre">RaisimServer</span></code>, prefer <code class="docutils literal notranslate"><span class="pre">RaisimServer::integrateWorldThreadSafe()</span></code> so the
+server’s background reader and user interactions are synchronized.</p>
+</section>
+<section id="collision-detection-and-broadphase">
+<h2>Collision Detection and Broadphase<a class="headerlink" href="#collision-detection-and-broadphase" title="Link to this heading"></a></h2>
+<p>RaiSim performs collision detection in two stages: a broadphase pass that filters
+candidate pairs using axis-aligned bounding boxes (AABBs), followed by a
+narrowphase pass (analytic tests, SAT, MPR, and GJK/EPA depending on the shape pair)
+to generate contact points. You can configure the
+contact detector via <code class="code docutils literal notranslate"><span class="pre">setContactSettings</span></code> or adjust only the broadphase
+via <code class="code docutils literal notranslate"><span class="pre">setBroadphaseSettings</span></code>. These settings should be updated when the
+world is not stepping.</p>
+<p>Broadphase options are defined by <code class="code docutils literal notranslate"><span class="pre">contact::BroadphaseType</span></code>:</p>
+<ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">None</span></code> (brute-force pairs, useful for debugging or very small scenes)</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">Sap3Axis</span></code> (sweep-and-prune, default)</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">MultiBoxPrune</span></code> (grid-based broadphase for large worlds)</p></li>
+</ul>
+<p>The current <code class="docutils literal notranslate"><span class="pre">contact::ContactSettings</span></code> defaults are:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 34.0%" />
+<col style="width: 66.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Setting</p></th>
+<th class="head"><p>Default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gjkMaxIterations</span></code>, <code class="docutils literal notranslate"><span class="pre">gjkTolerance</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">32</span></code>, <code class="docutils literal notranslate"><span class="pre">1e-6</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">epaMaxIterations</span></code>, <code class="docutils literal notranslate"><span class="pre">epaTolerance</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">64</span></code>, <code class="docutils literal notranslate"><span class="pre">1e-4</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">maxContactsPerPair</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">8</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sweptCcdEnabled</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sweptCcdMinSpeed</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.0</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sweptCcdSpeculativeMargin</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1e-4</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">broadphase.type</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Sap3Axis</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">broadphase.mbpWorldMin</span></code> / <code class="docutils literal notranslate"><span class="pre">mbpWorldMax</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{-100,</span> <span class="pre">-100,</span> <span class="pre">-100}</span></code> / <code class="docutils literal notranslate"><span class="pre">{100,</span> <span class="pre">100,</span> <span class="pre">100}</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">broadphase.mbpCellSize</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{1,</span> <span class="pre">1,</span> <span class="pre">1}</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">broadphase.mbpPadding</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.5</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">broadphase.mbpMaxCellsPerAxis</span></code> / <code class="docutils literal notranslate"><span class="pre">mbpMaxCellsPerObject</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">128</span></code> / <code class="docutils literal notranslate"><span class="pre">64</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Example broadphase configuration (MultiBoxPrune):</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;raisim/World.hpp&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;raisim/contact_engine/contact_engine.h&gt;</span>
+
+<span class="n">raisim</span><span class="o">::</span><span class="n">World</span><span class="w"> </span><span class="n">world</span><span class="p">;</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">settings</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">world</span><span class="p">.</span><span class="n">getContactSettings</span><span class="p">();</span>
+<span class="n">settings</span><span class="p">.</span><span class="n">broadphase</span><span class="p">.</span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">contact</span><span class="o">::</span><span class="n">BroadphaseType</span><span class="o">::</span><span class="n">MultiBoxPrune</span><span class="p">;</span>
+<span class="n">settings</span><span class="p">.</span><span class="n">broadphase</span><span class="p">.</span><span class="n">mbpWorldMin</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mf">-50.0</span><span class="p">,</span><span class="w"> </span><span class="mf">-50.0</span><span class="p">,</span><span class="w"> </span><span class="mf">-2.0</span><span class="p">};</span>
+<span class="n">settings</span><span class="p">.</span><span class="n">broadphase</span><span class="p">.</span><span class="n">mbpWorldMax</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="mf">50.0</span><span class="p">,</span><span class="w">  </span><span class="mf">50.0</span><span class="p">,</span><span class="w"> </span><span class="mf">10.0</span><span class="p">};</span>
+<span class="n">settings</span><span class="p">.</span><span class="n">broadphase</span><span class="p">.</span><span class="n">mbpCellSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="mf">1.0</span><span class="p">,</span><span class="w">   </span><span class="mf">1.0</span><span class="p">,</span><span class="w">  </span><span class="mf">1.0</span><span class="p">};</span>
+<span class="n">settings</span><span class="p">.</span><span class="n">broadphase</span><span class="p">.</span><span class="n">mbpUseWorldBounds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+<span class="n">world</span><span class="p">.</span><span class="n">setContactSettings</span><span class="p">(</span><span class="n">settings</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Collision groups and masks still gate which pairs are considered in both
+broadphase and narrowphase.</p>
+</section>
+<section id="contact-solver-settings">
+<h2>Contact Solver Settings<a class="headerlink" href="#contact-solver-settings" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">World::setERP(erp,</span> <span class="pre">erp2)</span></code> updates the contact solver’s error-reduction
+parameters. <code class="docutils literal notranslate"><span class="pre">World::setContactSolverParam(alpha_init,</span> <span class="pre">alpha_min,</span> <span class="pre">alpha_decay,</span>
+<span class="pre">maxIter,</span> <span class="pre">threshold)</span></code> updates the solver configuration. In the current public
+API, the alpha arguments are kept for compatibility; the practical knobs are
+<code class="docutils literal notranslate"><span class="pre">maxIter</span></code> and <code class="docutils literal notranslate"><span class="pre">threshold</span></code>. The solver defaults are <code class="docutils literal notranslate"><span class="pre">maxIteration</span> <span class="pre">=</span> <span class="pre">150</span></code> and
+<code class="docutils literal notranslate"><span class="pre">error_to_terminate</span> <span class="pre">=</span> <span class="pre">1e-8</span></code>.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">World::setContactSolverIterationOrder(order)</span></code> when you need a fixed
+contact iteration order for determinism. Without an explicit order, the solver
+order may flip between integration calls.</p>
+</section>
+<section id="sleeping-islands">
+<h2>Sleeping islands<a class="headerlink" href="#sleeping-islands" title="Link to this heading"></a></h2>
+<p>RaiSim can skip simulation for <em>sleeping islands</em>: groups of dynamic objects
+connected by contacts. Sleeping is <strong>enabled by default</strong>. An island goes to
+sleep when all objects in the island remain quiet for a configurable number of
+consecutive steps (<code class="code docutils literal notranslate"><span class="pre">quietSteps</span></code>, default <strong>2</strong>) and their maximum linear
+and angular velocities stay below the configured thresholds (defaults:
+<strong>linear 0.002</strong>, <strong>angular 0.01</strong>).</p>
+<p>Notes:</p>
+<ul class="simple">
+<li><p>Only <strong>dynamic</strong> objects participate in sleeping islands.</p></li>
+<li><p>Any user modification (e.g., changing state) keeps the island awake.</p></li>
+<li><p>Contacts between awake and sleeping islands will wake the sleeping island
+on the next step.</p></li>
+</ul>
+<p>Configuration API:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">world</span><span class="p">.</span><span class="n">setSleepingEnabled</span><span class="p">(</span><span class="nb">true</span><span class="p">);</span>
+<span class="n">world</span><span class="p">.</span><span class="n">setSleepingParameters</span><span class="p">(</span><span class="cm">/*linear*/</span><span class="w"> </span><span class="mf">0.002</span><span class="p">,</span><span class="w"> </span><span class="cm">/*angular*/</span><span class="w"> </span><span class="mf">0.01</span><span class="p">,</span><span class="w"> </span><span class="cm">/*quietSteps*/</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<span class="n">world</span><span class="p">.</span><span class="n">setSleepingVelocityThresholds</span><span class="p">(</span><span class="mf">0.002</span><span class="p">,</span><span class="w"> </span><span class="mf">0.01</span><span class="p">);</span>
+<span class="n">world</span><span class="p">.</span><span class="n">wakeObject</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span><span class="w">   </span><span class="c1">// wakes the object&#39;s island</span>
+<span class="n">world</span><span class="p">.</span><span class="n">wakeAll</span><span class="p">();</span>
+</pre></div>
+</div>
+<p>You can query whether a specific object is sleeping with
+<code class="code docutils literal notranslate"><span class="pre">isObjectSleeping</span></code>.</p>
+</section>
+<section id="api">
+<h2>API<a class="headerlink" href="#api" title="Link to this heading"></a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: breathe_default_project value ‘raisim’ does not seem to be a valid key for the breathe_projects dictionary</p>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="LoggingSystem.html" class="btn btn-neutral float-left" title="Logging System" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="WorldConfigurationFile.html" class="btn btn-neutral float-right" title="World Configuration File" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, RaiSim Tech Inc..</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

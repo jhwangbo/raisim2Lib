@@ -1,0 +1,107 @@
+#############################
+Visualization
+#############################
+
+RaiSim has two current visualization workflows. Choose the workflow based on
+where rendering should happen.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 28 36 36
+
+   * - Workflow
+     - Use it when
+     - Main executable/API
+   * - ``RaisimServer`` + TCP viewer
+     - Your simulation should publish world state and a separate viewer should
+       display it.
+     - ``raisim::RaisimServer`` and source-built ``rayrai_tcp_viewer``
+   * - In-process rayrai
+     - Your application needs direct access to OpenGL textures, RGB/depth
+       images, screenshots, PBR assets, or custom UI embedding.
+     - ``raisin::RayraiWindow``
+
+For older Unity or Unreal workflows, see :doc:`LegacyIntegrations`.
+
+RaisimServer + TCP Viewer
+=========================
+
+This is the simplest way to inspect a simulation while keeping the renderer out
+of the simulation process. Your application owns the world and starts a
+``RaisimServer``:
+
+.. code-block:: cpp
+
+    raisim::World world;
+    raisim::RaisimServer server(&world);
+    server.launchServer(8080);
+
+    while (running) {
+      server.integrateWorldThreadSafe();
+    }
+
+Start the source-built viewer in one sourced terminal:
+
+.. code-block:: bash
+
+    source ./raisim_env.sh
+    ./build-examples/examples/rayrai_tcp_viewer
+
+Then run a server-based example in another sourced terminal:
+
+.. code-block:: bash
+
+    source ./raisim_env.sh
+    ./build-examples/examples/primitive_grid
+
+The viewer connects to port ``8080`` by default. Use this workflow for normal
+debug visualization, object inspection, interactive camera control, and
+viewer-rendered manual RGB/depth cameras. Camera requests and completed BGRA or
+metric-depth buffers share the same TCP session as scene updates.
+
+Use in-process rayrai when the application must own the OpenGL context, access
+textures without a network round trip, include custom render-only objects, or
+continue producing camera frames without a viewer process. Use RaiSim-side CPU
+depth when rayrai is unavailable or a deterministic headless ray-query fallback
+is explicitly required.
+
+In-Process rayrai
+=================
+
+Use in-process rayrai when rendering is part of the application:
+
+.. code-block:: cpp
+
+    auto world = std::make_shared<raisim::World>();
+    raisin::RayraiWindow viewer(world, 1280, 720);
+
+    while (running) {
+      world->integrate();
+      viewer.update(1280, 720, false, 0, 0, false);
+      unsigned int colorTexture = viewer.getImageTexture();
+      (void)colorTexture;
+    }
+
+Examples:
+
+.. code-block:: bash
+
+    source ./raisim_env.sh
+    ./build-examples/examples/rayrai_basic_scene
+    ./build-examples/examples/rayrai_pbr_material_grid
+    ./build-examples/examples/rayrai_pbr_texture_maps
+
+Use this workflow for screenshots, offscreen rendering, dataset generation,
+custom ImGui/Qt tools, PBR visual inspection, glTF visual import, picking,
+and direct RGB/depth readback.
+
+Which Page Next?
+================
+
+* :doc:`RaisimServer` documents the server lifecycle, thread-safety boundary,
+  synchronous request loop, and server-side visual helper API.
+* :doc:`Rayrai` documents ``RayraiWindow``, render-quality controls, custom
+  visuals, glTF/Blender import, offscreen contexts, sensors, and rayrai API
+  reference.
+* :doc:`Sensors` documents the recommended rayrai RGB/depth sensor workflow,
+  manual sensor buffers, and CPU-only fallback paths.

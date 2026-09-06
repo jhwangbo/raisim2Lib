@@ -15,6 +15,19 @@ class Actor:
         self.device = device
         self.action_mean = None
         self.scripted_policy = None
+        self.compiled_architecture = None
+
+    @property
+    def training_architecture(self):
+        """Network used by the PPO update, optionally a compiled wrapper.
+
+        The wrapper shares parameters with self.architecture, so checkpoints,
+        the rollout policy and the optimizer all keep seeing the eager module.
+        """
+        return self.compiled_architecture or self.architecture.architecture
+
+    def set_compiled_architecture(self, module):
+        self.compiled_architecture = module
 
     def sample(self, obs):
         if self.scripted_policy is not None:
@@ -36,7 +49,7 @@ class Actor:
     def evaluate(self, obs, actions):
         if getattr(self.architecture, "is_recurrent", False):
             raise RuntimeError("Recurrent policy requires evaluate_recurrent()")
-        self.action_mean = self.architecture.architecture(obs)
+        self.action_mean = self.training_architecture(obs)
         return self.distribution.evaluate(self.action_mean, actions)
 
     def evaluate_recurrent(self, obs, actions, hidden):
@@ -84,6 +97,15 @@ class Critic:
         super(Critic, self).__init__()
         self.architecture = architecture
         self.architecture.to(device)
+        self.compiled_architecture = None
+
+    @property
+    def training_architecture(self):
+        """See Actor.training_architecture."""
+        return self.compiled_architecture or self.architecture.architecture
+
+    def set_compiled_architecture(self, module):
+        self.compiled_architecture = module
 
     def predict(self, obs):
         if getattr(self.architecture, "is_recurrent", False):
@@ -93,7 +115,7 @@ class Critic:
     def evaluate(self, obs):
         if getattr(self.architecture, "is_recurrent", False):
             raise RuntimeError("Recurrent critic requires evaluate_recurrent()")
-        return self.architecture.architecture(obs)
+        return self.training_architecture(obs)
 
     def predict_recurrent(self, obs, hidden):
         values, hidden_out = self.architecture.architecture(obs, hidden)
@@ -335,6 +357,7 @@ class MultivariateGaussianDiagonalCovariance(nn.Module):
         return self.distribution.entropy()
 
     def enforce_minimum_std(self, min_std):
-        current_std = self.std.detach()
-        new_std = torch.max(current_std, min_std.detach()).detach()
-        self.std.data = new_std
+        # Updated in place: rebinding .data would move the parameter to fresh
+        # storage, which a captured rollout graph would no longer read from.
+        with torch.no_grad():
+            self.std.clamp_(min=min_std.detach())
