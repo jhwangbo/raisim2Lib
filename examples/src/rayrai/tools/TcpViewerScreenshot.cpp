@@ -47,12 +47,33 @@ std::filesystem::path timestampedCapturePath(const std::filesystem::path& dir, c
   return dir / name.str();
 }
 
-bool saveViewerTexturePng(RayraiWindow& viewer, const std::filesystem::path& path, std::string& status) {
+bool captureViewerRgba(RayraiWindow& viewer, std::vector<unsigned char>& rgba, int& width,
+                       int& height, std::string& status) {
   auto& camera = viewer.getCamera();
-  const int width = camera.rtWidth();
-  const int height = camera.rtHeight();
+  width = camera.rtWidth();
+  height = camera.rtHeight();
   if (width <= 0 || height <= 0) {
     status = "capture failed: invalid render target";
+    return false;
+  }
+
+  rgba.resize(static_cast<size_t>(width) * static_cast<size_t>(height) * 4u);
+  gl::GLint previousPackAlignment = 4;
+  gl::glGetIntegerv(gl::GL_PACK_ALIGNMENT, &previousPackAlignment);
+  gl::glBindTexture(gl::GL_TEXTURE_2D, camera.getFinalTexture());
+  gl::glPixelStorei(gl::GL_PACK_ALIGNMENT, 1);
+  gl::glGetTexImage(gl::GL_TEXTURE_2D, 0, gl::GL_RGBA, gl::GL_UNSIGNED_BYTE, rgba.data());
+  gl::glPixelStorei(gl::GL_PACK_ALIGNMENT, previousPackAlignment);
+  gl::glBindTexture(gl::GL_TEXTURE_2D, 0);
+  flipRgbaRows(rgba, width, height);
+  return true;
+}
+
+bool saveRgbaPng(const std::vector<unsigned char>& rgba, int width, int height,
+                 const std::filesystem::path& path, std::string& status) {
+  if (width <= 0 || height <= 0 ||
+      rgba.size() != static_cast<size_t>(width) * static_cast<size_t>(height) * 4u) {
+    status = "capture failed: incomplete frame buffer";
     return false;
   }
 
@@ -65,22 +86,22 @@ bool saveViewerTexturePng(RayraiWindow& viewer, const std::filesystem::path& pat
     }
   }
 
-  std::vector<unsigned char> rgba(static_cast<size_t>(width) * static_cast<size_t>(height) * 4u);
-  gl::GLint previousPackAlignment = 4;
-  gl::glGetIntegerv(gl::GL_PACK_ALIGNMENT, &previousPackAlignment);
-  gl::glBindTexture(gl::GL_TEXTURE_2D, camera.getFinalTexture());
-  gl::glPixelStorei(gl::GL_PACK_ALIGNMENT, 1);
-  gl::glGetTexImage(gl::GL_TEXTURE_2D, 0, gl::GL_RGBA, gl::GL_UNSIGNED_BYTE, rgba.data());
-  gl::glPixelStorei(gl::GL_PACK_ALIGNMENT, previousPackAlignment);
-  gl::glBindTexture(gl::GL_TEXTURE_2D, 0);
-  flipRgbaRows(rgba, width, height);
-
   if (!stbi_write_png(path.string().c_str(), width, height, 4, rgba.data(), width * 4)) {
     status = "capture failed: PNG write failed";
     return false;
   }
   status = "saved " + path.string();
   return true;
+}
+
+bool saveViewerTexturePng(RayraiWindow& viewer, const std::filesystem::path& path, std::string& status) {
+  std::vector<unsigned char> rgba;
+  int width = 0;
+  int height = 0;
+  if (!captureViewerRgba(viewer, rgba, width, height, status)) {
+    return false;
+  }
+  return saveRgbaPng(rgba, width, height, path, status);
 }
 
 } // namespace raisin::tcp_viewer
