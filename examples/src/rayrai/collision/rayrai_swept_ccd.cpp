@@ -28,7 +28,7 @@ int main() {
   fastSphere->setName("swept_ccd_sphere");
   fastSphere->setAppearance("0.95,0.34,0.22,1.0");
 
-  auto* referencePost = world->addBox(0.04, 0.04, 3.0, 0.0);
+  auto* referencePost = world->addBox(0.04, 0.04, 3.0, 1.0);
   referencePost->setBodyType(raisim::BodyType::STATIC);
   referencePost->setPosition(0.45, 0.0, 1.5);
   referencePost->setAppearance("0.25,0.30,0.36,0.6");
