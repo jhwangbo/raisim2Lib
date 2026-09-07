@@ -94,13 +94,14 @@ Sleeping Islands
 ================
 
 Sleeping is enabled by default. RaiSim can skip simulation work for dynamic
-islands whose velocities remain below the configured thresholds for a few steps.
+islands whose velocities remain below the configured thresholds for 5 consecutive
+steps by default.
 This helps scenes with piles, props, or objects that settle and then stay quiet.
 
 .. code-block:: cpp
 
   world.setSleepingEnabled(true);
-  world.setSleepingParameters(/*linear*/ 0.002, /*angular*/ 0.01, /*quietSteps*/ 2);
+  world.setSleepingParameters(/*linear*/ 0.002, /*angular*/ 0.01, /*quietSteps*/ 5);
   world.wakeAll();
 
 Disable sleeping when every object must remain numerically active every step, or

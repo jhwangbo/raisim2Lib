@@ -499,13 +499,19 @@ glm::vec3 mouseForceStartApplicationPoint(
   return entry.lastPos + fallbackOffset;
 }
 
-bool projectWorldToViewport(
-  const raisin::Camera& camera, const ViewerViewportState& viewport, const glm::vec3& world,
+/**
+ * @brief Project a world point with an explicit view-projection matrix.
+ *
+ * Split out from the camera overload so overlay geometry can be unit-tested
+ * without a GL context (raisin::Camera owns framebuffer handles).
+ */
+bool projectWorldToViewportWithMatrix(
+  const glm::mat4& viewProjection, const ViewerViewportState& viewport, const glm::vec3& world,
   ImVec2& screen) {
   if (viewport.size.x <= 1.0f || viewport.size.y <= 1.0f) {
     return false;
   }
-  const glm::vec4 clip = camera.getProjectionMatrix() * camera.getViewMatrix() * glm::vec4(world, 1.0f);
+  const glm::vec4 clip = viewProjection * glm::vec4(world, 1.0f);
   if (!std::isfinite(clip.x) || !std::isfinite(clip.y) || !std::isfinite(clip.z) ||
       !std::isfinite(clip.w) || clip.w <= 1.0e-6f) {
     return false;
@@ -517,6 +523,13 @@ bool projectWorldToViewport(
   screen.x = viewport.origin.x + (ndc.x * 0.5f + 0.5f) * viewport.size.x;
   screen.y = viewport.origin.y + (0.5f - ndc.y * 0.5f) * viewport.size.y;
   return std::isfinite(screen.x) && std::isfinite(screen.y);
+}
+
+bool projectWorldToViewport(
+  const raisin::Camera& camera, const ViewerViewportState& viewport, const glm::vec3& world,
+  ImVec2& screen) {
+  return projectWorldToViewportWithMatrix(
+    camera.getProjectionMatrix() * camera.getViewMatrix(), viewport, world, screen);
 }
 
 float screenDistancePixels(const ImVec2& a, const ImVec2& b) {
@@ -666,6 +679,336 @@ bool shouldSuppressViewportForMouseForce(
   return mouseForceActive || (shiftForceCaptureRequested && leftMouseDown);
 }
 
+bool isWireDragModifierHeld(const ImGuiIO& io) {
+  // Ctrl everywhere, plus Cmd on macOS where Ctrl-click is a right-click gesture.
+  if (io.KeyCtrl || (io.KeyMods & ImGuiMod_Ctrl) != 0) {
+    return true;
+  }
+  const SDL_Keymod state = SDL_GetModState();
+  if ((state & KMOD_CTRL) != KMOD_NONE) {
+    return true;
+  }
+#if defined(__APPLE__)
+  if (io.KeySuper || (io.KeyMods & ImGuiMod_Super) != 0 || (state & KMOD_GUI) != KMOD_NONE) {
+    return true;
+  }
+#endif
+  return false;
+}
+
+// The wire drag and the force drag both capture a left-drag on a body, so only
+// one may arm at a time. Shift (force) wins because it is the older gesture.
+bool shouldRequestWireDragCapture(
+    bool wireDragEnabled, bool wireModifierHeld, bool shiftHeld, bool rulerEnabled,
+    bool angleEnabled) {
+  return wireDragEnabled && wireModifierHeld && !shiftHeld && !rulerEnabled && !angleEnabled;
+}
+
+bool shouldSuppressViewportForWireDrag(
+    bool wireDragActive, bool wireDragCaptureRequested, bool leftMouseDown) {
+  return wireDragActive || (wireDragCaptureRequested && leftMouseDown);
+}
+
+/**
+ * @brief Unproject a viewport pixel into a world-space ray.
+ *
+ * Inverting the view-projection keeps the ray correct for both perspective and
+ * orthographic projections. Takes the matrix rather than the camera so it can be
+ * unit-tested without a GL context.
+ */
+bool viewportCursorRayWithMatrix(
+  const glm::mat4& viewProjection, const ViewerViewportState& viewport, const ImVec2& cursor,
+  glm::vec3& origin, glm::vec3& direction) {
+  if (viewport.size.x <= 1.0f || viewport.size.y <= 1.0f) {
+    return false;
+  }
+  const glm::mat4 inverseViewProjection = glm::inverse(viewProjection);
+  const float ndcX = ((cursor.x - viewport.origin.x) / viewport.size.x) * 2.0f - 1.0f;
+  const float ndcY = 1.0f - ((cursor.y - viewport.origin.y) / viewport.size.y) * 2.0f;
+  const glm::vec4 nearClip = inverseViewProjection * glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
+  const glm::vec4 farClip = inverseViewProjection * glm::vec4(ndcX, ndcY, 1.0f, 1.0f);
+  if (!std::isfinite(nearClip.w) || !std::isfinite(farClip.w) ||
+      std::abs(nearClip.w) <= 1.0e-9f || std::abs(farClip.w) <= 1.0e-9f) {
+    return false;
+  }
+  const glm::vec3 nearPoint = glm::vec3(nearClip) / nearClip.w;
+  const glm::vec3 farPoint = glm::vec3(farClip) / farClip.w;
+  const glm::vec3 delta = farPoint - nearPoint;
+  const float length = glm::length(delta);
+  if (!std::isfinite(length) || length <= 1.0e-9f) {
+    return false;
+  }
+  origin = nearPoint;
+  direction = delta / length;
+  return true;
+}
+
+/**
+ * @brief Where the interaction wire should pull, given the cursor.
+ *
+ * The target slides in the plane through @p anchorWorld whose normal is
+ * @p planeNormal (the camera's forward axis), so the body follows the cursor
+ * without changing its distance from the camera.
+ */
+bool wireDragTargetWithMatrix(
+  const glm::mat4& viewProjection, const glm::vec3& planeNormal,
+  const ViewerViewportState& viewport, const glm::vec3& anchorWorld, const ImVec2& cursor,
+  glm::vec3& target) {
+  glm::vec3 origin(0.0f);
+  glm::vec3 direction(0.0f);
+  if (!viewportCursorRayWithMatrix(viewProjection, viewport, cursor, origin, direction)) {
+    return false;
+  }
+  const glm::vec3 normal = normalizedOr(planeNormal, glm::vec3(0.0f, 1.0f, 0.0f));
+  const float denominator = glm::dot(direction, normal);
+  if (!std::isfinite(denominator) || std::abs(denominator) <= 1.0e-6f) {
+    return false;
+  }
+  const float distance = glm::dot(anchorWorld - origin, normal) / denominator;
+  if (!std::isfinite(distance)) {
+    return false;
+  }
+  const glm::vec3 hit = origin + direction * distance;
+  if (!std::isfinite(hit.x) || !std::isfinite(hit.y) || !std::isfinite(hit.z)) {
+    return false;
+  }
+  target = hit;
+  return true;
+}
+
+bool wireDragTargetFromCursor(
+  const raisin::Camera& camera, const ViewerViewportState& viewport, const glm::vec3& anchorWorld,
+  const ImVec2& cursor, glm::vec3& target) {
+  return wireDragTargetWithMatrix(camera.getProjectionMatrix() * camera.getViewMatrix(),
+    camera.front, viewport, anchorWorld, cursor, target);
+}
+
+// ---------------------------------------------------------------------------
+// Scene editing (CR_SPAWN_* / CR_REMOVE_OBJECT / CR_SAVE_THE_WORLD)
+// ---------------------------------------------------------------------------
+
+struct SpawnShapeInfo {
+  raisin::tcp_viewer::ClientRequestType type;
+  const char* label;
+  /** Server-side geometry file; RaisimServer rejects the frame when it is missing. */
+  bool needsFile;
+  /** Whether the server requires a positive mass for this shape. */
+  bool needsMass;
+  /** Accepted extensions for `needsFile` shapes; empty means "any extension". */
+  const char* fileExtensions;
+};
+
+inline constexpr std::array<SpawnShapeInfo, 8> kSpawnShapes{{
+  {raisin::tcp_viewer::ClientRequestType::CR_SPAWN_BOX, "Box", false, true, ""},
+  {raisin::tcp_viewer::ClientRequestType::CR_SPAWN_SPHERE, "Sphere", false, true, ""},
+  {raisin::tcp_viewer::ClientRequestType::CR_SPAWN_CYLINDER, "Cylinder", false, true, ""},
+  {raisin::tcp_viewer::ClientRequestType::CR_SPAWN_CAPSULE, "Capsule", false, true, ""},
+  {raisin::tcp_viewer::ClientRequestType::CR_SPAWN_MESH, "Mesh", true, true, ""},
+  {raisin::tcp_viewer::ClientRequestType::CR_SPAWN_AS, "Articulated system", true, false,
+   "urdf xml"},
+  {raisin::tcp_viewer::ClientRequestType::CR_SPAWN_PLANE, "Ground plane", false, false, ""},
+  {raisin::tcp_viewer::ClientRequestType::CR_SPAWN_HEIGHT_MAP, "Height map (PNG)", true, false,
+   "png"},
+}};
+
+const SpawnShapeInfo& spawnShapeAt(int index) {
+  const size_t clamped = static_cast<size_t>(
+    std::clamp(index, 0, static_cast<int>(kSpawnShapes.size()) - 1));
+  return kSpawnShapes[clamped];
+}
+
+/** Editable state of the spawn palette. Kept flat so ImGui can bind to it directly. */
+struct SpawnFormState {
+  int shapeIndex = 0;
+  char name[96] = "";
+  char appearance[96] = "";
+  char file[512] = "";
+  float mass = 1.0f;
+  int bodyType = static_cast<int>(raisin::tcp_viewer::SpawnBodyType::Dynamic);
+  float boxExtent[3] = {0.4f, 0.4f, 0.4f};
+  float radius = 0.2f;
+  float height = 0.4f;
+  float groundHeight = 0.0f;
+  float heightMapCenter[2] = {0.0f, 0.0f};
+  float heightMapSize[2] = {10.0f, 10.0f};
+  float heightMapHeightScale = 1.0f;
+  float heightMapHeightOffset = 0.0f;
+  float position[3] = {0.0f, 0.0f, 1.0f};
+  float linearVelocity[3] = {0.0f, 0.0f, 0.0f};
+  float angularVelocity[3] = {0.0f, 0.0f, 0.0f};
+  float quatWxyz[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+  /** Drop the object in front of the camera instead of at the typed position. */
+  bool useCameraPlacement = true;
+};
+
+/**
+ * @brief Whether a host string names this machine.
+ *
+ * Used to decide when the viewer may check a spawn geometry path itself: only a
+ * loopback server is guaranteed to share this filesystem.
+ */
+bool isLoopbackHostName(const std::string& host) {
+  const std::string trimmed = toLowerAscii(trimAscii(host));
+  if (trimmed.empty()) {
+    return false;
+  }
+  return trimmed == "localhost" || trimmed == "::1" || trimmed == "[::1]" ||
+         trimmed.rfind("127.", 0) == 0;
+}
+
+bool allComponentsFinite(const float* values, size_t count) {
+  for (size_t i = 0; i < count; ++i) {
+    if (!std::isfinite(values[i])) return false;
+  }
+  return true;
+}
+
+std::string lowerCaseFileExtension(const std::string& path) {
+  const std::filesystem::path parsed(path);
+  std::string extension = parsed.extension().string();
+  if (!extension.empty() && extension.front() == '.') {
+    extension.erase(extension.begin());
+  }
+  return toLowerAscii(extension);
+}
+
+bool spawnExtensionAccepted(const SpawnShapeInfo& shape, const std::string& path) {
+  const std::string accepted(shape.fileExtensions ? shape.fileExtensions : "");
+  const std::string extension = lowerCaseFileExtension(path);
+  if (accepted.empty()) {
+    // RaisimServer only requires that a mesh path have *some* extension.
+    return !extension.empty();
+  }
+  std::istringstream stream(accepted);
+  std::string candidate;
+  while (stream >> candidate) {
+    if (candidate == extension) return true;
+  }
+  return false;
+}
+
+/**
+ * @brief Translate the spawn palette into a wire request.
+ *
+ * Mirrors every check in RaisimServer::validateDecodedClientRequests(), because
+ * a request the server rejects is a DeserializationError, and that drops the
+ * whole connection rather than just the request.
+ *
+ * @return Empty string on success, otherwise why the request cannot be sent.
+ */
+std::string buildSpawnRequest(
+    const SpawnFormState& form, raisin::tcp_viewer::ClientRequest& request) {
+  const SpawnShapeInfo& shape = spawnShapeAt(form.shapeIndex);
+  request = raisin::tcp_viewer::ClientRequest{};
+  request.type = shape.type;
+  request.name = trimAscii(std::string(form.name));
+  request.appearance = trimAscii(std::string(form.appearance));
+  request.file = trimAscii(std::string(form.file));
+  request.mass = form.mass;
+  request.bodyType = form.bodyType;
+
+  if (form.bodyType < 0 || form.bodyType > 2) {
+    return "invalid body type";
+  }
+  if (!allComponentsFinite(form.position, 3) || !allComponentsFinite(form.linearVelocity, 3) ||
+      !allComponentsFinite(form.angularVelocity, 3) || !std::isfinite(form.mass)) {
+    return "spawn fields must be finite numbers";
+  }
+  request.vec3a = glm::vec3(form.position[0], form.position[1], form.position[2]);
+  request.linVel =
+    glm::vec3(form.linearVelocity[0], form.linearVelocity[1], form.linearVelocity[2]);
+  request.angVel =
+    glm::vec3(form.angularVelocity[0], form.angularVelocity[1], form.angularVelocity[2]);
+
+  const glm::vec4 quatXyzw(form.quatWxyz[1], form.quatWxyz[2], form.quatWxyz[3], form.quatWxyz[0]);
+  const float quatNorm2 = glm::dot(quatXyzw, quatXyzw);
+  if (!std::isfinite(quatNorm2) || quatNorm2 <= 1.0e-12f) {
+    return "orientation quaternion is degenerate";
+  }
+  const float invQuatNorm = 1.0f / std::sqrt(quatNorm2);
+  request.quat = quatXyzw * invQuatNorm;
+
+  if (shape.needsMass && !(form.mass > 0.0f)) {
+    return "mass must be positive";
+  }
+  if (shape.needsFile) {
+    if (request.file.empty()) {
+      return "geometry file is required";
+    }
+    if (!spawnExtensionAccepted(shape, request.file)) {
+      const std::string accepted(shape.fileExtensions ? shape.fileExtensions : "");
+      return accepted.empty() ? "mesh path needs a file extension"
+                              : "file extension must be one of: " + accepted;
+    }
+  }
+
+  switch (shape.type) {
+    case raisin::tcp_viewer::ClientRequestType::CR_SPAWN_BOX:
+      if (!(form.boxExtent[0] > 0.0f) || !(form.boxExtent[1] > 0.0f) ||
+          !(form.boxExtent[2] > 0.0f)) {
+        return "box dimensions must be positive";
+      }
+      request.size[0] = form.boxExtent[0];
+      request.size[1] = form.boxExtent[1];
+      request.size[2] = form.boxExtent[2];
+      break;
+    case raisin::tcp_viewer::ClientRequestType::CR_SPAWN_SPHERE:
+      if (!(form.radius > 0.0f)) {
+        return "radius must be positive";
+      }
+      request.size[0] = form.radius;
+      break;
+    case raisin::tcp_viewer::ClientRequestType::CR_SPAWN_CYLINDER:
+      if (!(form.radius > 0.0f) || !(form.height > 0.0f)) {
+        return "radius and height must be positive";
+      }
+      request.size[0] = form.radius;
+      request.size[1] = form.height;
+      break;
+    case raisin::tcp_viewer::ClientRequestType::CR_SPAWN_CAPSULE:
+      if (!(form.radius > 0.0f) || form.height < 0.0f) {
+        return "radius must be positive and height nonnegative";
+      }
+      request.size[0] = form.radius;
+      request.size[1] = form.height;
+      break;
+    case raisin::tcp_viewer::ClientRequestType::CR_SPAWN_PLANE:
+      if (!std::isfinite(form.groundHeight)) {
+        return "ground height must be finite";
+      }
+      request.size[0] = form.groundHeight;
+      break;
+    case raisin::tcp_viewer::ClientRequestType::CR_SPAWN_HEIGHT_MAP:
+      if (!allComponentsFinite(form.heightMapCenter, 2) ||
+          !allComponentsFinite(form.heightMapSize, 2) ||
+          !std::isfinite(form.heightMapHeightScale) ||
+          !std::isfinite(form.heightMapHeightOffset)) {
+        return "height-map fields must be finite numbers";
+      }
+      if (!(form.heightMapSize[0] > 0.0f) || !(form.heightMapSize[1] > 0.0f)) {
+        return "height-map x/y size must be positive";
+      }
+      request.size[0] = form.heightMapCenter[0];
+      request.size[1] = form.heightMapCenter[1];
+      request.size[2] = form.heightMapSize[0];
+      request.size[3] = form.heightMapSize[1];
+      request.size[4] = form.heightMapHeightScale;
+      request.size[5] = form.heightMapHeightOffset;
+      break;
+    case raisin::tcp_viewer::ClientRequestType::CR_SPAWN_MESH:
+    case raisin::tcp_viewer::ClientRequestType::CR_SPAWN_AS:
+      // Mesh scale is not part of the spawn payload; the loader uses the file's units.
+      break;
+    default:
+      return "unsupported spawn shape";
+  }
+
+  if (!allComponentsFinite(request.size.data(), request.size.size())) {
+    return "spawn dimensions must be finite numbers";
+  }
+  return {};
+}
+
 void drawMouseForcePreview(
   const MouseForceGesture& gesture, const ViewerViewportState& viewport, const raisin::Camera& camera) {
   if (!gesture.active) {
@@ -706,6 +1049,38 @@ void drawMouseForcePreview(
   const ImVec2 labelPos(tip.x + 10.0f, tip.y - ImGui::GetFontSize() * 0.5f);
   drawList->AddText(ImVec2(labelPos.x + 1.0f, labelPos.y + 1.0f), shadow, label);
   drawList->AddText(labelPos, lineColor, label);
+}
+
+void drawWireDragPreview(
+  const WireDragGesture& gesture, const ViewerViewportState& viewport,
+  const raisin::Camera& camera) {
+  if (!gesture.active) {
+    return;
+  }
+  ImVec2 anchor;
+  ImVec2 target;
+  if (!projectWorldToViewport(camera, viewport, gesture.attachPoint, anchor) ||
+      !projectWorldToViewport(camera, viewport, gesture.target, target)) {
+    return;
+  }
+
+  ImDrawList* drawList = ImGui::GetForegroundDrawList();
+  const ImU32 shadow = IM_COL32(5, 8, 12, 190);
+  const ImU32 wireColor = IM_COL32(120, 226, 255, 255);
+  drawList->AddLine(ImVec2(anchor.x + 1.0f, anchor.y + 1.0f),
+    ImVec2(target.x + 1.0f, target.y + 1.0f), shadow, 4.0f);
+  drawList->AddLine(anchor, target, wireColor, 2.0f);
+  drawList->AddCircleFilled(anchor, 5.0f, shadow, 24);
+  drawList->AddCircleFilled(anchor, 3.5f, wireColor, 24);
+  drawList->AddCircle(target, 7.0f, shadow, 24, 4.0f);
+  drawList->AddCircle(target, 6.0f, wireColor, 24, 2.0f);
+
+  char label[96];
+  std::snprintf(label, sizeof(label), "wire %.3f m",
+    glm::distance(gesture.attachPoint, gesture.target));
+  const ImVec2 labelPos(target.x + 10.0f, target.y - ImGui::GetFontSize() * 0.5f);
+  drawList->AddText(ImVec2(labelPos.x + 1.0f, labelPos.y + 1.0f), shadow, label);
+  drawList->AddText(labelPos, wireColor, label);
 }
 
 void drawRulerOverlay(
@@ -2286,6 +2661,15 @@ enum class TcpViewerIconKind {
   Exit,
   Pause,
   Play,
+  Stop,
+  Video,
+  Force,
+  Torque,
+  Add,
+  Delete,
+  Render,
+  Diagnostics,
+  Objects,
   Step,
   StepFast,
   SensorDepth,
@@ -2349,6 +2733,15 @@ const char* tcpViewerIconFileName(TcpViewerIconKind kind) {
     case TcpViewerIconKind::Exit: return "exit_uicons_sr_sign_out_alt.png";
     case TcpViewerIconKind::Pause: return "pause_uicons_sr_pause.png";
     case TcpViewerIconKind::Play: return "play_uicons_sr_play.png";
+    case TcpViewerIconKind::Stop: return "stop_uicons_sr_stop.png";
+    case TcpViewerIconKind::Force: return "force_uicons_sr_bolt.png";
+    case TcpViewerIconKind::Torque: return "torque_uicons_sr_rotate_right.png";
+    case TcpViewerIconKind::Video: return "video_uicons_sr_video_camera.png";
+    case TcpViewerIconKind::Add: return "add_uicons_sr_square_plus.png";
+    case TcpViewerIconKind::Delete: return "delete_uicons_sr_trash.png";
+    case TcpViewerIconKind::Render: return "render_uicons_sr_palette.png";
+    case TcpViewerIconKind::Diagnostics: return "diagnostics_uicons_sr_chart_histogram.png";
+    case TcpViewerIconKind::Objects: return "objects_uicons_sr_layers.png";
     case TcpViewerIconKind::Step: return "step_uicons_sr_step_forward.png";
     case TcpViewerIconKind::StepFast: return "step_fast_uicons_sr_forward_fast.png";
     case TcpViewerIconKind::SensorDepth: return "depth_uicons_sr_scanner_image.png";

@@ -58,6 +58,8 @@
 #include "TcpViewerSession.hpp"
 #include "TcpViewerSensors.hpp"
 #include "TcpViewerSettings.hpp"
+#include "TcpViewerSignals.hpp"
+#include "TcpViewerVideo.hpp"
 #include "TcpViewerSimulation.hpp"
 #include "TcpViewerConnection.hpp"
 
@@ -119,6 +121,18 @@ constexpr const char* kRobotoFontRelativePath = "rsc/fonts/roboto/Roboto-Medium.
 constexpr float kDefaultMouseForceAccelPerPixel = 0.10f;
 constexpr float kMinMouseForceAccelPerPixel = 0.01f;
 constexpr float kMaxMouseForceAccelPerPixel = 5.0f;
+// Interaction-wire spring constant, in newtons per metre per kilogram of the
+// grabbed body: RaisimServer multiplies it by the body mass, so the resulting
+// acceleration is mass-independent and the same value works for a marble and a
+// quadruped. 60 pulls firmly without fighting the contact solver.
+constexpr float kDefaultWireDragStiffness = 60.0f;
+constexpr float kMinWireDragStiffness = 1.0f;
+constexpr float kMaxWireDragStiffness = 600.0f;
+#if defined(__APPLE__)
+constexpr const char* kWireDragGestureLabel = "Cmd-drag wire";
+#else
+constexpr const char* kWireDragGestureLabel = "Ctrl-drag wire";
+#endif
 
 float resolveUiScaleForDisplay(float configuredScale, float automaticScale,
                                bool userSet, bool initialized,
@@ -165,6 +179,8 @@ using raisin::tcp_viewer::qualityName;
 using raisin::tcp_viewer::recordConnection;
 using raisin::tcp_viewer::recordResourceDir;
 using raisin::tcp_viewer::sanitizeViewerSettings;
+using raisin::tcp_viewer::captureViewerRgba;
+using raisin::tcp_viewer::saveRgbaPng;
 using raisin::tcp_viewer::saveViewerTexturePng;
 using raisin::tcp_viewer::saveViewerSettings;
 using raisin::tcp_viewer::sendSensorUpdate;
@@ -207,6 +223,35 @@ struct MouseForceGesture {
   size_t pendingRequestIndex = std::numeric_limits<size_t>::max();
 };
 
+// Interaction wire (CR_ATTACH_WIRE + CR_DRAG_OBJECT). Unlike the pose grabber,
+// which teleports a body with CR_SET_POSE, this pulls it with a mass-scaled
+// spring, so constraints and contacts stay satisfied while it moves. The server
+// clears `wireStiffness_` on any request frame that omits CR_DRAG_OBJECT, so a
+// live drag has to resend the target every update; releasing simply stops
+// sending and the wire goes slack on the next frame.
+struct WireDragGesture {
+  bool active = false;
+  bool attachQueued = false;
+  uint32_t tag = 0;
+  int index = 0;
+  int localBodyIdx = 0;
+  glm::vec3 localAttachPoint{0.0f};  // grab point in the body frame
+  glm::vec3 attachPoint{0.0f};       // grab point in world coordinates, this frame
+  glm::vec3 target{0.0f};            // where the wire pulls, in world coordinates
+  size_t pendingRequestIndex = std::numeric_limits<size_t>::max();
+};
+
+// One recorded object in the signal workbench. The weak visual pointer is how a
+// pinned object is re-found each frame without rescanning the scene, and it goes
+// empty by itself when the object is removed server-side.
+struct SignalObjectRecord {
+  uint32_t tag = 0;
+  int index = 0;
+  std::string label;
+  std::weak_ptr<raisin::Visuals> visual;
+  raisin::tcp_viewer::SignalHistory history;
+};
+
 struct RulerToolState {
   bool enabled = false;
   bool hasA = false;
@@ -234,7 +279,7 @@ struct PoseGrabberGesture {
   int index = 0;
   glm::vec3 anchorWorld{0.0f};   // body origin captured on drag start
   // Quaternion vec4 layout used throughout: x=X, y=Y, z=Z, w=W (XYZW), matching
-  // VisualEntry::lastQuat, SimControlRequest::quat, and Visuals::setOrientation.
+  // VisualEntry::lastQuat, ClientRequest::quat, and Visuals::setOrientation.
   glm::vec4 anchorQuat{0.0f, 0.0f, 0.0f, 1.0f};
   ImVec2 anchorMouse{0.0f, 0.0f};
   float anchorScreenAngle = 0.0f;                  // mouse angle around body center at start
@@ -480,40 +525,8 @@ NetworkTimingSummary summarizePacketTimings(const std::deque<PacketSample>& samp
   return result;
 }
 
-struct SelectedSignalSample {
-  double worldTime = 0.0;
-  float linearSpeed = 0.0f;
-  float angularSpeed = 0.0f;
-  float generalizedSpeed = 0.0f;
-  float contactCount = 0.0f;
-};
-
-enum class SelectedSignalKind {
-  LinearSpeed,
-  AngularSpeed,
-  GeneralizedSpeed,
-  Contacts,
-};
-
-struct SelectedSignalPresentation {
-  const char* plotId = "";
-  const char* title = "";
-  const char* currentValueFormat = "";
-};
-
-SelectedSignalPresentation selectedSignalPresentation(SelectedSignalKind kind) {
-  switch (kind) {
-    case SelectedSignalKind::LinearSpeed:
-      return {"##linear_speed_history", "Linear speed (m/s)", "Current %.3f m/s"};
-    case SelectedSignalKind::AngularSpeed:
-      return {"##angular_speed_history", "Angular speed (rad/s)", "Current %.3f rad/s"};
-    case SelectedSignalKind::GeneralizedSpeed:
-      return {"##generalized_speed_history", "Generalized speed (mixed units)", "Current %.3f"};
-    case SelectedSignalKind::Contacts:
-      return {"##contact_history", "Contacts (count)", "Current %.0f"};
-  }
-  return {};
-}
+/** Stand-in channel list for an object with no recorded history yet. */
+const std::vector<raisin::tcp_viewer::SignalChannelDesc> kEmptySignalChannels;
 
 struct AssetDiagnostic {
   uint32_t tag = 0;
@@ -1278,6 +1291,17 @@ ImVec4 tcpViewerIconTint(TcpViewerIconKind kind, bool hovered, bool active) {
     case TcpViewerIconKind::Exit: color = ImVec4(1.00f, 0.55f, 0.42f, 1.0f); break;
     case TcpViewerIconKind::Pause: color = ImVec4(1.00f, 0.78f, 0.36f, 1.0f); break;
     case TcpViewerIconKind::Play: color = ImVec4(0.30f, 0.95f, 0.58f, 1.0f); break;
+    // Recording controls read as a warm "armed" pair, distinct from the green
+    // sim-playback icons they used to borrow.
+    case TcpViewerIconKind::Stop: color = ImVec4(1.00f, 0.52f, 0.44f, 1.0f); break;
+    case TcpViewerIconKind::Force: color = ImVec4(1.00f, 0.84f, 0.36f, 1.0f); break;
+    case TcpViewerIconKind::Torque: color = ImVec4(0.72f, 0.86f, 1.00f, 1.0f); break;
+    case TcpViewerIconKind::Video: color = ImVec4(1.00f, 0.62f, 0.52f, 1.0f); break;
+    case TcpViewerIconKind::Add: color = ImVec4(0.44f, 0.94f, 0.66f, 1.0f); break;
+    case TcpViewerIconKind::Delete: color = ImVec4(1.00f, 0.46f, 0.40f, 1.0f); break;
+    case TcpViewerIconKind::Render: color = ImVec4(0.98f, 0.76f, 0.44f, 1.0f); break;
+    case TcpViewerIconKind::Diagnostics: color = ImVec4(0.52f, 0.90f, 0.86f, 1.0f); break;
+    case TcpViewerIconKind::Objects: color = ImVec4(0.62f, 0.78f, 1.00f, 1.0f); break;
     case TcpViewerIconKind::Step: color = ImVec4(0.55f, 0.86f, 1.00f, 1.0f); break;
     case TcpViewerIconKind::StepFast: color = ImVec4(0.55f, 0.86f, 1.00f, 1.0f); break;
     case TcpViewerIconKind::SensorDepth: color = ImVec4(0.43f, 0.87f, 1.00f, 1.0f); break;
@@ -1354,6 +1378,158 @@ TcpViewerIconKind objectTypeIconKind(int objectTypeRaw) {
     case raisim::ObjectType::HEIGHTMAP: return TcpViewerIconKind::ObjectHeightmap;
     case raisim::ObjectType::ARTICULATED_SYSTEM: return TcpViewerIconKind::Robot;
     case raisim::ObjectType::COMPOUND: return TcpViewerIconKind::ObjectCompound;
+    default: return TcpViewerIconKind::Options;
+  }
+}
+
+// Tab glyphs are drawn at this multiple of the font size. The tab bar is the
+// panel's primary navigation, so its icons are deliberately larger than the
+// inline button icons (which sit at ~0.95 of the font size).
+constexpr float kTabIconGlyphScale = 1.55f;
+// Fraction of the tab's short side the glyph fills, leaving a little breathing
+// room inside the tab's highlight.
+constexpr float kTabIconFillFactor = 0.86f;
+
+/** Tab side length needed to draw a glyph at kTabIconGlyphScale. */
+float iconTabExtent(float fontSize) {
+  if (!std::isfinite(fontSize) || fontSize <= 0.0f) {
+    return 0.0f;
+  }
+  return fontSize * kTabIconGlyphScale / kTabIconFillFactor;
+}
+
+/**
+ * @brief Vertical frame padding that makes a tab tall enough for its glyph.
+ *
+ * ImGui computes tab height as font size + 2 * FramePadding.y, so the glyph
+ * cannot grow past the font size without more padding. Never shrinks the
+ * caller's padding.
+ */
+float iconTabFramePaddingY(float fontSize, float stylePaddingY) {
+  const float extent = iconTabExtent(fontSize);
+  if (extent <= 0.0f) {
+    return stylePaddingY;
+  }
+  return std::max(stylePaddingY, (extent - fontSize) * 0.5f);
+}
+
+/**
+ * @brief Spaces needed to reserve an icon tab wide enough for its glyph.
+ *
+ * ImGui derives a tab's width from its label, and the label here is whitespace,
+ * so this is what keeps icon tabs from collapsing as the UI scale changes.
+ * Clamped to a sane range so a degenerate font metric cannot produce a tab that
+ * is invisible or absurdly wide.
+ */
+int iconTabLabelSpaceCount(float fontSize, float spaceWidth) {
+  if (!std::isfinite(fontSize) || !std::isfinite(spaceWidth) || spaceWidth <= 0.0f ||
+      fontSize <= 0.0f) {
+    return 4;
+  }
+  // Clamp before the cast: a tiny space width makes the ratio large enough to
+  // overflow int, and that conversion is undefined behaviour.
+  const float needed = std::clamp(iconTabExtent(fontSize) / spaceWidth, 2.0f, 24.0f);
+  return static_cast<int>(std::ceil(needed));
+}
+
+/**
+ * @brief Open a tab bar sized for icon tabs.
+ *
+ * Pairs with endIconTabBar(). The extra frame padding has to be in style before
+ * the first tab is submitted, which is why it lives here rather than in
+ * beginIconTabItem().
+ */
+bool beginIconTabBar(const char* id) {
+  const ImGuiStyle& style = ImGui::GetStyle();
+  ImVec2 padding = style.FramePadding;
+  padding.y = iconTabFramePaddingY(ImGui::GetFontSize(), padding.y);
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, padding);
+  if (ImGui::BeginTabBar(id)) {
+    return true;
+  }
+  ImGui::PopStyleVar();
+  return false;
+}
+
+void endIconTabBar() {
+  ImGui::EndTabBar();
+  ImGui::PopStyleVar();
+}
+
+/**
+ * @brief An icon-only tab, styled like the icon buttons.
+ *
+ * Five text tabs no longer fit the left panel at larger UI scales, so the label
+ * is reduced to a glyph. ImGui sizes a tab from its label, so the visible label
+ * is a run of spaces wide enough for the icon and the glyph is drawn over the
+ * resulting rect -- the same overlay approach drawIconOnlyButton() and
+ * drawSensorTreeNode() use. The tab name moves to a tooltip so it stays
+ * discoverable.
+ *
+ * @return True when the tab is selected; the caller must then call EndTabItem().
+ */
+bool beginIconTabItem(const TcpViewerIcons& icons, TcpViewerIconKind kind, const char* tooltip,
+                      const char* id) {
+  const TcpViewerIcon* icon = icons.get(kind);
+  if (!icon) {
+    // No texture: fall back to the text label rather than an unclickable blank.
+    return ImGui::BeginTabItem(tooltip ? tooltip : id);
+  }
+
+  const int spaceCount = iconTabLabelSpaceCount(ImGui::GetFontSize(), ImGui::CalcTextSize(" ").x);
+  const std::string label = std::string(static_cast<size_t>(spaceCount), ' ') + "##" + id;
+
+  const bool selected = ImGui::BeginTabItem(label.c_str());
+  const bool hovered = ImGui::IsItemHovered();
+  const ImVec2 itemMin = ImGui::GetItemRectMin();
+  const ImVec2 itemMax = ImGui::GetItemRectMax();
+  if (hovered && tooltip && tooltip[0] != '\0') {
+    ImGui::SetTooltip("%s", tooltip);
+  }
+
+  // ImGui registers a zero-size item for a tab on the frame it first appears,
+  // and for one scrolled fully out of the bar. There is no rect to draw into
+  // yet, and forcing a minimum size would paint the glyph at the window origin.
+  const float rectWidth = itemMax.x - itemMin.x;
+  const float rectHeight = itemMax.y - itemMin.y;
+  if (rectWidth < 2.0f || rectHeight < 2.0f) {
+    return selected;
+  }
+
+  // Fit the glyph inside whatever rect the tab bar handed us so a compressed
+  // tab clips nothing.
+  const float iconSize =
+    std::max(1.0f, std::min(rectWidth, rectHeight) * kTabIconFillFactor);
+  const ImVec2 centre((itemMin.x + itemMax.x) * 0.5f, (itemMin.y + itemMax.y) * 0.5f);
+  const ImVec2 iconMin(std::round(centre.x - iconSize * 0.5f),
+                       std::round(centre.y - iconSize * 0.5f));
+  const ImVec2 iconMax(iconMin.x + iconSize, iconMin.y + iconSize);
+
+  ImDrawList* drawList = ImGui::GetWindowDrawList();
+  const ImTextureID textureId = (ImTextureID)(intptr_t)icon->texture;
+  // Selected tabs read as "active" so the tint matches the button palette.
+  const ImVec4 iconTint = tcpViewerIconTint(kind, hovered, selected);
+  drawList->PushClipRect(itemMin, itemMax, true);
+  drawList->AddImage(textureId, ImVec2(iconMin.x + 1.0f, iconMin.y + 1.0f),
+    ImVec2(iconMax.x + 1.0f, iconMax.y + 1.0f), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f),
+    ImGui::GetColorU32(ImVec4(0.0f, 0.0f, 0.0f, 0.34f)));
+  drawList->AddImage(textureId, iconMin, iconMax, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f),
+    ImGui::GetColorU32(iconTint));
+  drawList->PopClipRect();
+  return selected;
+}
+
+TcpViewerIconKind spawnShapeIconKind(raisin::tcp_viewer::ClientRequestType type) {
+  using raisin::tcp_viewer::ClientRequestType;
+  switch (type) {
+    case ClientRequestType::CR_SPAWN_BOX: return TcpViewerIconKind::ObjectBox;
+    case ClientRequestType::CR_SPAWN_SPHERE: return TcpViewerIconKind::ObjectSphere;
+    case ClientRequestType::CR_SPAWN_CYLINDER: return TcpViewerIconKind::ObjectCylinder;
+    case ClientRequestType::CR_SPAWN_CAPSULE: return TcpViewerIconKind::ObjectCapsule;
+    case ClientRequestType::CR_SPAWN_MESH: return TcpViewerIconKind::ObjectMesh;
+    case ClientRequestType::CR_SPAWN_AS: return TcpViewerIconKind::Robot;
+    case ClientRequestType::CR_SPAWN_PLANE: return TcpViewerIconKind::ObjectGround;
+    case ClientRequestType::CR_SPAWN_HEIGHT_MAP: return TcpViewerIconKind::ObjectHeightmap;
     default: return TcpViewerIconKind::Options;
   }
 }
@@ -1522,6 +1698,200 @@ bool drawIconOnlyButton(const TcpViewerIcons& icons, TcpViewerIconKind kind,
   drawList->PopClipRect();
   ImGui::PopID();
   return pressed;
+}
+
+/**
+ * @brief Draw the spawn palette.
+ *
+ * @param canSpawn Whether a spawn request could be delivered right now.
+ * @param dropPoint World point used when "place at camera target" is enabled.
+ * @param serverIsLocal True when the server shares this filesystem, which lets
+ *   us check a geometry path before a bad one costs the connection.
+ * @param request Receives the built request when this returns true.
+ * @param status Receives a human-readable validation or progress message.
+ * @return True when the user asked to spawn and the form validated.
+ */
+bool drawSpawnForm(const TcpViewerIcons& icons, SpawnFormState& form, bool canSpawn,
+                   const glm::vec3& dropPoint, bool serverIsLocal,
+                   raisin::tcp_viewer::ClientRequest& request, std::string& status) {
+  using raisin::tcp_viewer::ClientRequestType;
+  const float vecWidth = std::round(ImGui::GetFontSize() * 12.5f);
+  const float textWidth = fontScaledTextControlWidth(26.0f);
+
+  ImGui::TextUnformatted("Shape");
+  for (int i = 0; i < static_cast<int>(kSpawnShapes.size()); ++i) {
+    const SpawnShapeInfo& shape = kSpawnShapes[static_cast<size_t>(i)];
+    if (i % 4 != 0) {
+      ImGui::SameLine();
+    }
+    ImGui::PushID(i);
+    const bool selected = form.shapeIndex == i;
+    if (selected) {
+      ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+    }
+    if (drawIconOnlyButton(icons, spawnShapeIconKind(shape.type), shape.label, "spawn_shape")) {
+      form.shapeIndex = i;
+    }
+    if (selected) {
+      ImGui::PopStyleColor();
+    }
+    ImGui::PopID();
+  }
+  const SpawnShapeInfo& shape = spawnShapeAt(form.shapeIndex);
+  ImGui::TextDisabled("%s", shape.label);
+
+  ImGui::SetNextItemWidth(textWidth);
+  ImGui::InputText("##spawn_name", form.name, sizeof(form.name));
+  ImGui::SameLine();
+  ImGui::TextDisabled("Name");
+
+  if (shape.needsFile) {
+    ImGui::SetNextItemWidth(textWidth);
+    ImGui::InputText("##spawn_file", form.file, sizeof(form.file));
+    ImGui::SameLine();
+    ImGui::TextDisabled("File (server-side path)");
+    ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + textWidth);
+    ImGui::TextDisabled(
+      "RaiSim resolves this path on the simulation host. A path the server cannot open "
+      "is a protocol error and drops the viewer connection.");
+    ImGui::PopTextWrapPos();
+  }
+
+  switch (shape.type) {
+    case ClientRequestType::CR_SPAWN_BOX:
+      ImGui::SetNextItemWidth(vecWidth);
+      ImGui::DragFloat3("##spawn_box", form.boxExtent, 0.01f, 0.001f, 1000.0f, "%.3f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("Extents (m)");
+      break;
+    case ClientRequestType::CR_SPAWN_SPHERE:
+      ImGui::SetNextItemWidth(vecWidth);
+      ImGui::DragFloat("##spawn_radius", &form.radius, 0.005f, 0.001f, 1000.0f, "%.3f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("Radius (m)");
+      break;
+    case ClientRequestType::CR_SPAWN_CYLINDER:
+    case ClientRequestType::CR_SPAWN_CAPSULE:
+      ImGui::SetNextItemWidth(vecWidth);
+      ImGui::DragFloat("##spawn_radius", &form.radius, 0.005f, 0.001f, 1000.0f, "%.3f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("Radius (m)");
+      ImGui::SetNextItemWidth(vecWidth);
+      ImGui::DragFloat("##spawn_height", &form.height,
+        0.005f, shape.type == ClientRequestType::CR_SPAWN_CAPSULE ? 0.0f : 0.001f, 1000.0f, "%.3f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("Height (m)");
+      break;
+    case ClientRequestType::CR_SPAWN_PLANE:
+      ImGui::SetNextItemWidth(vecWidth);
+      ImGui::DragFloat("##spawn_ground", &form.groundHeight, 0.01f, -1000.0f, 1000.0f, "%.3f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("Height (m)");
+      break;
+    case ClientRequestType::CR_SPAWN_HEIGHT_MAP:
+      ImGui::SetNextItemWidth(vecWidth);
+      ImGui::DragFloat2("##spawn_hm_center", form.heightMapCenter, 0.05f, -10000.0f, 10000.0f,
+        "%.3f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("Center X/Y (m)");
+      ImGui::SetNextItemWidth(vecWidth);
+      ImGui::DragFloat2("##spawn_hm_size", form.heightMapSize, 0.05f, 0.001f, 10000.0f, "%.3f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("Size X/Y (m)");
+      ImGui::SetNextItemWidth(vecWidth);
+      ImGui::DragFloat("##spawn_hm_scale", &form.heightMapHeightScale, 0.01f, -1000.0f, 1000.0f,
+        "%.4f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("Height scale");
+      ImGui::SetNextItemWidth(vecWidth);
+      ImGui::DragFloat("##spawn_hm_offset", &form.heightMapHeightOffset, 0.01f, -1000.0f, 1000.0f,
+        "%.4f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("Height offset (m)");
+      break;
+    default:
+      break;
+  }
+
+  if (shape.needsMass) {
+    ImGui::SetNextItemWidth(vecWidth);
+    ImGui::DragFloat("##spawn_mass", &form.mass, 0.05f, 0.001f, 100000.0f, "%.4g");
+    ImGui::SameLine();
+    ImGui::TextDisabled("Mass (kg)");
+    ImGui::SetNextItemWidth(vecWidth);
+    ImGui::Combo("##spawn_body_type", &form.bodyType, "dynamic\0kinematic\0static\0");
+    ImGui::SameLine();
+    ImGui::TextDisabled("Body type");
+    ImGui::SetNextItemWidth(textWidth);
+    ImGui::InputText("##spawn_appearance", form.appearance, sizeof(form.appearance));
+    ImGui::SameLine();
+    ImGui::TextDisabled("Appearance");
+  }
+
+  const bool placeable = shape.type != ClientRequestType::CR_SPAWN_PLANE &&
+                         shape.type != ClientRequestType::CR_SPAWN_HEIGHT_MAP;
+  if (placeable) {
+    ImGui::Checkbox("Place at camera target", &form.useCameraPlacement);
+    ImGui::BeginDisabled(form.useCameraPlacement);
+    ImGui::SetNextItemWidth(vecWidth);
+    ImGui::DragFloat3("##spawn_position", form.position, 0.02f, -100000.0f, 100000.0f, "%.3f");
+    ImGui::SameLine();
+    ImGui::TextDisabled("Position (m)");
+    ImGui::EndDisabled();
+    if (form.useCameraPlacement) {
+      form.position[0] = dropPoint.x;
+      form.position[1] = dropPoint.y;
+      form.position[2] = dropPoint.z;
+    }
+    if (ImGui::TreeNode("Initial state")) {
+      ImGui::SetNextItemWidth(vecWidth);
+      ImGui::DragFloat3("##spawn_lin_vel", form.linearVelocity, 0.05f, -1000.0f, 1000.0f, "%.3f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("Linear velocity (m/s)");
+      ImGui::SetNextItemWidth(vecWidth);
+      ImGui::DragFloat3("##spawn_ang_vel", form.angularVelocity, 0.05f, -1000.0f, 1000.0f, "%.3f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("Angular velocity (rad/s)");
+      ImGui::SetNextItemWidth(vecWidth);
+      ImGui::DragFloat4("##spawn_quat", form.quatWxyz, 0.005f, -1.0f, 1.0f, "%.3f");
+      ImGui::SameLine();
+      ImGui::TextDisabled("Quaternion WXYZ");
+      ImGui::TreePop();
+    }
+  }
+
+  // Preflight the request so the reason is visible before the button is pressed.
+  raisin::tcp_viewer::ClientRequest candidate;
+  const std::string validationError = buildSpawnRequest(form, candidate);
+  std::string localFileError;
+  if (validationError.empty() && shape.needsFile && serverIsLocal) {
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(candidate.file, ec)) {
+      localFileError = "file not found on this host: " + candidate.file;
+    }
+  }
+  const std::string blockingError =
+    validationError.empty() ? localFileError : validationError;
+
+  ImGui::BeginDisabled(!canSpawn || !blockingError.empty());
+  const bool pressed = drawIconTextButton(icons, TcpViewerIconKind::Add, "Spawn",
+                                          "spawn_object");
+  ImGui::EndDisabled();
+  if (!blockingError.empty()) {
+    ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + textWidth);
+    ImGui::TextDisabled("%s", blockingError.c_str());
+    ImGui::PopTextWrapPos();
+  }
+  if (!pressed) {
+    return false;
+  }
+  if (!blockingError.empty()) {
+    status = blockingError;
+    return false;
+  }
+  request = std::move(candidate);
+  status = std::string("spawn queued: ") + shape.label;
+  return true;
 }
 
 void drawCollapsedLeftPanelLogo(const TcpViewerImageTexture& logo) {
@@ -1900,6 +2270,22 @@ int main(int argc, char* argv[]) {
   std::string recordFramePrefix = "rayrai_tcp_viewer_frame";
   std::filesystem::path serverRecordFrameDirectory;
   bool serverRequestedRecording = false;
+  // Video recording. ffmpeg is resolved once at startup: a GUI process's PATH
+  // does not change while it runs, and probing the filesystem every frame to
+  // decide whether a button is greyed out would be wasteful.
+  const bool ffmpegAvailable = raisin::tcp_viewer::videoEncodingAvailable();
+  raisin::tcp_viewer::VideoEncoder videoEncoder;
+  double videoFramesPerSecond = 30.0;
+  int videoQuality = 20;
+  char videoPathBuf[512];
+  std::snprintf(videoPathBuf, sizeof(videoPathBuf), "%s",
+    timestampedDataPath(options.screenshotDir, "rayrai_tcp_viewer_video", ".mp4")
+      .string().c_str());
+  std::string videoStatus = ffmpegAvailable
+    ? std::string()
+    : std::string("video recording needs ffmpeg on PATH (or $RAYRAI_FFMPEG)");
+  // Reused across frames so a recording does not reallocate the readback buffer.
+  std::vector<unsigned char> captureRgba;
   std::string sensorStatus;
   SessionRecorder sessionRecorder;
   std::vector<RecordedFrame> replayFrames;
@@ -1961,7 +2347,7 @@ int main(int argc, char* argv[]) {
   bool everConnected = false;
 
   // Sim control: queue of requests flushed onto the next update frame.
-  std::vector<raisin::tcp_viewer::SimControlRequest> pendingControlRequests;
+  std::vector<raisin::tcp_viewer::ClientRequest> pendingControlRequests;
   bool simPaused = false;
   glm::vec3 controlForce(0.0f, 0.0f, 20.0f);
   glm::vec3 controlTorque(0.0f, 0.0f, 1.0f);
@@ -1980,6 +2366,12 @@ int main(int argc, char* argv[]) {
   bool mouseForceEnabled = true;
   float mouseForceScale = kDefaultMouseForceAccelPerPixel;
   MouseForceGesture mouseForce;
+  bool wireDragEnabled = true;
+  float wireDragStiffness = kDefaultWireDragStiffness;
+  WireDragGesture wireDrag;
+  SpawnFormState spawnForm;
+  std::string spawnStatus;
+  char worldExportPathBuf[512] = "";
   RulerToolState ruler;
   AngleToolState angle;
   PoseGrabberGesture poseGrabber;
@@ -2179,10 +2571,17 @@ int main(int argc, char* argv[]) {
   char objectFilterBuf[160] = "";
   std::array<CameraBookmark, 4> cameraBookmarks;
   std::unordered_map<uint64_t, MotionEstimate> motionEstimates;
-  std::deque<SelectedSignalSample> selectedSignals;
   CameraFrustumUiStates cameraFrustums;
+  // Signal workbench: one rolling history per recorded object. The selection is
+  // always recorded; pinned objects are recorded too, so their plots survive a
+  // selection change (scene-wide channels keep advancing, selection-only ones
+  // hold their last value until the object is selected again).
+  std::unordered_map<uint64_t, SignalObjectRecord> signalRecords;
+  std::vector<std::string> signalPlotChannels;
+  bool signalPlotChannelsInitialized = false;
+  std::unordered_set<uint64_t> pinnedSignalObjects;
   uint64_t selectedSignalKey = 0;
-  double selectedSignalLastTime = -std::numeric_limits<double>::infinity();
+  std::string signalExportStatus;
   DiscoveryBeaconReceiver beaconReceiver;
   std::string discoveryStatus;
   beaconReceiver.start(discoveryStatus);
@@ -2221,9 +2620,9 @@ int main(int argc, char* argv[]) {
     sensorRenderer.clear();
     clearCameraFrustums(*viewer, cameraFrustums);
     motionEstimates.clear();
-    selectedSignals.clear();
+    signalRecords.clear();
+    pinnedSignalObjects.clear();
     selectedSignalKey = 0;
-    selectedSignalLastTime = -std::numeric_limits<double>::infinity();
     assetDiagnostics.clear();
     assetDiagnosticsDirty = true;
     stats.pendingSensorRequests = 0;
@@ -2319,20 +2718,45 @@ int main(int argc, char* argv[]) {
             recordFramePrefix = requested.stem().empty()
               ? "rayrai_tcp_viewer_video"
               : requested.stem().string();
-            serverRecordFrameDirectory = std::filesystem::path(screenshotDirBuf) /
-                                         (recordFramePrefix + "_frames");
             recordFrameIndex = 0;
-            recordPngSequence = true;
             serverRequestedRecording = true;
-            captureStatus = "server recording PNG sequence: " +
-                            serverRecordFrameDirectory.string();
+            // startRecordingVideo() names a video file, so honour that when an
+            // encoder is available and fall back to the PNG sequence otherwise.
+            raisin::tcp_viewer::VideoEncoderSettings encoderSettings;
+            encoderSettings.width = viewer->getCamera().rtWidth();
+            encoderSettings.height = viewer->getCamera().rtHeight();
+            encoderSettings.framesPerSecond = videoFramesPerSecond;
+            encoderSettings.quality = videoQuality;
+            const std::filesystem::path videoOutput =
+              std::filesystem::path(screenshotDirBuf) /
+              (recordFramePrefix + (requested.extension().empty()
+                                      ? std::string(".mp4")
+                                      : requested.extension().string()));
+            if (ffmpegAvailable &&
+                videoEncoder.open(videoOutput, encoderSettings, videoStatus)) {
+              recordPngSequence = false;
+              serverRecordFrameDirectory.clear();
+              captureStatus = "server recording video: " + videoOutput.string();
+            } else {
+              serverRecordFrameDirectory = std::filesystem::path(screenshotDirBuf) /
+                                           (recordFramePrefix + "_frames");
+              recordPngSequence = true;
+              captureStatus = "server recording PNG sequence: " +
+                              serverRecordFrameDirectory.string();
+            }
           } break;
           case raisin::tcp_viewer::ViewerCommandType::StopRecording:
             if (serverRequestedRecording) {
+              const bool wasVideo = videoEncoder.isOpen();
+              if (wasVideo) {
+                videoEncoder.close(videoStatus);
+              }
               recordPngSequence = false;
               serverRequestedRecording = false;
-              captureStatus = "server recording stopped after " +
-                              std::to_string(recordFrameIndex) + " frame(s)";
+              captureStatus = wasVideo
+                ? "server recording stopped: " + videoStatus
+                : "server recording stopped after " + std::to_string(recordFrameIndex) +
+                    " frame(s)";
             }
             break;
           case raisin::tcp_viewer::ViewerCommandType::Screenshot:
@@ -2452,12 +2876,10 @@ int main(int argc, char* argv[]) {
       quit = true;
       viewerExitCode = 1;
     } else {
-      // CLI automation exercises the same SDL drop event as the desktop path.
-      SDL_Event drop{};
-      drop.type = SDL_DROPFILE;
-      drop.drop.file = SDL_strdup(options.simulationPath.string().c_str());
-      if (!drop.drop.file || SDL_PushEvent(&drop) != 1) {
-        SDL_free(drop.drop.file);
+      // Share the drop handler, not SDL's platform-owned drop-event transport.
+      // SDL2 compatibility layers can retain/convert that transport's payload;
+      // synthesizing it here breaks ownership during later event filtering.
+      if (!loadDroppedScene(options.simulationPath.string())) {
         quit = true; viewerExitCode = 1;
       }
     }
@@ -2747,41 +3169,91 @@ int main(int argc, char* argv[]) {
       controlGcDirty = false;
     }
     scene.setSelectionTag(hasForcedTargetOffset ? 0 : requestedTag);
-    if (requestedEntry && scene.hasServerWorldTime()) {
-      const uint64_t signalKey = visualMotionKey(requestedTag, requestedIndex);
+
+    // ----- Signal workbench sampling -----
+    // Record the current selection plus every pinned object, so pinned plots do
+    // not freeze the moment the user clicks something else. Histories for
+    // objects that are neither selected nor pinned are dropped, which keeps
+    // memory bounded no matter how much of the scene has been clicked through.
+    selectedSignalKey = requestedEntry ? visualMotionKey(requestedTag, requestedIndex) : 0;
+    if (scene.hasServerWorldTime()) {
       const double signalTime = scene.getServerWorldTime();
-      if (signalKey != selectedSignalKey) {
-        selectedSignals.clear();
-        selectedSignalKey = signalKey;
-        selectedSignalLastTime = -std::numeric_limits<double>::infinity();
-      }
-      if (signalTime > selectedSignalLastTime) {
-        SelectedSignalSample sample;
-        sample.worldTime = signalTime;
-        const auto motion = motionEstimates.find(signalKey);
+      const SelectedObjectInfo& sampledSelectedInfo = scene.getSelectedInfo();
+      const bool hasContactTags = scene.serverSupportsContactObjectTags();
+
+      const auto recordSignalObject = [&](uint64_t key, uint32_t tag, int index,
+                                          const VisualEntry& entry) {
+        SignalObjectRecord& record = signalRecords[key];
+        record.tag = tag;
+        record.index = index;
+        record.visual = entry.visual;
+        const bool isSelection = key == selectedSignalKey;
+        const SelectedObjectInfo* info =
+          (isSelection && sampledSelectedInfo.valid && sampledSelectedInfo.tag == tag)
+            ? &sampledSelectedInfo
+            : nullptr;
+        // Only rebuild the channel set for the selection: doing it for a pinned
+        // object with no selected-object payload would drop its joint columns
+        // (and therefore its recorded history) as soon as focus moved away.
+        if ((isSelection && (!entry.isArticulated || info)) || record.history.channels().empty()) {
+          record.history.setChannels(
+            raisin::tcp_viewer::buildSignalChannels(entry.isArticulated, hasContactTags, info));
+        }
+        raisin::tcp_viewer::SignalSampleInputs inputs;
+        inputs.position = entry.lastPos;
+        const auto motion = motionEstimates.find(key);
         if (motion != motionEstimates.end() && motion->second.valid) {
-          sample.linearSpeed = glm::length(motion->second.linearVelocity);
-          sample.angularSpeed = motion->second.angularSpeed;
+          inputs.linearVelocity = motion->second.linearVelocity;
+          inputs.angularSpeed = motion->second.angularSpeed;
+          inputs.hasMotionEstimate = true;
         }
-        const auto& selectedInfo = scene.getSelectedInfo();
-        if (selectedInfo.valid && selectedInfo.tag == requestedTag) {
-          double squaredSpeed = 0.0;
-          for (float velocity : selectedInfo.generalizedVelocities) {
-            squaredSpeed += static_cast<double>(velocity) * static_cast<double>(velocity);
-          }
-          sample.generalizedSpeed = static_cast<float>(std::sqrt(squaredSpeed));
+        inputs.contactCount = static_cast<float>(scene.contactCountForTag(tag));
+        inputs.selectedInfo = info;
+        record.history.append(signalTime,
+          raisin::tcp_viewer::sampleSignalChannels(record.history.channels(), inputs), info != nullptr);
+
+        std::string label = entry.objectName.empty() ? scene.getObjectName(tag)
+                                                     : entry.objectName;
+        if (label.empty()) {
+          label = "tag " + std::to_string(tag);
         }
-        sample.contactCount = static_cast<float>(scene.contactCountForTag(requestedTag));
-        selectedSignals.push_back(sample);
-        while (selectedSignals.size() > 600) {
-          selectedSignals.pop_front();
+        if (index != 0) {
+          label += " [" + std::to_string(index) + "]";
         }
-        selectedSignalLastTime = signalTime;
+        record.label = std::move(label);
+      };
+
+      if (requestedEntry) {
+        recordSignalObject(selectedSignalKey, requestedTag, requestedIndex, *requestedEntry);
       }
-    } else if (!requestedEntry) {
-      selectedSignals.clear();
-      selectedSignalKey = 0;
-      selectedSignalLastTime = -std::numeric_limits<double>::infinity();
+      for (const uint64_t pinnedKey : pinnedSignalObjects) {
+        if (pinnedKey == selectedSignalKey) {
+          continue;
+        }
+        const auto recordIt = signalRecords.find(pinnedKey);
+        if (recordIt == signalRecords.end()) {
+          continue;
+        }
+        const std::shared_ptr<raisin::Visuals> pinnedVisual = recordIt->second.visual.lock();
+        if (!pinnedVisual) {
+          continue;  // The object was removed; keep the frozen history until unpinned.
+        }
+        uint32_t pinnedTag = 0;
+        int pinnedIndex = 0;
+        const VisualEntry* pinnedEntry = nullptr;
+        if (scene.getVisualInfo(pinnedVisual.get(), pinnedTag, pinnedIndex, pinnedEntry) &&
+            pinnedEntry && visualMotionKey(pinnedTag, pinnedIndex) == pinnedKey) {
+          recordSignalObject(pinnedKey, pinnedTag, pinnedIndex, *pinnedEntry);
+        }
+      }
+
+      for (auto it = signalRecords.begin(); it != signalRecords.end();) {
+        if (it->first == selectedSignalKey || pinnedSignalObjects.count(it->first) != 0) {
+          ++it;
+          continue;
+        }
+        it = signalRecords.erase(it);
+      }
     }
     const auto setRulerEndpoint = [&](int endpoint, const glm::vec3& point, std::string label) {
       label = trimAscii(label);
@@ -2856,17 +3328,48 @@ int main(int argc, char* argv[]) {
       if (!networkFailed && !awaitingSensorAck) {
         if (!awaitingResponse &&
             consumeTcpUpdateSlot(now, nextTcpUpdateRequestTime, settings.tcpUpdateRateHz)) {
-          if (!sendUpdateRequest(client, updateRequestTag, pendingControlRequests)) {
+          // RaisimServer rejects any frame that mixes a world export with other
+          // requests, and a rejected frame costs the whole connection, so the
+          // export is flushed alone and everything else waits a frame.
+          const auto exportIt = std::find_if(
+            pendingControlRequests.begin(), pendingControlRequests.end(),
+            [](const raisin::tcp_viewer::ClientRequest& request) {
+              return request.type == raisin::tcp_viewer::ClientRequestType::CR_SAVE_THE_WORLD;
+            });
+          std::vector<raisin::tcp_viewer::ClientRequest> exportFrame;
+          const bool exportOnlyFrame = exportIt != pendingControlRequests.end();
+          if (exportOnlyFrame) {
+            exportFrame.push_back(*exportIt);
+            pendingControlRequests.erase(exportIt);
+          }
+          const std::vector<raisin::tcp_viewer::ClientRequest>& frameRequests =
+            exportOnlyFrame ? exportFrame : pendingControlRequests;
+          if (!sendUpdateRequest(client, updateRequestTag, frameRequests)) {
             if (!client.lastIoWouldBlock()) {
               lastStatus = "connection lost";
               networkFailed = true;
+            } else if (exportOnlyFrame) {
+              // Nothing went out; keep the export queued for the next slot.
+              pendingControlRequests.push_back(exportFrame.front());
             }
           } else {
             awaitingResponse = true;
             updateRequestSentAt = now;
-            pendingControlRequests.clear();
-            if (mouseForce.active) {
+            if (!exportOnlyFrame) {
+              pendingControlRequests.clear();
+              if (mouseForce.active) {
+                mouseForce.pendingRequestIndex = std::numeric_limits<size_t>::max();
+              }
+              // The wire attachment stays live on the server, but the queued drag
+              // request is gone, so the next frame has to push a fresh one.
+              if (wireDrag.active) {
+                wireDrag.pendingRequestIndex = std::numeric_limits<size_t>::max();
+              }
+            } else {
+              // The remaining requests kept their slots, but the erase above
+              // shifted them, so drop the cached indices.
               mouseForce.pendingRequestIndex = std::numeric_limits<size_t>::max();
+              wireDrag.pendingRequestIndex = std::numeric_limits<size_t>::max();
             }
           }
         }
@@ -3099,7 +3602,7 @@ int main(int argc, char* argv[]) {
       if (!poseGrabber.heldActive) return;
       const bool canSend = client.isConnected() && scene.serverSupportsSimControl();
       if (poseGrabber.heldDirty && canSend && poseGrabber.heldTag != 0) {
-        raisin::tcp_viewer::SimControlRequest r;
+        raisin::tcp_viewer::ClientRequest r;
         r.type = raisin::tcp_viewer::ClientRequestType::CR_SET_POSE;
         r.visTag = poseGrabber.heldTag;
         r.vec3a = poseGrabber.heldPos;
@@ -3150,6 +3653,11 @@ int main(int argc, char* argv[]) {
         mouseForceEnabled, shiftForceModifierHeld, ruler.enabled, angle.enabled);
     const bool mouseForceSuppressViewportInput = shouldSuppressViewportForMouseForce(
       mouseForce.active, shiftForceCaptureRequested, io.MouseDown[ImGuiMouseButton_Left]);
+    const bool wireDragModifierHeld = isWireDragModifierHeld(io);
+    const bool wireDragCaptureRequested = shouldRequestWireDragCapture(
+      wireDragEnabled, wireDragModifierHeld, shiftForceModifierHeld, ruler.enabled, angle.enabled);
+    const bool wireDragSuppressViewportInput = shouldSuppressViewportForWireDrag(
+      wireDrag.active, wireDragCaptureRequested, io.MouseDown[ImGuiMouseButton_Left]);
     // While the gizmo is being dragged, or while the user is left-pressing with
     // a selected body and the gizmo enabled, swallow viewport input so the
     // camera doesn't orbit/pan during gizmo manipulation.
@@ -3162,9 +3670,11 @@ int main(int argc, char* argv[]) {
     const bool measureToolActive = ruler.enabled || angle.enabled;
     const bool rulerCapturesViewportInput = measureToolActive && !mouseForce.active;
     const bool allowViewportInput = !mouseForceSuppressViewportInput &&
+                                    !wireDragSuppressViewportInput &&
                                     !rulerCapturesViewportInput &&
                                     !poseGrabberSuppressViewportInput;
     const bool allowClickSelection = !mouseForce.active && !shiftForceCaptureRequested &&
+                                     !wireDrag.active && !wireDragCaptureRequested &&
                                      !rulerCapturesViewportInput && !poseGrabber.dragging;
     updateCameraFrustums(*viewer, scene, cameraFrustums);
     renderViewer(*viewer, window, allowViewportInput, allowClickSelection, &viewportState);
@@ -3205,7 +3715,8 @@ int main(int argc, char* argv[]) {
     GizmoScreenLayout gizmoLayout;
     PoseGrabberHit gizmoHover;
     const bool poseGrabberPickable = poseGrabber.enabled && requestedEntry && !mouseForce.active &&
-                                     !shiftForceCaptureRequested && !ruler.enabled &&
+                                     !shiftForceCaptureRequested && !wireDrag.active &&
+                                     !wireDragCaptureRequested && !ruler.enabled &&
                                      !angle.enabled && canQueueSimControl;
     // The gizmo lives at the user-controlled (held) pose, not the server's
     // pose. This keeps the handles attached to what the user actually sees.
@@ -3429,7 +3940,7 @@ int main(int argc, char* argv[]) {
       mouseForce.pendingRequestIndex = std::numeric_limits<size_t>::max();
     };
     const auto queueOrUpdateMouseForce = [&]() {
-      raisin::tcp_viewer::SimControlRequest r;
+      raisin::tcp_viewer::ClientRequest r;
       r.type = raisin::tcp_viewer::ClientRequestType::CR_APPLY_FORCE;
       r.visTag = mouseForce.tag;
       r.localBodyIdx = std::max(0, mouseForce.localBodyIdx);
@@ -3482,7 +3993,110 @@ int main(int argc, char* argv[]) {
         }
       }
     }
+
+    // ----- Interaction wire (CR_ATTACH_WIRE + CR_DRAG_OBJECT) -----
+    // Ctrl-drag (or Cmd-drag on macOS) pulls a body with a mass-scaled spring
+    // instead of teleporting it, so the solver keeps contacts and joints
+    // consistent while it moves.
+    const auto releaseWireDrag = [&]() {
+      const size_t idx = wireDrag.pendingRequestIndex;
+      if (idx != std::numeric_limits<size_t>::max() && idx < pendingControlRequests.size()) {
+        pendingControlRequests.erase(pendingControlRequests.begin() + static_cast<long>(idx));
+      }
+      wireDrag = WireDragGesture{};
+    };
+    const auto queueOrUpdateWireDrag = [&]() {
+      using raisin::tcp_viewer::ClientRequestType;
+      // The attach only has to be sent once; the server keeps the grabbed body
+      // and local attachment point until the wire goes slack.
+      if (!wireDrag.attachQueued) {
+        raisin::tcp_viewer::ClientRequest attach;
+        attach.type = ClientRequestType::CR_ATTACH_WIRE;
+        attach.visTag = wireDrag.tag;
+        attach.localBodyIdx = std::max(0, wireDrag.localBodyIdx);
+        attach.point = glm::dvec3(wireDrag.attachPoint);
+        pendingControlRequests.push_back(attach);
+        wireDrag.attachQueued = true;
+        // The drag that follows lands after the attach, so its index shifts.
+        wireDrag.pendingRequestIndex = std::numeric_limits<size_t>::max();
+      }
+      raisin::tcp_viewer::ClientRequest drag;
+      drag.type = ClientRequestType::CR_DRAG_OBJECT;
+      drag.stiffness = wireDragStiffness;
+      drag.point = glm::dvec3(wireDrag.target);
+
+      const size_t idx = wireDrag.pendingRequestIndex;
+      if (idx != std::numeric_limits<size_t>::max() && idx < pendingControlRequests.size() &&
+          pendingControlRequests[idx].type == ClientRequestType::CR_DRAG_OBJECT) {
+        pendingControlRequests[idx] = drag;
+        return;
+      }
+      pendingControlRequests.push_back(drag);
+      wireDrag.pendingRequestIndex = pendingControlRequests.size() - 1;
+    };
+
+    if (!wireDrag.active && !mouseForce.active && wireDragCaptureRequested &&
+        viewportState.hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+      const MouseForceStartTarget wireTarget = resolveMouseForceStartTarget();
+      if (!canQueueSimControl) {
+        lastStatus = client.isConnected() ? "wire drag: server lacks sim control"
+                                          : "wire drag: disconnected";
+      } else if (!wireTarget.entry) {
+        lastStatus = requestedEntry ? "wire drag: unsupported object" : "wire drag: select a body";
+      } else {
+        if (wireTarget.fromPick && wireTarget.visual) {
+          viewer->setTargetVisual(wireTarget.visual);
+          requestedTag = wireTarget.tag;
+          requestedIndex = wireTarget.index;
+          requestedEntry = wireTarget.entry;
+        }
+        // Grab where the user actually clicked when the depth read succeeded;
+        // otherwise fall back to the body origin.
+        const glm::vec3 grabPoint = wireTarget.hasClickedWorldPoint
+          ? wireTarget.clickedWorldPoint
+          : wireTarget.entry->lastPos;
+        wireDrag.active = true;
+        wireDrag.attachQueued = false;
+        wireDrag.tag = wireTarget.tag;
+        wireDrag.index = wireTarget.index;
+        wireDrag.localBodyIdx = std::max(0, wireTarget.localBodyIdx);
+        wireDrag.attachPoint = grabPoint;
+        wireDrag.localAttachPoint = visualWorldPointToLocal(*wireTarget.entry, grabPoint);
+        wireDrag.target = grabPoint;
+        wireDrag.pendingRequestIndex = std::numeric_limits<size_t>::max();
+        lastStatus = "wire attached";
+      }
+    }
+
+    if (wireDrag.active) {
+      const VisualEntry* wireEntry = nullptr;
+      if (requestedEntry && requestedTag == wireDrag.tag && requestedIndex == wireDrag.index) {
+        wireEntry = requestedEntry;
+      }
+      if (!io.MouseDown[ImGuiMouseButton_Left]) {
+        // Dropping the button simply stops resending CR_DRAG_OBJECT; the server
+        // zeroes the wire stiffness on the next request frame.
+        releaseWireDrag();
+        lastStatus = "wire released";
+      } else if (!wireEntry) {
+        releaseWireDrag();
+        lastStatus = "wire drag target lost";
+      } else if (!canQueueSimControl) {
+        releaseWireDrag();
+        lastStatus = "wire drag: connection lost";
+      } else {
+        wireDrag.attachPoint = visualLocalPointToWorld(*wireEntry, wireDrag.localAttachPoint);
+        glm::vec3 target = wireDrag.target;
+        if (wireDragTargetFromCursor(viewer->getCamera(), viewportState, wireDrag.attachPoint,
+                                     io.MousePos, target)) {
+          wireDrag.target = target;
+        }
+        queueOrUpdateWireDrag();
+      }
+    }
+
     drawMouseForcePreview(mouseForce, viewportState, viewer->getCamera());
+    drawWireDragPreview(wireDrag, viewportState, viewer->getCamera());
     if (ruler.enabled) {
       drawRulerOverlay(ruler, viewportState, viewer->getCamera());
       drawRulerCursorIcon(ruler, viewportState);
@@ -3604,14 +4218,34 @@ int main(int argc, char* argv[]) {
         quit = true;
       }
     }
-    if (recordPngSequence && frameSerial % std::max(1, recordEveryNFrames) == 0) {
-      std::ostringstream frameName;
-      frameName << recordFramePrefix << "_" << std::setw(6) << std::setfill('0')
-                << recordFrameIndex++ << ".png";
-      const std::filesystem::path frameDirectory = serverRequestedRecording
-        ? serverRecordFrameDirectory
-        : std::filesystem::path(screenshotDirBuf);
-      saveViewerTexturePng(*viewer, frameDirectory / frameName.str(), captureStatus);
+    // One readback feeds both recorders, so enabling the PNG sequence and the
+    // video encoder together costs a single glGetTexImage per frame.
+    const bool captureThisFrame = frameSerial % std::max(1, recordEveryNFrames) == 0;
+    const bool wantPngFrame = recordPngSequence && captureThisFrame;
+    const bool wantVideoFrame = videoEncoder.framesDue() != 0;
+    if (wantPngFrame || wantVideoFrame) {
+      int captureWidth = 0;
+      int captureHeight = 0;
+      if (captureViewerRgba(*viewer, captureRgba, captureWidth, captureHeight, captureStatus)) {
+        if (wantPngFrame) {
+          const std::string frameName =
+            raisin::tcp_viewer::pngSequenceFrameName(recordFramePrefix, recordFrameIndex++);
+          const std::filesystem::path frameDirectory = serverRequestedRecording
+            ? serverRecordFrameDirectory
+            : std::filesystem::path(screenshotDirBuf);
+          saveRgbaPng(captureRgba, captureWidth, captureHeight, frameDirectory / frameName,
+            captureStatus);
+        }
+        if (wantVideoFrame &&
+            !videoEncoder.writeTimedFrameRgba(captureRgba.data(), captureRgba.size(), videoStatus)) {
+          // writeFrameRgba() already closed the encoder (resized window, or
+          // ffmpeg died); surface why so the recording does not fail silently.
+          captureStatus = videoStatus;
+          if (serverRequestedRecording) {
+            serverRequestedRecording = false;
+          }
+        }
+      }
     }
     updateStatsWindow(stats, now);
 
@@ -3699,28 +4333,129 @@ int main(int argc, char* argv[]) {
       }
     };
 
+    // Everything that writes pixels to disk lives in one section, sharing one
+    // output directory: a still, an encoded movie, and a raw frame sequence are
+    // three answers to the same question, so splitting them across the panel
+    // (and duplicating the still capture in the Connection tab) only made the
+    // user hunt. The protocol log is deliberately a separate section below,
+    // because it is not pixels.
     const auto drawCaptureOptions = [&]() {
-      ImGui::SeparatorText("Screenshots");
-      ImGui::SetNextItemWidth(fontScaledTextControlWidth(28.0f));
+      const float controlWidth = fontScaledTextControlWidth(28.0f);
+
+      ImGui::SeparatorText("Capture");
+      ImGui::TextDisabled("Output folder");
+      ImGui::SetNextItemWidth(controlWidth);
       ImGui::InputText("##ScreenshotDirectory", screenshotDirBuf, sizeof(screenshotDirBuf));
-      if (drawIconTextButton(uiIcons, TcpViewerIconKind::Camera, "Screenshot", "capture_screenshot")) {
+
+      // --- Still image ---
+      if (drawIconTextButton(uiIcons, TcpViewerIconKind::Camera, "Screenshot",
+                             "capture_screenshot")) {
         screenshotRequested = true;
       }
-      ImGui::TextUnformatted("PNG Sequence");
-      ImGui::Checkbox("##PngSequence", &recordPngSequence);
-      ImGui::BeginDisabled(!recordPngSequence);
-      drawInlineLabelSliderInt("png_sequence_every_n_frames", "Every N frames", &recordEveryNFrames, 1, 120);
-      ImGui::EndDisabled();
 
-      ImGui::SeparatorText("Session");
+      // --- Encoded video ---
+      if (ImGui::TreeNodeEx("Video (MP4)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (!ffmpegAvailable) {
+          ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + controlWidth);
+          ImGui::TextDisabled(
+            "Install ffmpeg (or point $RAYRAI_FFMPEG at a build) to record video directly. "
+            "Until then, recordings fall back to the PNG frame sequence below.");
+          ImGui::PopTextWrapPos();
+        }
+        ImGui::BeginDisabled(!ffmpegAvailable);
+        ImGui::BeginDisabled(videoEncoder.isOpen());
+        ImGui::SetNextItemWidth(controlWidth);
+        ImGui::InputText("##VideoFile", videoPathBuf, sizeof(videoPathBuf));
+        float videoFpsUi = static_cast<float>(videoFramesPerSecond);
+        if (drawInlineLabelSliderFloat("video_fps", "Frame rate", &videoFpsUi,
+              static_cast<float>(raisin::tcp_viewer::kMinVideoFramesPerSecond),
+              static_cast<float>(raisin::tcp_viewer::kMaxVideoFramesPerSecond), "%.0f fps")) {
+          videoFramesPerSecond = static_cast<double>(videoFpsUi);
+        }
+        // libx264 CRF, so a lower number means a bigger, better-looking file.
+        drawInlineLabelSliderInt("video_quality", "CRF (lower = better)", &videoQuality,
+          raisin::tcp_viewer::kMinVideoQuality, raisin::tcp_viewer::kMaxVideoQuality);
+        ImGui::EndDisabled();
+        if (!videoEncoder.isOpen()) {
+          if (drawIconTextButton(uiIcons, TcpViewerIconKind::Video, "Start Recording",
+                                 "start_video_recording")) {
+            raisin::tcp_viewer::VideoEncoderSettings encoderSettings;
+            encoderSettings.width = viewer->getCamera().rtWidth();
+            encoderSettings.height = viewer->getCamera().rtHeight();
+            encoderSettings.framesPerSecond = videoFramesPerSecond;
+            encoderSettings.quality = videoQuality;
+            videoEncoder.open(std::filesystem::path(videoPathBuf), encoderSettings, videoStatus);
+            captureStatus = videoStatus;
+          }
+        } else {
+          if (drawIconTextButton(uiIcons, TcpViewerIconKind::Stop, "Stop Recording",
+                                 "stop_video_recording")) {
+            videoEncoder.close(videoStatus);
+            captureStatus = videoStatus;
+          }
+          ImGui::TextDisabled("%zu frames | %.1f MiB | %dx%d", videoEncoder.frameCount(),
+            static_cast<double>(videoEncoder.bytesWritten()) / (1024.0 * 1024.0),
+            videoEncoder.settings().width, videoEncoder.settings().height);
+        }
+        ImGui::EndDisabled();
+        ImGui::TreePop();
+      }
+
+      // --- Raw frame sequence ---
+      if (ImGui::TreeNode("PNG frame sequence")) {
+        ImGui::Checkbox("Save every rendered frame", &recordPngSequence);
+        ImGui::BeginDisabled(!recordPngSequence);
+        drawInlineLabelSliderInt("png_sequence_every_n_frames", "Every N frames",
+          &recordEveryNFrames, 1, 120);
+        ImGui::EndDisabled();
+        // Rescues a sequence recorded before ffmpeg was available, or one whose
+        // recording was interrupted.
+        ImGui::BeginDisabled(!ffmpegAvailable || videoEncoder.isOpen() || recordPngSequence ||
+                             recordFrameIndex <= 0);
+        if (drawIconTextButton(uiIcons, TcpViewerIconKind::Export, "Encode To Video",
+                               "encode_png_sequence")) {
+          raisin::tcp_viewer::VideoEncoderSettings encoderSettings;
+          encoderSettings.framesPerSecond = videoFramesPerSecond;
+          encoderSettings.quality = videoQuality;
+          const std::filesystem::path frameDirectory = serverRecordFrameDirectory.empty()
+            ? std::filesystem::path(screenshotDirBuf)
+            : serverRecordFrameDirectory;
+          raisin::tcp_viewer::encodePngSequenceToVideo(frameDirectory, recordFramePrefix,
+            std::filesystem::path(videoPathBuf), encoderSettings, videoStatus);
+          captureStatus = videoStatus;
+        }
+        ImGui::EndDisabled();
+        ImGui::TreePop();
+      }
+
+      // One status line for the whole section, so a screenshot, a recording, and
+      // a sequence encode all report in the same place.
+      if (!captureStatus.empty()) {
+        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + controlWidth);
+        ImGui::TextDisabled("%s", shortenPathLabel(captureStatus, 90).c_str());
+        ImGui::PopTextWrapPos();
+      }
+
+      // Distinct from Capture above: this records the protocol stream, not
+      // pixels. The old "Start TCP Recording" label sat next to the video
+      // controls and read as if it produced a video file.
+      ImGui::SeparatorText("Session Replay Log");
+      ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + fontScaledTextControlWidth(28.0f));
+      ImGui::TextDisabled(
+        "Records the scene updates themselves to a .rrtcs file, not video frames. Replay it later "
+        "with --replay-session to scrub the timeline and re-render from any camera. For a playable "
+        "movie, use Video above.");
+      ImGui::PopTextWrapPos();
       ImGui::SetNextItemWidth(fontScaledTextControlWidth(28.0f));
       ImGui::InputText("##SessionFile", sessionPathBuf, sizeof(sessionPathBuf));
       if (!sessionRecorder.active()) {
-        if (drawIconTextButton(uiIcons, TcpViewerIconKind::Save, "Start TCP Recording", "start_tcp_recording")) {
+        if (drawIconTextButton(uiIcons, TcpViewerIconKind::Save, "Start Session Log",
+                               "start_session_log")) {
           sessionRecorder.open(sessionPathBuf, sessionStatus);
         }
       } else {
-        if (drawIconTextButton(uiIcons, TcpViewerIconKind::Disconnect, "Stop TCP Recording", "stop_tcp_recording")) {
+        if (drawIconTextButton(uiIcons, TcpViewerIconKind::Stop, "Stop Session Log",
+                               "stop_session_log")) {
           sessionRecorder.close();
           sessionStatus = "recorded " + std::to_string(sessionRecorder.frameCount()) +
                           " frames to " + sessionRecorder.pathString();
@@ -3739,7 +4474,7 @@ int main(int argc, char* argv[]) {
                                                                 : replayFrames.back().timeMicros;
         }
         ImGui::SameLine();
-        if (drawIconTextButton(uiIcons, TcpViewerIconKind::Focus, "Step", "step_replay")) {
+        if (drawIconTextButton(uiIcons, TcpViewerIconKind::Step, "Step", "step_replay")) {
           replayPaused = true;
           replayStep = true;
         }
@@ -4182,8 +4917,8 @@ int main(int argc, char* argv[]) {
 
       if (overlayMinimized) {
         drawCollapsedLeftPanelLogo(collapsedLogoVisible ? raisimLogo : TcpViewerImageTexture{});
-      } else if (ImGui::BeginTabBar("##LeftTabs")) {
-        if (ImGui::BeginTabItem("Connection")) {
+      } else if (beginIconTabBar("##LeftTabs")) {
+        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Connect, "Connection", "tab_connection")) {
           ImGui::PushStyleColor(ImGuiCol_TextDisabled,
             raionrobotics_imgui_secondary_text_color());
           ConnectionEntry current;
@@ -4364,14 +5099,12 @@ int main(int argc, char* argv[]) {
           ImGui::TextDisabled("Assets unresolved %zu | sensor requests %d | session %s",
             stats.unresolvedAssets, stats.pendingSensorRequests,
             sessionRecorder.active() ? "recording" : (replayMode ? "replay" : "live"));
+          // Camera framing only. The still capture that used to sit here now
+          // lives with the video and frame-sequence controls under Options >
+          // Capture, so there is one place that writes pixels to disk.
           if (drawIconTextButton(uiIcons, TcpViewerIconKind::Home, "Frame Scene", "frame_scene")) requestFrameScene = true;
           ImGui::SameLine();
           if (drawIconTextButton(uiIcons, TcpViewerIconKind::Focus, "Frame Selected", "frame_selected")) requestFrameSelected = true;
-          ImGui::SameLine();
-          if (drawIconTextButton(uiIcons, TcpViewerIconKind::Camera, "Screenshot", "screenshot")) screenshotRequested = true;
-          if (!captureStatus.empty()) {
-            ImGui::TextDisabled("%s", shortenPathLabel(captureStatus, 70).c_str());
-          }
 
           if (ImGui::BeginTable("##viewer_checkboxes", 2, ImGuiTableFlags_SizingFixedFit)) {
             ImGui::TableNextColumn();
@@ -4572,19 +5305,19 @@ int main(int argc, char* argv[]) {
           ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Options")) {
+        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Options, "Options", "tab_options")) {
           drawViewOptions();
           ImGui::Separator();
           drawCaptureOptions();
           ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Render")) {
+        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Render, "Render", "tab_render")) {
           drawRenderingOptions();
           ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Object")) {
+        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Objects, "Objects", "tab_objects")) {
           uint32_t selectedTag = 0;
           int selectedIndex = 0;
           const VisualEntry* selectedEntry = nullptr;
@@ -4766,7 +5499,7 @@ int main(int argc, char* argv[]) {
           if (simPaused) {
             if (drawIconOnlyButton(uiIcons, TcpViewerIconKind::Play,
                                    "Resume simulation", "sim_resume")) {
-              raisin::tcp_viewer::SimControlRequest r;
+              raisin::tcp_viewer::ClientRequest r;
               r.type = ClientRequestType::CR_RESUME;
               pendingControlRequests.push_back(r);
               simPaused = false;
@@ -4774,7 +5507,7 @@ int main(int argc, char* argv[]) {
           } else {
             if (drawIconOnlyButton(uiIcons, TcpViewerIconKind::Pause,
                                    "Pause simulation", "sim_pause")) {
-              raisin::tcp_viewer::SimControlRequest r;
+              raisin::tcp_viewer::ClientRequest r;
               r.type = ClientRequestType::CR_PAUSE;
               pendingControlRequests.push_back(r);
               simPaused = true;
@@ -4782,12 +5515,12 @@ int main(int argc, char* argv[]) {
           }
           // Step buttons — auto-pause first if running, then queue the step(s).
           auto queueStep = [&](int n) {
-            raisin::tcp_viewer::SimControlRequest r;
+            raisin::tcp_viewer::ClientRequest r;
             r.type = ClientRequestType::CR_STEP_N;
             r.stepCount = n;
             pendingControlRequests.push_back(r);
             if (!simPaused) {
-              raisin::tcp_viewer::SimControlRequest p;
+              raisin::tcp_viewer::ClientRequest p;
               p.type = ClientRequestType::CR_PAUSE;
               pendingControlRequests.push_back(p);
               simPaused = true;
@@ -4809,6 +5542,71 @@ int main(int argc, char* argv[]) {
           } else if (!serverSimControl) {
             ImGui::TextDisabled("Sim control: server does not advertise SIM_CONTROL");
           }
+
+          // ----- Scene editing (CR_SPAWN_* / CR_REMOVE_OBJECT / CR_SAVE_THE_WORLD) -----
+          // These predate the SIM_CONTROL feature bit and are not gated by it, so
+          // they work against any protocol-matched server.
+          ImGui::SeparatorText("Scene editing");
+          const bool canEditScene = client.isConnected();
+          const bool serverIsLocal = localSimulation.active() || isLoopbackHostName(host);
+          if (!canEditScene) {
+            ImGui::TextDisabled("Scene editing: disconnected");
+          }
+          ImGui::BeginDisabled(!canEditScene);
+          if (ImGui::TreeNode("Add object")) {
+            raisin::tcp_viewer::ClientRequest spawnRequest;
+            const glm::vec3 dropPoint = viewer->getCamera().target;
+            if (drawSpawnForm(uiIcons, spawnForm, canEditScene, dropPoint, serverIsLocal,
+                              spawnRequest, spawnStatus)) {
+              pendingControlRequests.push_back(std::move(spawnRequest));
+              lastStatus = spawnStatus;
+            }
+            ImGui::TreePop();
+          }
+
+          const bool canRemoveSelection = canEditScene && requestedEntry != nullptr &&
+                                          requestedTag != 0 && !isContactEntry(requestedEntry);
+          ImGui::BeginDisabled(!canRemoveSelection);
+          if (drawIconTextButton(uiIcons, TcpViewerIconKind::Delete, "Delete Selected",
+                                 "remove_selected_object")) {
+            raisin::tcp_viewer::ClientRequest remove;
+            remove.type = raisin::tcp_viewer::ClientRequestType::CR_REMOVE_OBJECT;
+            remove.visTag = requestedTag;
+            pendingControlRequests.push_back(remove);
+            // The visual disappears with the next scene update; drop the
+            // selection now so the panels do not point at a dead tag.
+            viewer->setTargetVisual(nullptr);
+            lastStatus = "remove queued for tag " + std::to_string(requestedTag);
+          }
+          ImGui::EndDisabled();
+          if (canEditScene && !canRemoveSelection) {
+            ImGui::TextDisabled("Select an object to delete it");
+          }
+
+          if (ImGui::TreeNode("Export world")) {
+            ImGui::SetNextItemWidth(fontScaledTextControlWidth(26.0f));
+            ImGui::InputText("##WorldExportPath", worldExportPathBuf, sizeof(worldExportPathBuf));
+            ImGui::SameLine();
+            ImGui::TextDisabled("XML path (server-side)");
+            const std::string exportPath = trimAscii(std::string(worldExportPathBuf));
+            ImGui::BeginDisabled(!canEditScene || exportPath.empty());
+            if (drawIconTextButton(uiIcons, TcpViewerIconKind::Export, "Export World XML",
+                                   "export_world_xml")) {
+              raisin::tcp_viewer::ClientRequest save;
+              save.type = raisin::tcp_viewer::ClientRequestType::CR_SAVE_THE_WORLD;
+              save.file = exportPath;
+              // Flushed on its own frame; see the send path above.
+              pendingControlRequests.push_back(std::move(save));
+              lastStatus = "world export queued";
+            }
+            ImGui::EndDisabled();
+            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + fontScaledTextControlWidth(26.0f));
+            ImGui::TextDisabled(
+              "The server writes the file, so the path is relative to the simulation host.");
+            ImGui::PopTextWrapPos();
+            ImGui::TreePop();
+          }
+          ImGui::EndDisabled();
 
           ImGui::SeparatorText("Selected control");
           const SelectedObjectInfo& controlInfo = scene.getSelectedInfo();
@@ -4864,8 +5662,8 @@ int main(int argc, char* argv[]) {
             ImGui::EndDisabled();
             drawVec3Control("Force", "##selected_force", controlForce, 0.25f);
             drawVec3Control("Point offset", "##selected_force_offset", controlPointOffset, 0.01f);
-            if (drawIconTextButton(uiIcons, TcpViewerIconKind::Focus, "Apply Force", "apply_selected_force")) {
-              raisin::tcp_viewer::SimControlRequest r;
+            if (drawIconTextButton(uiIcons, TcpViewerIconKind::Force, "Apply Force", "apply_selected_force")) {
+              raisin::tcp_viewer::ClientRequest r;
               r.type = ClientRequestType::CR_APPLY_FORCE;
               r.visTag = requestedTag;
               r.localBodyIdx = std::max(0, controlBodyIdx);
@@ -4875,8 +5673,8 @@ int main(int argc, char* argv[]) {
               lastStatus = "force queued";
             }
             drawVec3Control("Torque", "##selected_torque", controlTorque, 0.05f);
-            if (drawIconTextButton(uiIcons, TcpViewerIconKind::Focus, "Apply Torque", "apply_selected_torque")) {
-              raisin::tcp_viewer::SimControlRequest r;
+            if (drawIconTextButton(uiIcons, TcpViewerIconKind::Torque, "Apply Torque", "apply_selected_torque")) {
+              raisin::tcp_viewer::ClientRequest r;
               r.type = ClientRequestType::CR_APPLY_TORQUE;
               r.visTag = requestedTag;
               r.localBodyIdx = std::max(0, controlBodyIdx);
@@ -4888,6 +5686,17 @@ int main(int argc, char* argv[]) {
             if (!forceSupported) {
               ImGui::TextDisabled("Force/torque: unsupported object type");
             }
+
+            // The interaction wire pulls with a mass-scaled spring rather than
+            // teleporting, so it is the gesture to use on an articulated system
+            // that must stay physically consistent while it is moved.
+            ImGui::BeginDisabled(!canControlSim || !forceSupported);
+            ImGui::Checkbox(kWireDragGestureLabel, &wireDragEnabled);
+            ImGui::BeginDisabled(!wireDragEnabled);
+            drawInlineLabelSliderFloat("wire_drag_stiffness", "Wire stiffness", &wireDragStiffness,
+              kMinWireDragStiffness, kMaxWireDragStiffness, "%.0f N/m/kg");
+            ImGui::EndDisabled();
+            ImGui::EndDisabled();
 
             if (poseSupported) {
               if (!controlPoseInitialized || controlPoseTag != requestedTag) {
@@ -4911,7 +5720,7 @@ int main(int argc, char* argv[]) {
                   controlPoseQuat.z = poseQuatWxyz[3];
                 }
                 if (drawIconTextButton(uiIcons, TcpViewerIconKind::Save, "Set Pose", "set_selected_pose")) {
-                  raisin::tcp_viewer::SimControlRequest r;
+                  raisin::tcp_viewer::ClientRequest r;
                   r.type = ClientRequestType::CR_SET_POSE;
                   r.visTag = requestedTag;
                   r.vec3a = controlPosePosition;
@@ -4999,7 +5808,7 @@ int main(int argc, char* argv[]) {
                         normalizeWxyzSlice(controlGc, static_cast<size_t>(offset + 3));
                       }
                     }
-                    raisin::tcp_viewer::SimControlRequest r;
+                    raisin::tcp_viewer::ClientRequest r;
                     r.type = ClientRequestType::CR_SET_GC;
                     r.visTag = requestedTag;
                     r.gc = controlGc;
@@ -5016,7 +5825,7 @@ int main(int argc, char* argv[]) {
 
           ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("Diagnostics")) {
+        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Diagnostics, "Diagnostics", "tab_diagnostics")) {
           constexpr float packetColumnWidths[] = {62.0f, 62.0f, 46.0f, 34.0f, 44.0f, 44.0f, 44.0f, 44.0f};
           float packetTableWidth = ImGui::GetStyle().ScrollbarSize + ImGui::GetStyle().CellPadding.x * 16.0f;
           for (const float width : packetColumnWidths) {
@@ -5165,7 +5974,7 @@ int main(int argc, char* argv[]) {
           }
           ImGui::EndTabItem();
         }
-        ImGui::EndTabBar();
+        endIconTabBar();
       }
     }
     ImGui::End();
@@ -5379,41 +6188,131 @@ int main(int argc, char* argv[]) {
             ImGui::EndTable();
           }
 
-          if (selectedSignals.size() >= 2) {
-            std::vector<float> linearSpeeds;
-            std::vector<float> angularSpeeds;
-            std::vector<float> generalizedSpeeds;
-            std::vector<float> contactCounts;
-            linearSpeeds.reserve(selectedSignals.size());
-            angularSpeeds.reserve(selectedSignals.size());
-            generalizedSpeeds.reserve(selectedSignals.size());
-            contactCounts.reserve(selectedSignals.size());
-            for (const auto& sample : selectedSignals) {
-              linearSpeeds.push_back(sample.linearSpeed);
-              angularSpeeds.push_back(sample.angularSpeed);
-              generalizedSpeeds.push_back(sample.generalizedSpeed);
-              contactCounts.push_back(sample.contactCount);
+          // ----- Live signal workbench -----
+          {
+            const uint64_t selectedKey = visualMotionKey(selectedTag, selectedIndex);
+            const auto selectedRecordIt = signalRecords.find(selectedKey);
+            const raisin::tcp_viewer::SignalHistory* selectedHistory =
+              selectedRecordIt == signalRecords.end() ? nullptr : &selectedRecordIt->second.history;
+            const std::vector<raisin::tcp_viewer::SignalChannelDesc>& availableChannels =
+              selectedHistory ? selectedHistory->channels()
+                              : kEmptySignalChannels;
+
+            ImGui::SeparatorText("Live Signals");
+            if (!signalPlotChannelsInitialized && !availableChannels.empty()) {
+              signalPlotChannels = raisin::tcp_viewer::defaultSignalChannelKeys(availableChannels);
+              signalPlotChannelsInitialized = true;
             }
+
+            const bool selectionPinned = pinnedSignalObjects.count(selectedKey) != 0;
+            bool pinToggle = selectionPinned;
+            if (ImGui::Checkbox("Keep recording when deselected", &pinToggle)) {
+              if (pinToggle) {
+                pinnedSignalObjects.insert(selectedKey);
+              } else {
+                pinnedSignalObjects.erase(selectedKey);
+              }
+            }
+            if (!pinnedSignalObjects.empty()) {
+              ImGui::SameLine();
+              ImGui::TextDisabled("(%zu pinned)", pinnedSignalObjects.size());
+            }
+
+            if (ImGui::TreeNode("Channels")) {
+              if (availableChannels.empty()) {
+                ImGui::TextDisabled("No channels yet; waiting for scene updates");
+              }
+              for (const auto& channel : availableChannels) {
+                const auto existing = std::find(signalPlotChannels.begin(),
+                  signalPlotChannels.end(), channel.key);
+                bool shown = existing != signalPlotChannels.end();
+                ImGui::PushID(channel.key.c_str());
+                if (ImGui::Checkbox(channel.label.c_str(), &shown)) {
+                  if (shown) {
+                    signalPlotChannels.push_back(channel.key);
+                  } else {
+                    signalPlotChannels.erase(existing);
+                  }
+                  signalPlotChannelsInitialized = true;
+                }
+                if (channel.scope == raisin::tcp_viewer::SignalChannelScope::SelectionOnly) {
+                  ImGui::SameLine();
+                  ImGui::TextDisabled("(selection only)");
+                }
+                ImGui::PopID();
+              }
+              ImGui::TreePop();
+            }
+
             const ImVec2 plotSize(std::max(240.0f, ImGui::GetContentRegionAvail().x),
                                   ImGui::GetFontSize() * 4.5f);
-            ImGui::SeparatorText("Live Signals");
-            const auto drawSignalPlot = [&](SelectedSignalKind kind,
-                                            const std::vector<float>& values) {
-              const SelectedSignalPresentation presentation = selectedSignalPresentation(kind);
-              ImGui::TextUnformatted(presentation.title);
-              char currentValue[64];
-              std::snprintf(currentValue, sizeof(currentValue),
-                presentation.currentValueFormat, values.back());
-              ImGui::PlotLines(presentation.plotId, values.data(),
-                static_cast<int>(values.size()), 0, currentValue, 0.0f, FLT_MAX, plotSize);
-            };
-            drawSignalPlot(SelectedSignalKind::LinearSpeed, linearSpeeds);
-            drawSignalPlot(SelectedSignalKind::AngularSpeed, angularSpeeds);
-            if (selectedEntry->isArticulated) {
-              drawSignalPlot(SelectedSignalKind::GeneralizedSpeed, generalizedSpeeds);
+            // Plot every recorded object so a pinned trace stays visible next to
+            // the current selection.
+            std::vector<uint64_t> plottedKeys;
+            plottedKeys.reserve(signalRecords.size());
+            if (selectedHistory) {
+              plottedKeys.push_back(selectedKey);
             }
-            if (scene.serverSupportsContactObjectTags()) {
-              drawSignalPlot(SelectedSignalKind::Contacts, contactCounts);
+            for (const auto& [key, record] : signalRecords) {
+              if (key != selectedKey) {
+                plottedKeys.push_back(key);
+              }
+            }
+
+            std::vector<float> series;
+            for (const uint64_t key : plottedKeys) {
+              const auto recordIt = signalRecords.find(key);
+              if (recordIt == signalRecords.end()) {
+                continue;
+              }
+              const SignalObjectRecord& record = recordIt->second;
+              if (record.history.size() < 2) {
+                continue;
+              }
+              if (plottedKeys.size() > 1) {
+                ImGui::TextDisabled("%s%s", record.label.c_str(),
+                  key == selectedKey ? " (selected)" : " (pinned)");
+              }
+              ImGui::PushID(static_cast<int>(key & 0x7fffffffu));
+              for (const std::string& channelKey : signalPlotChannels) {
+                if (!record.history.series(channelKey, series) || series.empty()) {
+                  continue;
+                }
+                const int channelIndex = record.history.channelIndex(channelKey);
+                const auto& channel =
+                  record.history.channels()[static_cast<size_t>(channelIndex)];
+                ImGui::TextUnformatted(channel.label.c_str());
+                char currentValue[80];
+                const bool current = record.history.sampleAvailable(record.history.size() - 1,
+                  static_cast<size_t>(channelIndex));
+                std::snprintf(currentValue, sizeof(currentValue),
+                  ((current ? "Current " : "Unavailable; last ") + channel.valueFormat).c_str(), series.back());
+                ImGui::PlotLines(("##signal_" + channelKey).c_str(), series.data(),
+                  static_cast<int>(series.size()), 0, currentValue, FLT_MAX, FLT_MAX, plotSize);
+              }
+              ImGui::PopID();
+            }
+            if (signalPlotChannels.empty()) {
+              ImGui::TextDisabled("Pick channels above to plot them");
+            }
+
+            ImGui::BeginDisabled(!selectedHistory || selectedHistory->empty() ||
+                                 signalPlotChannels.empty());
+            if (drawIconTextButton(uiIcons, TcpViewerIconKind::Export, "Export CSV",
+                                   "export_signal_csv")) {
+              const std::filesystem::path csvPath =
+                raisin::tcp_viewer::timestampedSignalCsvPath(
+                  std::filesystem::path(screenshotDirBuf), objectName,
+                  std::time(nullptr));
+              raisin::tcp_viewer::writeSignalCsv(csvPath, *selectedHistory, signalPlotChannels,
+                signalExportStatus);
+              lastStatus = signalExportStatus;
+            }
+            ImGui::EndDisabled();
+            if (!signalExportStatus.empty()) {
+              ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + plotSize.x);
+              ImGui::TextDisabled("%s", signalExportStatus.c_str());
+              ImGui::PopTextWrapPos();
             }
           }
 
