@@ -45,11 +45,38 @@ Glyphs used:
 - fi-sr-video-camera -> video_uicons_sr_video_camera.png (Start video recording)
 - fi-sr-bolt -> force_uicons_sr_bolt.png                (Apply Force button)
 - fi-sr-rotate-right -> torque_uicons_sr_rotate_right.png (Apply Torque button)
+
+File/folder picker rows (see fileBrowserIconKind()):
+
+- fi-sr-folder -> folder_closed_uicons_sr_folder.png    (directory row)
+- fi-sr-level-up-alt -> folder_up_uicons_sr_level_up_alt.png (parent-directory button)
+- fi-sr-file -> file_uicons_sr_file.png                 (file of unrecognized type)
+- fi-sr-file-code -> file_code_uicons_sr_file_code.png  (xml, json, yaml, mjcf, sdf, scripts)
+- fi-sr-picture -> file_image_uicons_sr_picture.png     (png, jpg, hdr, exr, pgm)
+- fi-sr-file-csv -> file_csv_uicons_sr_file_csv.png     (csv, tsv)
+- fi-sr-file-zipper -> file_archive_uicons_sr_file_zipper.png (zip, tar, gz, 7z)
+
+The picker also reuses icons listed above: fi-sr-robot for .urdf,
+fi-sr-vector-polygon for mesh formats, fi-sr-video-camera for video files, and
+fi-sr-disk for .rrtcs session logs.
 - fi-sr-square-plus -> add_uicons_sr_square_plus.png    (Spawn object button)
 - fi-sr-trash -> delete_uicons_sr_trash.png             (Delete selected object)
 - fi-sr-palette -> render_uicons_sr_palette.png         (Render tab)
 - fi-sr-chart-histogram -> diagnostics_uicons_sr_chart_histogram.png (Diagnostics tab)
 - fi-sr-layers -> objects_uicons_sr_layers.png          (Objects tab)
+- fi-sr-keyboard -> help_uicons_sr_keyboard.png          (Help tab)
+
+Options > Camera view buttons. Arrows for the four side views; front and back
+follow the drafting convention of a dot for the axis coming toward the viewer and
+an X for the axis going away.
+
+- fi-sr-arrow-up -> view_top_uicons_sr_arrow_up.png              (Top view)
+- fi-sr-arrow-down -> view_bottom_uicons_sr_arrow_down.png       (Bottom view)
+- fi-sr-arrow-left -> view_left_uicons_sr_arrow_left.png         (Left view)
+- fi-sr-arrow-right -> view_right_uicons_sr_arrow_right.png      (Right view)
+- fi-sr-bullet -> view_front_uicons_sr_bullet.png                (Front view)
+- fi-sr-cross -> view_back_uicons_sr_cross.png                   (Back view)
+- fi-sr-panorama -> view_perspective_uicons_sr_panorama.png      (Perspective toggle)
 - fi-sr-step-forward -> step_uicons_sr_step_forward.png (Step 1 button)
 - fi-sr-forward-fast -> step_fast_uicons_sr_forward_fast.png (Step 10 button)
 - fi-sr-scanner-image -> depth_uicons_sr_scanner_image.png (depth camera)

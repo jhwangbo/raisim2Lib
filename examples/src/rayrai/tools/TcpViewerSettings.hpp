@@ -4,6 +4,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -23,6 +24,12 @@ inline constexpr float kTcpUpdateRateMaxHz = 120.0f;
 struct ConnectionEntry {
   std::string host;
   int port = kDefaultPort;
+};
+
+/** @brief The endpoint one split pane was last pointed at. */
+struct PanePlacement {
+  uint32_t pane = 0;
+  ConnectionEntry endpoint;
 };
 
 struct ViewerSettings {
@@ -142,6 +149,10 @@ struct ViewerSettings {
   float tcpUpdateRateHz = kTcpUpdateRateDefaultHz;
   std::vector<ConnectionEntry> recentConnections;
   std::vector<std::string> resourceDirs;
+  // Split-pane arrangement, encoded by PaneLayout::serialize(). Empty means the
+  // viewer opens with a single pane.
+  std::string paneLayout;
+  std::vector<PanePlacement> panePlacements;
 };
 
 bool parsePortStrict(const std::string& value, int& port);

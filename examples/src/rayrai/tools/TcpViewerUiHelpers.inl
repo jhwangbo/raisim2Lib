@@ -842,6 +842,316 @@ struct SpawnFormState {
 };
 
 /**
+ * @brief Compact a path for display as `../parent/leaf`.
+ *
+ * A full absolute path overflows the panel's fields, and the part a user
+ * actually recognises is the parent folder plus the leaf. Returns the path
+ * unchanged when it already fits @p maxChars, and falls back to trimming the
+ * leaf when even `../parent/leaf` is too long.
+ */
+std::string compactPathDisplay(const std::string& value, size_t maxChars) {
+  if (maxChars == 0 || value.size() <= maxChars) {
+    return value;
+  }
+  // Split on either separator so Windows paths compact the same way.
+  std::vector<std::string> parts;
+  std::string part;
+  for (const char c : value) {
+    if (c == '/' || c == '\\') {
+      if (!part.empty()) {
+        parts.push_back(part);
+        part.clear();
+      }
+    } else {
+      part.push_back(c);
+    }
+  }
+  if (!part.empty()) {
+    parts.push_back(part);
+  }
+  if (parts.size() < 2) {
+    // Nothing to drop; keep the tail, which holds the file name.
+    return value.size() <= maxChars ? value : "..." + value.substr(value.size() - (maxChars - 3));
+  }
+
+  // Keep whichever separator the path itself used, so a Windows path is not
+  // displayed as though it had been rewritten.
+  const bool backslashPath =
+    value.find('\\') != std::string::npos && value.find('/') == std::string::npos;
+  const std::string sep = backslashPath ? "\\" : "/";
+  const std::string leaf = parts.back();
+  const std::string parent = parts[parts.size() - 2];
+  const std::string compact = ".." + sep + parent + sep + leaf;
+  if (compact.size() <= maxChars) {
+    return compact;
+  }
+  // Even the two-component form is too wide: keep the leaf, which is the part
+  // that distinguishes one output file from another.
+  const std::string leafOnly = "..." + sep + leaf;
+  if (leafOnly.size() <= maxChars || maxChars <= 4) {
+    return leafOnly;
+  }
+  return "..." + sep + leaf.substr(leaf.size() - (maxChars - 4));
+}
+
+/**
+ * @brief A path field that shows `../parent/leaf` until it is clicked.
+ *
+ * The buffer always holds the full path; only the idle display is compacted, so
+ * typing and pasting still operate on the real value. @p editingField tracks
+ * which field is in edit mode -- one id is enough because ImGui can only have
+ * one active item. The read-only and editable states share an ImGui id, so the
+ * click that starts editing also lands the caret in the field.
+ *
+ * @return True when the buffer was edited this frame.
+ */
+bool drawCompactPathInput(const char* id, char* buf, size_t bufSize, float maxWidth,
+                          ImGuiID& editingField, const char* hint = nullptr) {
+  const ImGuiID fieldId = ImGui::GetID(id);
+  const float framePadding = ImGui::GetStyle().FramePadding.x * 2.0f;
+  const float charWidth = std::max(1.0f, ImGui::CalcTextSize("0").x);
+  // Editing needs room to type, so the field opens to its full allowance; the
+  // idle display shrinks to whatever the compacted path actually needs.
+  if (editingField == fieldId) {
+    ImGui::SetNextItemWidth(maxWidth);
+    const bool changed = hint != nullptr
+      ? ImGui::InputTextWithHint(id, hint, buf, bufSize)
+      : ImGui::InputText(id, buf, bufSize);
+    if (ImGui::IsItemDeactivated()) {
+      editingField = 0;
+    }
+    return changed;
+  }
+
+  const size_t maxChars =
+    static_cast<size_t>(std::max(4.0f, (maxWidth - framePadding) / charWidth));
+  const std::string display = compactPathDisplay(buf, maxChars);
+  // Tight to content: the frame is only as wide as the text it shows, floored
+  // so an empty path still leaves a clickable target.
+  const float contentWidth = std::min(maxWidth,
+    std::max(ImGui::GetFontSize() * 6.0f, ImGui::CalcTextSize(display.c_str()).x + framePadding));
+  ImGui::SetNextItemWidth(contentWidth);
+
+  // A read-only InputText keeps the framed look of the editable state, and
+  // activating it hands over to the editable branch on the next frame.
+  std::vector<char> displayBuf(std::max<size_t>(display.size() + 1, 2), '\0');
+  std::snprintf(displayBuf.data(), displayBuf.size(), "%s", display.c_str());
+  ImGui::InputText(id, displayBuf.data(), displayBuf.size(), ImGuiInputTextFlags_ReadOnly);
+  if (ImGui::IsItemActivated()) {
+    editingField = fieldId;
+  }
+  if (ImGui::IsItemHovered() && display != buf) {
+    ImGui::SetTooltip("%s", buf);
+  }
+  return false;
+}
+
+/**
+ * @brief The keyboard/mouse shortcut list.
+ *
+ * Shared by the Help tab and the `H` overlay so the two can never drift apart;
+ * adding a binding here shows up in both.
+ */
+void drawShortcutTable(const char* tableId) {
+  const auto row = [](const char* keys, const char* desc) {
+    ImGui::TableNextColumn();
+    ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.35f, 1.0f), "%s", keys);
+    ImGui::TableNextColumn();
+    // Never wrapped: a binding split over two lines is harder to scan than a
+    // table that is simply wider, so both columns size to their content and the
+    // panel widens to fit.
+    ImGui::TextUnformatted(desc);
+  };
+  // The theme's CellPadding.x is 1px, which leaves the key and action columns
+  // almost touching. Padding applies to both sides of a cell, so this is half
+  // the gap that ends up between them.
+  ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
+    ImVec2(std::round(ImGui::GetFontSize() * 0.5f), ImGui::GetStyle().CellPadding.y));
+  if (!ImGui::BeginTable(tableId, 2,
+        ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
+    ImGui::PopStyleVar();
+    return;
+  }
+  ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed);
+  ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed);
+  ImGui::TableHeadersRow();
+  row("F", "Frame entire scene");
+  row("C", "Frame selected object");
+  row("R", "Reset camera");
+  row("M", "Cycle measure tool: off -> ruler (2pt) -> angle (3pt) -> off");
+  row("G", "Toggle pose grabber (drag XYZ axes on selected body)");
+  row("Esc", "Cancel measure tool / exit fullscreen");
+  row("F11", "Toggle fullscreen");
+  row("F12", "Screenshot");
+  row("WASD", "Move camera (when viewport has focus)");
+  row("Space / Shift", "Camera up / down");
+  row("Right-drag", "Orbit camera");
+  row("Middle-drag", "Pan camera");
+  row("Scroll", "Zoom / dolly");
+  row("Shift+Left-drag", "Apply mouse force to selected body");
+#if defined(__APPLE__)
+  row("Cmd+Left-drag", "Pull a body with the interaction wire (spring, not teleport)");
+#else
+  row("Ctrl+Left-drag", "Pull a body with the interaction wire (spring, not teleport)");
+#endif
+  ImGui::EndTable();
+  ImGui::PopStyleVar();
+}
+
+/** What a file browser session is being used to choose. */
+enum class FileBrowserMode {
+  Folder,    /**< Pick an existing directory. */
+  OpenFile,  /**< Pick an existing file. */
+  SaveFile   /**< Name a file, which need not exist yet. */
+};
+
+/**
+ * @brief State for the shared file/folder picker.
+ *
+ * Deliberately a plain std::filesystem browser rather than a native dialog: the
+ * viewer ships on Linux, macOS, and Windows, and a native picker would mean
+ * three backends plus a dependency. One instance is reused by every control
+ * that needs a path, so they all behave and look the same.
+ */
+struct FileBrowserState {
+  bool open = false;
+  FileBrowserMode mode = FileBrowserMode::Folder;
+  /** Window title, naming what is being chosen. */
+  std::string title = "Select folder";
+  /** Directory currently being listed. */
+  std::filesystem::path current;
+
+  struct Entry {
+    std::filesystem::path path;
+    bool isDirectory = false;
+  };
+  /** Contents of `current`: directories first, then files, each sorted. */
+  std::vector<Entry> entries;
+
+  /** Set when the listing could not be read, shown instead of an empty list. */
+  std::string error;
+  /** Editable directory field, so a path can be pasted instead of navigated to. */
+  char pathBuf[512] = "";
+  /** True while the breadcrumb is swapped for the editable path field. */
+  bool editingPath = false;
+  /** File name for SaveFile mode, or the highlighted file in OpenFile mode. */
+  char nameBuf[256] = "";
+  /** Lower-case extensions without the dot; empty accepts every file. */
+  std::vector<std::string> extensions;
+  /** Applied to the chosen path when the user accepts. */
+  std::function<void(const std::filesystem::path&)> onAccept;
+};
+
+/** True when `path`'s extension passes the browser's filter. */
+bool fileBrowserAcceptsExtension(const FileBrowserState& browser,
+                                 const std::filesystem::path& path) {
+  if (browser.extensions.empty()) {
+    return true;
+  }
+  std::string extension = path.extension().string();
+  if (!extension.empty() && extension.front() == '.') {
+    extension.erase(extension.begin());
+  }
+  extension = toLowerAscii(extension);
+  return std::find(browser.extensions.begin(), browser.extensions.end(), extension) !=
+         browser.extensions.end();
+}
+
+/** Re-list `current`, sorting case-insensitively and reporting unreadable dirs. */
+void refreshFileBrowser(FileBrowserState& browser) {
+  browser.entries.clear();
+  browser.error.clear();
+  std::error_code ec;
+  if (browser.current.empty() || !std::filesystem::is_directory(browser.current, ec)) {
+    browser.error = "not a directory: " + browser.current.string();
+    return;
+  }
+  std::filesystem::directory_iterator it(browser.current, ec);
+  if (ec) {
+    browser.error = "cannot read: " + ec.message();
+    return;
+  }
+  // Iterate with the error_code increment rather than a range-for: the range
+  // version uses the throwing increment, and a directory that turns unreadable
+  // part-way through is an ordinary thing for a file browser to meet.
+  const std::filesystem::directory_iterator end;
+  while (it != end) {
+    std::error_code entryEc;
+    // is_directory follows symlinks, which is what a picker should do; an
+    // unreadable entry is skipped rather than aborting the whole listing.
+    const bool isDirectory = std::filesystem::is_directory(it->path(), entryEc) && !entryEc;
+    if (isDirectory) {
+      browser.entries.push_back({it->path(), true});
+    } else if (browser.mode != FileBrowserMode::Folder &&
+               fileBrowserAcceptsExtension(browser, it->path())) {
+      browser.entries.push_back({it->path(), false});
+    }
+    it.increment(ec);
+    if (ec) {
+      browser.error = "listing stopped: " + ec.message();
+      break;
+    }
+  }
+  // Directories first so navigation targets are grouped at the top.
+  std::sort(browser.entries.begin(), browser.entries.end(),
+    [](const FileBrowserState::Entry& a, const FileBrowserState::Entry& b) {
+      if (a.isDirectory != b.isDirectory) {
+        return a.isDirectory;
+      }
+      return toLowerAscii(a.path.filename().string()) < toLowerAscii(b.path.filename().string());
+    });
+  std::snprintf(browser.pathBuf, sizeof(browser.pathBuf), "%s", browser.current.string().c_str());
+}
+
+/** Point the browser at `path`, falling back to the process's directory. */
+void navigateFileBrowser(FileBrowserState& browser, const std::filesystem::path& path) {
+  std::error_code ec;
+  std::filesystem::path target = path;
+  if (target.empty() || !std::filesystem::is_directory(target, ec)) {
+    target = std::filesystem::current_path(ec);
+    if (ec) {
+      target = std::filesystem::path("/");
+    }
+  }
+  browser.current = std::filesystem::weakly_canonical(target, ec);
+  if (ec || browser.current.empty()) {
+    browser.current = target;
+  }
+  refreshFileBrowser(browser);
+}
+
+/**
+ * @brief Start a browser session.
+ *
+ * @param startPath A directory to open, or a file whose directory is opened and
+ *   whose name pre-fills the name field.
+ * @param extensions Lower-case extensions without the dot; empty accepts all.
+ */
+void openFileBrowser(FileBrowserState& browser, FileBrowserMode mode, std::string title,
+                     const std::filesystem::path& startPath,
+                     std::vector<std::string> extensions,
+                     std::function<void(const std::filesystem::path&)> onAccept) {
+  browser.mode = mode;
+  browser.title = std::move(title);
+  browser.extensions = std::move(extensions);
+  browser.onAccept = std::move(onAccept);
+  browser.nameBuf[0] = '\0';
+
+  std::error_code ec;
+  std::filesystem::path startDirectory = startPath;
+  if (!startPath.empty() && !std::filesystem::is_directory(startPath, ec)) {
+    // A file path: browse its folder and carry the name over, which makes
+    // "change this output file" a one-click operation.
+    startDirectory = startPath.parent_path();
+    const std::string name = startPath.filename().string();
+    std::snprintf(browser.nameBuf, sizeof(browser.nameBuf), "%s", name.c_str());
+  }
+  navigateFileBrowser(browser, startDirectory);
+  browser.open = true;
+}
+
+
+/**
  * @brief Whether a host string names this machine.
  *
  * Used to decide when the viewer may check a spawn geometry path itself: only a
@@ -2555,6 +2865,222 @@ void drawSliderInsideLabel(const char* label, const char* valueText, bool disabl
   drawList->PopClipRect();
 }
 
+// Checkboxes, sliders, and drag fields are the densest controls in the panel and
+// the ones that push it past a screenful. ImGui derives all of their heights
+// from GetFrameHeight() = font size + 2 * FramePadding.y, so trimming that
+// padding shrinks exactly those widgets while leaving buttons, combos, and text
+// inputs at their normal size.
+// ImGui's floor for these widgets is the font height itself, so this padding is
+// what remains to give back. Two pixels at the default font keeps the inline
+// slider's value text (drawn inside the frame by drawSliderInsideLabel) clear of
+// the border, and scales with the font so it tracks the UI Scale slider. The
+// min() guarantees this never *increases* a caller's padding.
+inline constexpr float kCompactControlPaddingRatio = 0.11f;
+// Vertical gap *around* a compact control, in pixels. Absolute rather than a
+// fraction of the font size, so it does not grow with the UI Scale slider.
+// Tighter than ImGui's stock 4px: the panel is a long settings list and the
+// rows are meant to pack. Only the vertical gap is touched -- ItemSpacing.x
+// drives SameLine(), and changing it would move rows like
+// [Connect] [Auto-connect].
+inline constexpr float kCompactControlSpacingY = 3.0f;
+
+float compactControlPaddingY(float fontSize, float stylePaddingY) {
+  if (!std::isfinite(fontSize) || fontSize <= 0.0f) {
+    return stylePaddingY;
+  }
+  return std::min(stylePaddingY, std::max(1.0f, fontSize * kCompactControlPaddingRatio));
+}
+
+/** The compact vertical gap. Deliberately independent of the panel's style. */
+float compactControlSpacingY() {
+  return kCompactControlSpacingY;
+}
+
+/**
+ * @brief Cell padding that gives table-hosted controls the same gap.
+ *
+ * A table derives its row height from CellPadding, ignoring ItemSpacing.y
+ * entirely, so a checkbox grid would not match the loose checkboxes around it.
+ * Half the gap per cell edge adds up to the same spacing between rows. Must be
+ * pushed before BeginTable(), not per cell.
+ */
+ImVec2 compactControlCellPadding(const ImVec2& styleCellPadding) {
+  return ImVec2(styleCellPadding.x, compactControlSpacingY() * 0.5f);
+}
+
+/**
+ * @brief RAII scope that makes a control shorter but gives it more margin.
+ *
+ * Trims FramePadding.y (which sets the widget's own height) and raises
+ * ItemSpacing.y (the gap that follows it).
+ */
+struct CompactControlScope {
+  CompactControlScope() {
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const float fontSize = ImGui::GetFontSize();
+    ImVec2 padding = style.FramePadding;
+    padding.y = compactControlPaddingY(fontSize, padding.y);
+    ImVec2 spacing = style.ItemSpacing;
+    spacing.y = compactControlSpacingY();
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, padding);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, spacing);
+  }
+  CompactControlScope(const CompactControlScope&) = delete;
+  CompactControlScope& operator=(const CompactControlScope&) = delete;
+  ~CompactControlScope() { ImGui::PopStyleVar(2); }
+};
+
+bool drawCompactCheckbox(const char* label, bool* value) {
+  CompactControlScope scope;
+  return ImGui::Checkbox(label, value);
+}
+
+bool compactSliderFloat(const char* label, float* value, float min, float max,
+                        const char* format = "%.3f") {
+  CompactControlScope scope;
+  return ImGui::SliderFloat(label, value, min, max, format);
+}
+
+bool compactSliderInt(const char* label, int* value, int min, int max,
+                      const char* format = "%d") {
+  CompactControlScope scope;
+  return ImGui::SliderInt(label, value, min, max, format);
+}
+
+bool compactDragFloat(const char* label, float* value, float speed = 1.0f, float min = 0.0f,
+                      float max = 0.0f,
+                      const char* format = "%.3f") {
+  CompactControlScope scope;
+  return ImGui::DragFloat(label, value, speed, min, max, format);
+}
+
+bool compactDragFloat2(const char* label, float value[2], float speed = 1.0f, float min = 0.0f,
+                      float max = 0.0f,
+                       const char* format = "%.3f") {
+  CompactControlScope scope;
+  return ImGui::DragFloat2(label, value, speed, min, max, format);
+}
+
+bool compactDragFloat3(const char* label, float value[3], float speed = 1.0f, float min = 0.0f,
+                      float max = 0.0f,
+                       const char* format = "%.3f") {
+  CompactControlScope scope;
+  return ImGui::DragFloat3(label, value, speed, min, max, format);
+}
+
+bool compactDragFloat4(const char* label, float value[4], float speed = 1.0f, float min = 0.0f,
+                      float max = 0.0f,
+                       const char* format = "%.3f") {
+  CompactControlScope scope;
+  return ImGui::DragFloat4(label, value, speed, min, max, format);
+}
+
+/**
+ * @brief Stacked up/down arrow buttons, sized to sit beside a numeric field.
+ *
+ * ImGui's ArrowButton is locked to a full frame height, and InputInt's built-in
+ * "-"/"+" pair is as wide as two buttons; neither fits a dense settings panel.
+ * Holding an arrow repeats, which is what makes a stepper usable for a value
+ * like a frame rate.
+ *
+ * @return +1 when the up arrow fired, -1 for down, 0 otherwise.
+ */
+int drawCompactStepper(const char* id, float width) {
+  // The two halves must total the field's height exactly, so the lower half
+  // takes the remainder when the height is odd.
+  const float frameHeight = ImGui::GetFrameHeight();
+  const float upperHeight = std::max(2.0f, std::floor(frameHeight * 0.5f));
+  const float lowerHeight = std::max(2.0f, frameHeight - upperHeight);
+  int delta = 0;
+  ImGui::PushID(id);
+  // Zero spacing and padding so the two halves read as one control.
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
+  ImGui::PushButtonRepeat(true);
+  ImGui::BeginGroup();
+  for (int half = 0; half < 2; ++half) {
+    const bool isUp = half == 0;
+    ImGui::PushID(half);
+    if (ImGui::Button("##step", ImVec2(width, isUp ? upperHeight : lowerHeight))) {
+      delta = isUp ? 1 : -1;
+    }
+    // The font is an ASCII subset with no arrow glyphs, so draw the triangle.
+    const ImVec2 itemMin = ImGui::GetItemRectMin();
+    const ImVec2 itemMax = ImGui::GetItemRectMax();
+    const float insetX = std::max(2.0f, (itemMax.x - itemMin.x) * 0.28f);
+    const float insetY = std::max(1.5f, (itemMax.y - itemMin.y) * 0.30f);
+    const float midX = (itemMin.x + itemMax.x) * 0.5f;
+    const ImU32 arrowColor = ImGui::GetColorU32(ImGuiCol_Text);
+    if (isUp) {
+      ImGui::GetWindowDrawList()->AddTriangleFilled(
+        ImVec2(midX, itemMin.y + insetY),
+        ImVec2(itemMin.x + insetX, itemMax.y - insetY),
+        ImVec2(itemMax.x - insetX, itemMax.y - insetY), arrowColor);
+    } else {
+      ImGui::GetWindowDrawList()->AddTriangleFilled(
+        ImVec2(itemMin.x + insetX, itemMin.y + insetY),
+        ImVec2(itemMax.x - insetX, itemMin.y + insetY),
+        ImVec2(midX, itemMax.y - insetY), arrowColor);
+    }
+    ImGui::PopID();
+  }
+  ImGui::EndGroup();
+  ImGui::PopButtonRepeat();
+  ImGui::PopStyleVar(2);
+  ImGui::PopID();
+  return delta;
+}
+
+/** Numeric text box plus a compact stepper, with the label trailing. */
+bool drawStepperFloat(const char* id, const char* label, float* value, float step, float min,
+                      float max, const char* format, float fieldWidth = 0.0f) {
+  ImGui::PushID(id);
+  bool changed = false;
+  const float width = fieldWidth > 0.0f ? fieldWidth : ImGui::GetFontSize() * 3.6f;
+  // No CompactControlScope here: these are text boxes and must match the height
+  // of every other text box in the panel, not the shorter slider/checkbox rows.
+  ImGui::SetNextItemWidth(width);
+  changed = ImGui::InputFloat("##value", value, 0.0f, 0.0f, format);
+  ImGui::SameLine(0.0f, 1.0f);
+  const int delta = drawCompactStepper("stepper", std::round(ImGui::GetFontSize() * 0.62f));
+  if (delta != 0) {
+    *value += static_cast<float>(delta) * step;
+    changed = true;
+  }
+  if (changed) {
+    *value = std::clamp(*value, min, max);
+  }
+  ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted(label);
+  ImGui::PopID();
+  return changed;
+}
+
+/** Integer flavour of drawStepperFloat(). */
+bool drawStepperInt(const char* id, const char* label, int* value, int step, int min, int max,
+                    float fieldWidth = 0.0f) {
+  ImGui::PushID(id);
+  bool changed = false;
+  const float width = fieldWidth > 0.0f ? fieldWidth : ImGui::GetFontSize() * 3.6f;
+  ImGui::SetNextItemWidth(width);
+  changed = ImGui::InputInt("##value", value, 0, 0);
+  ImGui::SameLine(0.0f, 1.0f);
+  const int delta = drawCompactStepper("stepper", std::round(ImGui::GetFontSize() * 0.62f));
+  if (delta != 0) {
+    *value += delta * step;
+    changed = true;
+  }
+  if (changed) {
+    *value = std::clamp(*value, min, max);
+  }
+  ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted(label);
+  ImGui::PopID();
+  return changed;
+}
+
 bool drawInlineLabelSliderFloat(const char* id, const char* label, float* value, float min, float max,
                                 const char* format, float itemWidth = 0.0f, bool disabled = false) {
   ImGui::PushID(id ? id : label);
@@ -2562,7 +3088,7 @@ bool drawInlineLabelSliderFloat(const char* id, const char* label, float* value,
     ImGui::PushItemWidth(itemWidth);
   }
   ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-  const bool changed = ImGui::SliderFloat("##slider", value, min, max, format);
+  const bool changed = compactSliderFloat("##slider", value, min, max, format);
   ImGui::PopStyleColor();
   if (itemWidth > 0.0f) {
     ImGui::PopItemWidth();
@@ -2583,7 +3109,7 @@ bool drawInlineLabelSliderInt(const char* id, const char* label, int* value, int
     ImGui::PushItemWidth(itemWidth);
   }
   ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-  const bool changed = ImGui::SliderInt("##slider", value, min, max, format);
+  const bool changed = compactSliderInt("##slider", value, min, max, format);
   ImGui::PopStyleColor();
   if (itemWidth > 0.0f) {
     ImGui::PopItemWidth();
@@ -2670,6 +3196,21 @@ enum class TcpViewerIconKind {
   Render,
   Diagnostics,
   Objects,
+  Help,
+  ViewTop,
+  ViewBottom,
+  ViewLeft,
+  ViewRight,
+  ViewFront,
+  ViewBack,
+  ViewPerspective,
+  FolderClosed,
+  FolderUp,
+  File,
+  FileCode,
+  FileImage,
+  FileCsv,
+  FileArchive,
   Step,
   StepFast,
   SensorDepth,
@@ -2742,6 +3283,23 @@ const char* tcpViewerIconFileName(TcpViewerIconKind kind) {
     case TcpViewerIconKind::Render: return "render_uicons_sr_palette.png";
     case TcpViewerIconKind::Diagnostics: return "diagnostics_uicons_sr_chart_histogram.png";
     case TcpViewerIconKind::Objects: return "objects_uicons_sr_layers.png";
+    case TcpViewerIconKind::Help: return "help_uicons_sr_keyboard.png";
+    case TcpViewerIconKind::ViewTop: return "view_top_uicons_sr_arrow_up.png";
+    case TcpViewerIconKind::ViewBottom: return "view_bottom_uicons_sr_arrow_down.png";
+    case TcpViewerIconKind::ViewLeft: return "view_left_uicons_sr_arrow_left.png";
+    case TcpViewerIconKind::ViewRight: return "view_right_uicons_sr_arrow_right.png";
+    // Drafting convention: a dot is the axis coming toward the viewer, an X is
+    // the axis going away, so front/back need no arrow direction at all.
+    case TcpViewerIconKind::ViewFront: return "view_front_uicons_sr_bullet.png";
+    case TcpViewerIconKind::ViewBack: return "view_back_uicons_sr_cross.png";
+    case TcpViewerIconKind::ViewPerspective: return "view_perspective_uicons_sr_panorama.png";
+    case TcpViewerIconKind::FolderClosed: return "folder_closed_uicons_sr_folder.png";
+    case TcpViewerIconKind::FolderUp: return "folder_up_uicons_sr_level_up_alt.png";
+    case TcpViewerIconKind::File: return "file_uicons_sr_file.png";
+    case TcpViewerIconKind::FileCode: return "file_code_uicons_sr_file_code.png";
+    case TcpViewerIconKind::FileImage: return "file_image_uicons_sr_picture.png";
+    case TcpViewerIconKind::FileCsv: return "file_csv_uicons_sr_file_csv.png";
+    case TcpViewerIconKind::FileArchive: return "file_archive_uicons_sr_file_zipper.png";
     case TcpViewerIconKind::Step: return "step_uicons_sr_step_forward.png";
     case TcpViewerIconKind::StepFast: return "step_fast_uicons_sr_forward_fast.png";
     case TcpViewerIconKind::SensorDepth: return "depth_uicons_sr_scanner_image.png";
@@ -2762,5 +3320,44 @@ const char* tcpViewerIconFileName(TcpViewerIconKind kind) {
     case TcpViewerIconKind::Count: break;
   }
   return "";
+}
+
+/** Icon for a directory row, or for a file row based on its extension. */
+TcpViewerIconKind fileBrowserIconKind(const std::filesystem::path& path, bool isDirectory) {
+  if (isDirectory) {
+    return TcpViewerIconKind::FolderClosed;
+  }
+  std::string extension = path.extension().string();
+  if (!extension.empty() && extension.front() == '.') {
+    extension.erase(extension.begin());
+  }
+  extension = toLowerAscii(extension);
+
+  if (extension == "urdf") return TcpViewerIconKind::Robot;
+  if (extension == "obj" || extension == "stl" || extension == "dae" || extension == "ply" ||
+      extension == "gltf" || extension == "glb" || extension == "fbx" || extension == "usd" ||
+      extension == "usda" || extension == "usdc" || extension == "usdz") {
+    return TcpViewerIconKind::ObjectMesh;
+  }
+  if (extension == "png" || extension == "jpg" || extension == "jpeg" || extension == "bmp" ||
+      extension == "tga" || extension == "hdr" || extension == "exr" || extension == "pgm") {
+    return TcpViewerIconKind::FileImage;
+  }
+  if (extension == "mp4" || extension == "mov" || extension == "avi" || extension == "mkv" ||
+      extension == "webm") {
+    return TcpViewerIconKind::Video;
+  }
+  if (extension == "csv" || extension == "tsv") return TcpViewerIconKind::FileCsv;
+  if (extension == "zip" || extension == "gz" || extension == "tgz" || extension == "bz2" ||
+      extension == "xz" || extension == "7z" || extension == "tar" || extension == "zst") {
+    return TcpViewerIconKind::FileArchive;
+  }
+  if (extension == "xml" || extension == "json" || extension == "yaml" || extension == "yml" ||
+      extension == "lua" || extension == "py" || extension == "toml" || extension == "ini" ||
+      extension == "cfg" || extension == "mjcf" || extension == "sdf") {
+    return TcpViewerIconKind::FileCode;
+  }
+  if (extension == "rrtcs") return TcpViewerIconKind::Save;
+  return TcpViewerIconKind::File;
 }
 

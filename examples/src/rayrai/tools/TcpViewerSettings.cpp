@@ -694,6 +694,20 @@ void loadViewerSettings(ViewerSettings& settings) {
         recordConnection(settings.recentConnections, entry.host, entry.port);
       }
     }
+    else if (key == "pane_layout") {
+      settings.paneLayout = value;
+    }
+    else if (key == "pane_endpoint") {
+      // "<pane id> <host>:<port>"
+      const size_t space = value.find(' ');
+      ConnectionEntry entry;
+      if (space != std::string::npos && parseConnectionLabel(value.substr(space + 1), entry)) {
+        PanePlacement placement;
+        placement.pane = static_cast<uint32_t>(std::strtoul(value.substr(0, space).c_str(), nullptr, 10));
+        placement.endpoint = entry;
+        if (placement.pane != 0) settings.panePlacements.push_back(placement);
+      }
+    }
     else if (key == "resource_dir") {
       if (!value.empty()) {
         recordResourceDir(settings.resourceDirs, value);
@@ -835,6 +849,13 @@ void saveViewerSettings(const ViewerSettings& settings) {
   output << "tcp_update_rate_hz: " << settings.tcpUpdateRateHz << "\n";
   for (const auto& entry : settings.recentConnections) {
     output << "recent_connection: " << formatConnectionLabel(entry) << "\n";
+  }
+  if (!settings.paneLayout.empty()) {
+    output << "pane_layout: " << settings.paneLayout << "\n";
+  }
+  for (const auto& placement : settings.panePlacements) {
+    output << "pane_endpoint: " << placement.pane << " "
+           << formatConnectionLabel(placement.endpoint) << "\n";
   }
   for (const auto& dir : settings.resourceDirs) {
     output << "resource_dir: " << dir << "\n";
