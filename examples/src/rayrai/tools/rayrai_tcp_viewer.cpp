@@ -56,6 +56,7 @@
 
 #include "TcpViewerDiscovery.hpp"
 #include "TcpViewerPaneLayout.hpp"
+#include "TcpViewerPaneChrome.hpp"
 #include "TcpViewerScreenshot.hpp"
 #include "TcpViewerSession.hpp"
 #include "TcpViewerSensors.hpp"
@@ -2294,6 +2295,15 @@ struct ViewerPane {
 
 } // namespace
 
+// Restored panes resume their own endpoint through the normal retry loop.
+static void restorePaneConnection(ViewerPane& pane, const ConnectionEntry& endpoint,
+                                  bool autoConnect) {
+  std::snprintf(pane.host, sizeof(pane.host), "%s", endpoint.host.c_str());
+  pane.port = endpoint.port;
+  std::snprintf(pane.portBuf, sizeof(pane.portBuf), "%d", endpoint.port);
+  pane.autoConnect = autoConnect;
+}
+
 #ifndef RAYRAI_TCP_VIEWER_NO_MAIN
 int main(int argc, char* argv[]) {
   std::setlocale(LC_ALL, "C");
@@ -2609,11 +2619,7 @@ int main(int argc, char* argv[]) {
     // The command line wins over a saved placement, but only when it named an
     // endpoint; otherwise the first pane comes back where it was left too.
     if (placement.pane == primaryPaneId && options.endpointSet) continue;
-    std::snprintf(restored->second->host, sizeof(restored->second->host), "%s",
-                  placement.endpoint.host.c_str());
-    restored->second->port = placement.endpoint.port;
-    std::snprintf(restored->second->portBuf, sizeof(restored->second->portBuf), "%d",
-                  placement.endpoint.port);
+    restorePaneConnection(*restored->second, placement.endpoint, defaultAutoConnect);
   }
 
   // --warm-at-startup: pay the ~13 s of non-shader lazy init up front so that any
@@ -7712,17 +7718,18 @@ int main(int argc, char* argv[]) {
     }
 
     // ----- dividers ---------------------------------------------------------
-    // Drawn in the foreground so they sit above the pane images, and grabbed
+    // Drawn in a regular window layer below popups, and grabbed
     // over a slightly wider band than the drawn line so a thin divider is still
     // easy to hit.
+    ImDrawList* chromeDrawList = raisin::tcp_viewer::paneChromeDrawList(uiSize);
+    const bool popupOpen = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
     if (!paneSplitters.empty()) {
-      ImDrawList* chromeDrawList = ImGui::GetForegroundDrawList();
       const float grabPadding = std::max(2.0f, std::round(2.0f * uiScale));
       for (const auto& handle : paneSplitters) {
         const bool vertical = handle.orientation == raisin::tcp_viewer::SplitOrientation::Vertical;
         const ImVec2 dividerMin(handle.x, handle.y);
         const ImVec2 dividerMax(handle.x + handle.width, handle.y + handle.height);
-        const bool over = mousePos.x >= dividerMin.x - grabPadding &&
+        const bool over = !popupOpen && mousePos.x >= dividerMin.x - grabPadding &&
                           mousePos.x <= dividerMax.x + grabPadding &&
                           mousePos.y >= dividerMin.y - grabPadding &&
                           mousePos.y <= dividerMax.y + grabPadding;
@@ -7755,7 +7762,7 @@ int main(int argc, char* argv[]) {
     if (paneRects.size() > 1) {
       for (const auto& rect : paneRects) {
         if (rect.pane != paneLayout.focused()) continue;
-        ImGui::GetForegroundDrawList()->AddRect(
+        chromeDrawList->AddRect(
           ImVec2(rect.x, rect.y), ImVec2(rect.x + rect.width, rect.y + rect.height),
           ImGui::GetColorU32(ImVec4(0.36f, 0.55f, 0.85f, 0.85f)), 0.0f, 0,
           std::max(1.0f, std::round(2.0f * uiScale)));
@@ -7867,4 +7874,3 @@ int main(int argc, char* argv[]) {
   return viewerExitCode;
 }
 #endif  // RAYRAI_TCP_VIEWER_NO_MAIN
-
