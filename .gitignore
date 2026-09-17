@@ -39,3 +39,7 @@ linux-x86-*/
 linux-arm64-*/
 raisim_coacd_*
 imgui.ini
+
+# Regenerable async mesh LOD sidecars.
+rayrai_cache_*.lods
+rayrai_cache_*.lods.tmp.*

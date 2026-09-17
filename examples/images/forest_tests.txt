@@ -1,0 +1,126 @@
+Rayrai exact receiver-plane validation, Clang 20.1.8 Release, Linux x86-64.
+49 renderer tests + 5 SDK forest tests; ctest -j12.
+
+Test project /tmp/rayrai-forest-build
+      Start 123: rayrai_render_diagnostics_test
+      Start  30: rayrai_articulated_mesh_completeness_test
+      Start 124: rayrai_async_instanced_mesh_test
+      Start  65: rayrai_instanced_light_shader_test
+      Start  28: rayrai_unused_simple_pass_test
+      Start  66: rayrai_cached_ao_test
+      Start 108: rayrai_mixed_foliage_batches_test
+      Start  34: rayrai_pbr_depth_specialization_test
+      Start  88: rayrai_additional_static_dynamic_shadow_composition_test
+      Start  84: rayrai_scene_instanced_draw_list_test
+      Start  91: rayrai_foliage_alpha_depth_prepass_test
+      Start  83: rayrai_foliage_multi_draw_indirect_test
+ 1/49 Test  #83: rayrai_foliage_multi_draw_indirect_test ....................   Passed    1.12 sec
+      Start  93: rayrai_foliage_depth_capture_reuse_test
+ 2/49 Test  #84: rayrai_scene_instanced_draw_list_test ......................   Passed    1.14 sec
+      Start  92: rayrai_foliage_color_depth_prepass_test
+ 3/49 Test  #28: rayrai_unused_simple_pass_test .............................   Passed    1.23 sec
+      Start  89: rayrai_per_light_shadow_dirty_tracking_test
+ 4/49 Test  #91: rayrai_foliage_alpha_depth_prepass_test ....................   Passed    1.24 sec
+      Start  87: rayrai_static_dynamic_shadow_composition_test
+ 5/49 Test  #88: rayrai_additional_static_dynamic_shadow_composition_test ...   Passed    1.28 sec
+      Start 105: rayrai_conservative_occlusion_culling_test
+ 6/49 Test  #65: rayrai_instanced_light_shader_test .........................   Passed    1.36 sec
+      Start  52: rayrai_lazy_shader_startup_test
+ 7/49 Test  #34: rayrai_pbr_depth_specialization_test .......................   Passed    1.48 sec
+      Start 103: rayrai_hierarchical_foliage_clusters_test
+ 8/49 Test  #66: rayrai_cached_ao_test ......................................   Passed    1.50 sec
+      Start  51: rayrai_shadow_framebuffer_test
+ 9/49 Test #124: rayrai_async_instanced_mesh_test ...........................   Passed    1.90 sec
+      Start  85: rayrai_visible_instance_frame_cache_test
+10/49 Test  #87: rayrai_static_dynamic_shadow_composition_test ..............   Passed    0.79 sec
+      Start  86: rayrai_stable_shadow_map_cache_test
+11/49 Test  #89: rayrai_per_light_shadow_dirty_tracking_test ................   Passed    0.85 sec
+      Start  78: rayrai_foliage_shadow_lod_test
+12/49 Test  #52: rayrai_lazy_shader_startup_test ............................   Passed    0.76 sec
+      Start 107: rayrai_mesh_lod_quality_test
+13/49 Test #108: rayrai_mixed_foliage_batches_test ..........................   Passed    2.13 sec
+      Start 104: rayrai_hiz_occlusion_culling_test
+14/49 Test  #93: rayrai_foliage_depth_capture_reuse_test ....................   Passed    1.17 sec
+      Start  64: rayrai_instanced_material_detail_test
+15/49 Test  #92: rayrai_foliage_color_depth_prepass_test ....................   Passed    1.33 sec
+16/49 Test #105: rayrai_conservative_occlusion_culling_test .................   Passed    1.19 sec
+      Start 115: rayrai_mixed_visual_draws_test
+      Start  90: rayrai_foliage_front_to_back_ordering_test
+17/49 Test  #51: rayrai_shadow_framebuffer_test .............................   Passed    0.98 sec
+      Start 106: rayrai_mesh_preprocess_cache_test
+18/49 Test #103: rayrai_hierarchical_foliage_clusters_test ..................   Passed    1.10 sec
+      Start  99: rayrai_foliage_msaa_occlusion_test
+19/49 Test  #30: rayrai_articulated_mesh_completeness_test ..................   Passed    2.70 sec
+      Start 121: rayrai_instanced_vao_ownership_test
+20/49 Test  #85: rayrai_visible_instance_frame_cache_test ...................   Passed    0.88 sec
+      Start  67: rayrai_cascade_lighting_test
+21/49 Test  #86: rayrai_stable_shadow_map_cache_test ........................   Passed    0.85 sec
+      Start  95: rayrai_foliage_preparation_test
+22/49 Test #104: rayrai_hiz_occlusion_culling_test ..........................   Passed    0.84 sec
+      Start 117: rayrai_msaa_render_target_test
+23/49 Test #123: rayrai_render_diagnostics_test .............................   Passed    3.00 sec
+      Start 119: rayrai_texture_binding_cache_invalidation_test
+24/49 Test  #78: rayrai_foliage_shadow_lod_test .............................   Passed    0.96 sec
+      Start  94: rayrai_foliage_borrowed_buffer_test
+25/49 Test  #64: rayrai_instanced_material_detail_test ......................   Passed    0.86 sec
+      Start  96: rayrai_foliage_instance_sort_test
+26/49 Test #107: rayrai_mesh_lod_quality_test ...............................   Passed    1.05 sec
+      Start 100: rayrai_foliage_depth_tile_test
+27/49 Test #106: rayrai_mesh_preprocess_cache_test ..........................   Passed    0.74 sec
+      Start  98: rayrai_foliage_receiver_planes_test
+28/49 Test #100: rayrai_foliage_depth_tile_test .............................   Passed    0.07 sec
+      Start 101: rayrai_foliage_box_projection_test
+29/49 Test  #98: rayrai_foliage_receiver_planes_test ........................   Passed    0.06 sec
+      Start  97: rayrai_foliage_frustum_planes_test
+30/49 Test #101: rayrai_foliage_box_projection_test .........................   Passed    0.05 sec
+      Start 125: rayrai_async_lod_cache_test
+31/49 Test  #97: rayrai_foliage_frustum_planes_test .........................   Passed    0.04 sec
+      Start  14: rayrai_forest_lighting_test
+32/49 Test #125: rayrai_async_lod_cache_test ................................   Passed    0.03 sec
+      Start  68: rayrai_vertex_displacement_material_test
+33/49 Test  #14: rayrai_forest_lighting_test ................................   Passed    0.03 sec
+      Start 102: rayrai_foliage_world_bounds_cache_test
+34/49 Test  #68: rayrai_vertex_displacement_material_test ...................   Passed    0.03 sec
+      Start  54: rayrai_render_quality_preset_matrix_test
+35/49 Test  #90: rayrai_foliage_front_to_back_ordering_test .................   Passed    0.87 sec
+36/49 Test #115: rayrai_mixed_visual_draws_test .............................   Passed    0.88 sec
+37/49 Test  #54: rayrai_render_quality_preset_matrix_test ...................   Passed    0.03 sec
+38/49 Test #102: rayrai_foliage_world_bounds_cache_test .....................   Passed    0.03 sec
+39/49 Test #121: rayrai_instanced_vao_ownership_test ........................   Passed    0.78 sec
+40/49 Test  #95: rayrai_foliage_preparation_test ............................   Passed    0.66 sec
+41/49 Test  #67: rayrai_cascade_lighting_test ...............................   Passed    0.78 sec
+42/49 Test  #96: rayrai_foliage_instance_sort_test ..........................   Passed    0.40 sec
+43/49 Test #119: rayrai_texture_binding_cache_invalidation_test .............   Passed    0.60 sec
+44/49 Test #117: rayrai_msaa_render_target_test .............................   Passed    0.62 sec
+45/49 Test  #94: rayrai_foliage_borrowed_buffer_test ........................   Passed    0.57 sec
+46/49 Test  #99: rayrai_foliage_msaa_occlusion_test .........................   Passed    1.11 sec
+      Start  10: rayrai_baked_irradiance_test
+47/49 Test  #10: rayrai_baked_irradiance_test ...............................   Passed    0.34 sec
+      Start  11: rayrai_sky_visibility_test
+48/49 Test  #11: rayrai_sky_visibility_test .................................   Passed    0.34 sec
+      Start   8: rayrai_bc7_texture_storage_test
+49/49 Test   #8: rayrai_bc7_texture_storage_test ............................   Passed    0.17 sec
+
+100% tests passed, 0 tests failed out of 49
+
+Label Time Summary:
+cpu    =   0.63 sec*proc (6 tests)
+gpu    =  42.21 sec*proc (42 tests)
+
+Total Test time (real) =   4.55 sec
+
+Test project /tmp/raisim2-forest-build
+    Start 5: forest_foliage_shadows
+1/5 Test #5: forest_foliage_shadows .............   Passed    8.29 sec
+    Start 4: forest_render_smoke
+2/5 Test #4: forest_render_smoke ................   Passed    8.14 sec
+    Start 3: forest_asset_integrity
+    Start 1: forest_terrain_placement_physics
+    Start 2: forest_loading_progress
+3/5 Test #2: forest_loading_progress ............   Passed    0.03 sec
+4/5 Test #1: forest_terrain_placement_physics ...   Passed    0.14 sec
+5/5 Test #3: forest_asset_integrity .............   Passed    1.73 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Total Test time (real) =  18.16 sec

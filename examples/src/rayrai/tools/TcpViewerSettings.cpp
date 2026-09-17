@@ -357,8 +357,9 @@ const char* qualityName(int quality) {
 }
 
 const char* colorModeName(int colorMode) {
-  static constexpr const char* kNames[] = {"Fast Linear", "ACES Approx", "Unreal Preview"};
-  return kNames[std::clamp(colorMode, 0, 2)];
+  static constexpr const char* kNames[] = {
+    "Fast Linear", "ACES Approx", "Unreal Preview", "Filmic Approx", "AgX Approx"};
+  return kNames[std::clamp(colorMode, 0, 4)];
 }
 
 int qualityIndexFromName(const std::string& rawValue, int fallback) {
@@ -376,6 +377,8 @@ int colorModeIndexFromName(const std::string& rawValue, int fallback) {
   if (value == "fast_linear" || value == "fast linear" || value == "linear" || value == "0") return 0;
   if (value == "aces_approx" || value == "aces approx" || value == "aces" || value == "1") return 1;
   if (value == "unreal_preview" || value == "unreal preview" || value == "unreal" || value == "2") return 2;
+  if (value == "filmic_approx" || value == "filmic approx" || value == "filmic" || value == "3") return 3;
+  if (value == "agx_approx" || value == "agx approx" || value == "agx" || value == "4") return 4;
   return fallback;
 }
 
@@ -475,7 +478,7 @@ void sanitizeViewerSettings(ViewerSettings& settings) {
   settings.shadowCenterOffset = clampValue(settings.shadowCenterOffset, 0.0f, 80.0f);
   settings.fogDensity = clampValue(settings.fogDensity, 0.0f, 0.08f);
   settings.gamma = clampValue(settings.gamma, 0.5f, 2.5f);
-  settings.colorMode = clampValue(settings.colorMode, 0, 2);
+  settings.colorMode = clampValue(settings.colorMode, 0, 4);
   settings.bloomThreshold = clampValue(settings.bloomThreshold, 0.0f, 4.0f);
   settings.bloomStrength = clampValue(settings.bloomStrength, 0.0f, 2.0f);
   settings.bloomRadius = clampValue(settings.bloomRadius, 0.0f, 12.0f);

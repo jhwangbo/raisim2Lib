@@ -3907,6 +3907,7 @@ int main(int argc, char* argv[]) {
       weatherDefaultEnabledForQuality(settings.renderQuality);
     if (weatherControlsLight) {
       viewer->updateWeather(static_cast<double>(std::max(0.0f, io.DeltaTime)));
+      applyWeatherLightStrength(viewer->getLight(), viewer->getRenderQualitySettings(), lightStrength);
     } else {
       auto& lightRef = viewer->getLight();
       lightRef.type = raisin::LightType::DIRECTIONAL;
@@ -5235,10 +5236,10 @@ int main(int argc, char* argv[]) {
       detailChanged |= drawInlineLabelSliderFloat("render_far_clip", "Far clip", &settings.cameraFar, 10.0f, 5000.0f, "%.0f");
 
       ImGui::SeparatorText("Light");
+      detailChanged |= drawInlineLabelSliderFloat("render_key_strength", "Key strength", &settings.lightStrength, 0.0f, 2.0f, "%.2f");
       ImGui::BeginDisabled(settings.skyEnabled && settings.skyWeatherEnabled);
       detailChanged |= drawInlineLabelSliderFloat("render_light_yaw", "Yaw (deg)", &settings.lightYawDeg, -180.0f, 180.0f, "%.1f");
       detailChanged |= drawInlineLabelSliderFloat("render_light_pitch", "Pitch (deg)", &settings.lightPitchDeg, -89.0f, 89.0f, "%.1f");
-      detailChanged |= drawInlineLabelSliderFloat("render_key_strength", "Key strength", &settings.lightStrength, 0.0f, 2.0f, "%.2f");
       detailChanged |= drawInlineLabelSliderFloat("render_ambient", "Ambient", &settings.ambientStrength, 0.0f, 2.0f, "%.2f");
       // One property of one light, so all three share a row. Square chips make
       // that fit without shrinking anything.
@@ -5288,8 +5289,9 @@ int main(int argc, char* argv[]) {
       ImGui::SeparatorText("Post");
       detailChanged |= drawInlineLabelSliderFloat("render_fog_density", "Fog", &settings.fogDensity, 0.0f, 0.08f, "%.4f");
       detailChanged |= drawInlineLabelSliderFloat("render_gamma", "Gamma", &settings.gamma, 0.5f, 2.5f, "%.2f");
-      int colorMode = std::clamp(settings.colorMode, 0, 2);
-      constexpr const char* colorModeItems[] = {"Fast Linear", "ACES Approx", "Unreal Preview"};
+      int colorMode = std::clamp(settings.colorMode, 0, 4);
+      const char* colorModeItems[] = {
+        colorModeName(0), colorModeName(1), colorModeName(2), colorModeName(3), colorModeName(4)};
       ImGui::TextUnformatted("Color mode");
       ImGui::SetNextItemWidth(comboWidthFor(colorModeItems, IM_ARRAYSIZE(colorModeItems)));
       if (ImGui::Combo("##ColorMode", &colorMode, colorModeItems, IM_ARRAYSIZE(colorModeItems))) {
@@ -5883,7 +5885,7 @@ int main(int argc, char* argv[]) {
             }
 
             ImGui::TableNextColumn();
-            if (drawOverlaySlider("##light_strength", "Light Strength", &lightStrength, 0.1f, 1.2f,
+            if (drawOverlaySlider("##light_strength", "Light Strength", &lightStrength, 0.0f, 2.0f,
                   "%.2f", rightValueWidth, rightItemWidth, false)) {
               settings.lightStrength = lightStrength;
               settingsDirty = true;

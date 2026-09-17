@@ -2006,6 +2006,9 @@ void copyRenderDefaultsToSettings(ViewerSettings& settings, int quality) {
   settings.mainLightAmbient = renderSettings.mainLightAmbient;
   settings.mainLightDiffuse = renderSettings.mainLightDiffuse;
   settings.mainLightSpecular = renderSettings.mainLightSpecular;
+  // Give the TCP viewer's Ultra preset stronger daylight.
+  // Selecting another preset restores its normal sunlight strength.
+  settings.lightStrength = settings.renderQuality == 3 ? 1.6f : 1.0f;
   settings.shadowsEnabled = renderSettings.shadowsEnabled;
   settings.shadowResolution = renderSettings.shadowResolution;
   settings.shadowBias = renderSettings.shadowBias;
@@ -2018,6 +2021,11 @@ void copyRenderDefaultsToSettings(ViewerSettings& settings, int quality) {
   settings.fogDensity = renderSettings.fogDensity;
   settings.gamma = renderSettings.gamma;
   settings.colorMode = static_cast<int>(renderSettings.colorMode);
+  // Preserve the TCP viewer's existing Ultra display curve explicitly. The
+  // old three-mode clamp selected this curve accidentally instead of AgX.
+  if (settings.renderQuality == 3) {
+    settings.colorMode = static_cast<int>(raisin::ViewerColorMode::UnrealPreviewApprox);
+  }
   settings.fxaaEnabled = renderSettings.fxaaEnabled;
   settings.bloomEnabled = renderSettings.bloomEnabled;
   settings.bloomThreshold = renderSettings.bloomThreshold;
@@ -2036,7 +2044,7 @@ void copyRenderDefaultsToSettings(ViewerSettings& settings, int quality) {
   settings.depthOfFieldMaxRadius = renderSettings.depthOfFieldMaxRadius;
   settings.highFidelityPbr = renderSettings.highFidelityPbr;
   settings.pbrToneMapping = renderSettings.pbrToneMapping;
-  settings.pbrExposure = renderSettings.pbrExposure;
+  settings.pbrExposure = settings.renderQuality == 3 ? 0.65f : renderSettings.pbrExposure;
   settings.pbrEnvironmentMaxLod = renderSettings.pbrEnvironmentMaxLod;
   settings.pbrEnvironmentIntensity = renderSettings.pbrEnvironmentIntensity;
   settings.pbrKeyLightIntensity = renderSettings.pbrKeyLightIntensity;
@@ -2071,6 +2079,14 @@ bool applyAutomaticRenderQualityIfUnset(ViewerSettings& settings, int recommende
   return true;
 }
 
+void applyWeatherLightStrength(raisin::Light& light,
+  const raisin::RenderQualitySettings& weatherLighting, float strength) {
+  // Weather may leave the previous light unchanged between updates. Always
+  // scale its unmodified settings so the user's strength never compounds.
+  light.diffuse = weatherLighting.mainLightDiffuse * strength;
+  light.specular = weatherLighting.mainLightSpecular * strength;
+}
+
 void applyViewerSettings(raisin::RayraiWindow& viewer, const ViewerSettings& settings) {
   auto quality = qualityPresetFromIndex(settings.renderQuality);
   auto renderSettings = raisin::RayraiWindow::defaultRenderQualitySettings(quality);
@@ -2092,7 +2108,7 @@ void applyViewerSettings(raisin::RayraiWindow& viewer, const ViewerSettings& set
   renderSettings.fogDensity = settings.fogDensity;
   renderSettings.gamma = settings.gamma;
   renderSettings.colorMode =
-    static_cast<raisin::RayraiWindow::ViewerColorMode>(std::clamp(settings.colorMode, 0, 2));
+    static_cast<raisin::RayraiWindow::ViewerColorMode>(std::clamp(settings.colorMode, 0, 4));
   renderSettings.fxaaEnabled = settings.fxaaEnabled;
   renderSettings.bloomEnabled = settings.bloomEnabled;
   renderSettings.bloomThreshold = settings.bloomThreshold;
@@ -3360,4 +3376,3 @@ TcpViewerIconKind fileBrowserIconKind(const std::filesystem::path& path, bool is
   if (extension == "rrtcs") return TcpViewerIconKind::Save;
   return TcpViewerIconKind::File;
 }
-

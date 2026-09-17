@@ -1,0 +1,79 @@
+Setup seconds: 0.208712
+WARN: [rayrai gpu instance culling fallback] visual="grass_bermuda_01" reason=empty_draw_meshes code=2 candidates=18000 rendered=18000 lod=0
+WARN: [rayrai gpu instance culling fallback] visual="grass_medium_01" reason=empty_draw_meshes code=2 candidates=18000 rendered=18000 lod=0
+WARN: [rayrai gpu instance culling fallback] visual="grass_medium_02" reason=empty_draw_meshes code=2 candidates=18000 rendered=18000 lod=0
+WARN: [rayrai gpu hiz occlusion fallback] reason=multisampled_depth_buffer code=5
+WARN: [rayrai gpu hiz occlusion fallback] visual="grass_bermuda_01" reason=depth_pyramid_resources_unavailable code=3 instances=18000
+WARN: [rayrai hiz occlusion culling fallback] visual="grass_bermuda_01" reason=multisampled_depth_buffer code=4 instances=18000
+WARN: [rayrai gpu hiz occlusion fallback] visual="grass_medium_01" reason=depth_pyramid_resources_unavailable code=3 instances=18000
+WARN: [rayrai hiz occlusion culling fallback] visual="grass_medium_01" reason=multisampled_depth_buffer code=4 instances=18000
+WARN: [rayrai gpu hiz occlusion fallback] visual="grass_medium_02" reason=depth_pyramid_resources_unavailable code=3 instances=18000
+WARN: [rayrai hiz occlusion culling fallback] visual="grass_medium_02" reason=multisampled_depth_buffer code=4 instances=18000
+Loading updates: 2976, longest update seconds: 0.825425
+Completed-frame FPS: 17.058
+Standalone foliage uploads: 1596
+MESH pine_sapling_small triangles 142506 visible 465
+MESH fir_sapling triangles 157402 visible 480
+MESH tree_small_02 triangles 2062487 visible 80
+MESH grass_bermuda_01 triangles 147 visible 4394
+MESH grass_medium_01 triangles 6422 visible 4989
+MESH grass_medium_02 triangles 1664 visible 3839
+MESH fern_02 triangles 2384 visible 476
+MESH dandelion_01 triangles 23542 visible 855
+MESH nettle_plant triangles 5896 visible 829
+MESH periwinkle_plant triangles 4108 visible 831
+PASS shadow 8.63098
+PASS scene_color_and_resolve 35.6871
+PASS postprocess 0.421248
+PASS shadow_foliage 0
+PASS shadow_foliage 0
+PASS shadow_foliage 0.001312
+PASS shadow_foliage 0.000352
+PASS shadow_foliage 0
+PASS shadow_foliage 0.00144
+PASS shadow_foliage 0.00016
+PASS shadow_foliage 0.001344
+PASS shadow_foliage 0.00016
+PASS shadow_foliage 0.00016
+PASS shadow_foliage_batch 0.000512
+PASS shadow_foliage 0.0008
+PASS shadow_foliage 0.00144
+PASS shadow_foliage 0.000832
+PASS shadow_foliage 0.0008
+PASS shadow_foliage 0.001312
+PASS shadow_foliage 0.000224
+PASS shadow_foliage 0.001632
+PASS shadow_foliage 0.001248
+PASS shadow_foliage 0.000128
+PASS shadow_foliage 0.00032
+PASS shadow_foliage_batch 0.000352
+PASS shadow_foliage 0.000768
+PASS shadow_foliage 0.0008
+PASS shadow_foliage 0.001696
+PASS shadow_foliage 0.00016
+PASS shadow_foliage 0
+PASS shadow_foliage 0.000416
+PASS shadow_foliage 0.00048
+PASS shadow_foliage 0.000736
+PASS shadow_foliage 0.000864
+PASS shadow_foliage 0.001152
+PASS shadow_foliage_batch 0.001216
+PASS scene_foliage_batch 6.4e-05
+PASS scene_foliage_color 0.001216
+PASS scene_foliage_batch 2.30605
+PASS scene_foliage_batch 0.000608
+PASS scene_foliage_color 0.000128
+PASS scene_foliage_color 0.00032
+PASS scene_foliage_color 0.00128
+PASS scene_foliage_color 0
+PASS scene_foliage_color 9.6e-05
+PASS scene_foliage_batch 5.4
+PASS scene_foliage_batch 0.001504
+PASS scene_foliage_color 0.000672
+PASS scene_foliage_color 0.001568
+PASS scene_foliage_color 0.000864
+PASS scene_foliage_batch 21.6084
+PASS scene_foliage_batch 0.00144
+PASS scene_foliage_color 0.001504
+PASS scene_foliage_batch 1.51757
+PASS scene_foliage_batch 0.000288

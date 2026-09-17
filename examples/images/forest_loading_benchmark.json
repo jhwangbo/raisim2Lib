@@ -1,0 +1,42 @@
+{
+  "runs": [
+    {
+      "run": "reference",
+      "loading_seconds": 27.1987,
+      "loading_updates": 3050,
+      "longest_update_seconds": 0.824263,
+      "identical_image": true,
+      "rgba_sha256": "f7f5444c4d1d9bccc5899fe5a3050fe8d1e6142bab33a124a1ce1e68d75a2d6c"
+    },
+    {
+      "run": "cold",
+      "loading_seconds": 26.8792,
+      "loading_updates": 2236,
+      "longest_update_seconds": 0.395807,
+      "identical_image": true,
+      "rgba_sha256": "f7f5444c4d1d9bccc5899fe5a3050fe8d1e6142bab33a124a1ce1e68d75a2d6c"
+    },
+    {
+      "run": "warm_1",
+      "loading_seconds": 4.90638,
+      "loading_updates": 257,
+      "longest_update_seconds": 0.404294,
+      "identical_image": true,
+      "rgba_sha256": "f7f5444c4d1d9bccc5899fe5a3050fe8d1e6142bab33a124a1ce1e68d75a2d6c"
+    },
+    {
+      "run": "warm_2",
+      "loading_seconds": 4.7025,
+      "loading_updates": 243,
+      "longest_update_seconds": 0.399354,
+      "identical_image": true,
+      "rgba_sha256": "f7f5444c4d1d9bccc5899fe5a3050fe8d1e6142bab33a124a1ce1e68d75a2d6c"
+    }
+  ],
+  "warm_median_seconds": 4.80444,
+  "reduction_percent": 82.33577340093461,
+  "speedup": 5.661159261016893,
+  "cache_files": 16,
+  "cache_bytes": 295736014,
+  "rendering_identical": true
+}

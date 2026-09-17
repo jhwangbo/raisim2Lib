@@ -262,3 +262,52 @@ endif()
 if(WIN32)
   target_link_libraries(rayrai_tcp_viewer PRIVATE shell32 ws2_32)
 endif()
+
+# Terrain-grounded mixed forest. Assets stay in the checkout; --assets overrides this path.
+create_rayrai_executable(rayrai_forest src/rayrai/worlds/rayrai_forest.cpp)
+target_compile_features(rayrai_forest PRIVATE cxx_std_20)
+target_compile_definitions(rayrai_forest PRIVATE
+    FOREST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/rsc/forest")
+option(RAISIM_FOREST_EXAMPLE_TESTS "Build forest placement and physics checks" OFF)
+if(RAISIM_FOREST_EXAMPLE_TESTS)
+    enable_testing()
+    create_executable(forest_scene_test tests/test_forest.cpp)
+    target_compile_features(forest_scene_test PRIVATE cxx_std_20)
+    target_include_directories(forest_scene_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/rayrai/worlds)
+    add_test(NAME forest_terrain_placement_physics COMMAND forest_scene_test)
+    create_rayrai_executable(forest_loading_test tests/test_forest_loading.cpp)
+    target_compile_features(forest_loading_test PRIVATE cxx_std_20)
+    target_include_directories(forest_loading_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/rayrai/worlds)
+    add_test(NAME forest_loading_progress COMMAND forest_loading_test)
+endif()
+
+if(RAISIM_FOREST_EXAMPLE_TESTS)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    add_test(NAME forest_asset_integrity COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_forest_assets.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/rsc/forest)
+endif()
+option(RAISIM_FOREST_GPU_TESTS "Register the forest smoke test (needs a display and OpenGL)" OFF)
+if(RAISIM_FOREST_GPU_TESTS)
+    enable_testing()
+    create_rayrai_executable(forest_render_test tests/test_forest_render.cpp)
+    target_compile_features(forest_render_test PRIVATE cxx_std_20)
+    target_include_directories(forest_render_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/rayrai/worlds)
+    target_compile_definitions(forest_render_test PRIVATE
+        FOREST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/rsc/forest")
+    add_test(NAME forest_render_smoke COMMAND forest_render_test --frames 3)
+    set_tests_properties(forest_render_smoke PROPERTIES RUN_SERIAL TRUE TIMEOUT 240
+        ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1;MKL_NUM_THREADS=1")
+endif()
+
+if(RAISIM_FOREST_GPU_TESTS)
+    create_rayrai_executable(forest_shadow_test tests/test_forest_render.cpp)
+    target_compile_features(forest_shadow_test PRIVATE cxx_std_20)
+    target_include_directories(forest_shadow_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/rayrai/worlds)
+    target_include_directories(forest_shadow_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+    target_compile_definitions(forest_shadow_test PRIVATE FOREST_VERIFY_SHADOWS
+        FOREST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/rsc/forest")
+    add_test(NAME forest_foliage_shadows COMMAND forest_shadow_test --hidden --frames 3)
+    set_tests_properties(forest_foliage_shadows PROPERTIES RUN_SERIAL TRUE TIMEOUT 240
+        ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1;MKL_NUM_THREADS=1")
+endif()

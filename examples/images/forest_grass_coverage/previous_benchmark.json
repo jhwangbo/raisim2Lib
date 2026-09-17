@@ -1,0 +1,124 @@
+{
+  "platform": "Linux-7.0.0-31-generic-x86_64-with-glibc2.43",
+  "resolution": [
+    1280,
+    800
+  ],
+  "msaa": 4,
+  "warmup": 60,
+  "frames": 600,
+  "runs": 2,
+  "fps": [
+    20.6579,
+    20.3629
+  ],
+  "median_fps": 20.5104,
+  "includes": "simulation, UI, rendering, swap, and GPU completion; excludes loading/warmup",
+  "gpu": "NVIDIA GeForce RTX 2070 SUPER",
+  "compiler": "Clang 20.1.8, Release",
+  "tree_instances": 1888,
+  "ground_cover_instances": 50400,
+  "dynamic_objects": 12,
+  "foliage_shadows": "enabled by default",
+  "asset_loading": "asynchronous import, base geometry and instanced LOD preparation; incremental render-thread uploads",
+  "rock_instances": 180,
+  "rock_variants": 6,
+  "runner": "forest_render_test workload, with separate after-timing diagnostic captures",
+  "loading_updates": [
+    2014,
+    1917
+  ],
+  "max_loading_update_seconds": [
+    0.400385,
+    0.393963
+  ],
+  "grass_instances": 43200,
+  "ground_material": "Poly Haven mud_forest; normal strength 0.45, roughness 0.98, parallax disabled",
+  "sun_diffuse_rgb": [
+    18,
+    17.1,
+    15.3
+  ],
+  "sun_specular_rgb": [
+    18,
+    18,
+    18
+  ],
+  "base_exposure": 1.1,
+  "renderer_optimization": "small foliage culling and ordering, mixed color/shadow batching, buffer reuse, all-sample depth tiles, cached camera calculations, tighter box bounds and full-precision surface streams with shared constant vertex colors, and cached instance transform summaries, and opaque foliage shaders that omit unused vertex colors, and flat scalar instance color weights, and removal of unused single-map coordinates during cascaded foliage shading, and cached exact instance transforms/tints/wind phases across view and pass groups, and an exact shared maximum reducing depth-summary workgroup barriers from seven to two, and reuse of the current depth summary for whole-group visibility; unchanged geometry and quality",
+  "comparison_reference_fps": [
+    20.9525,
+    19.946
+  ],
+  "comparison_order": "ABBA",
+  "comparison_gain_percent": 0.29903297186939515,
+  "moving_camera_queued_check": {
+    "frames": 300,
+    "order": "ABBA",
+    "reference_fps": 16.52165,
+    "optimized_fps": 16.6339,
+    "gain_percent": 0.6794115599834116,
+    "note": "Repeated serial comparison, identical captures; not an established overall FPS gain."
+  },
+  "comparison_note": "Full-scene differences remain within variation; stationary controls drift and span both candidates. Retained for lower whole-group visibility-check overhead using the existing current-frame depth summary. Paired captures are byte-identical.",
+  "instance_lod_cpu_benchmark": {
+    "instances": 52288,
+    "queries": 4000,
+    "reference_mean_ms": 166.1415,
+    "cached_mean_ms": 0.649666,
+    "checksum": 19268,
+    "note": "CPU LOD queries only after warmup; not whole-scene rendering"
+  },
+  "instance_preparation_cpu_benchmark": {
+    "instances": 52288,
+    "submeshes": 4,
+    "measured_draws": 800,
+    "reference_seconds": 7.96412,
+    "cached_seconds": 6.11514,
+    "time_reduction_percent": 23.216375443865733,
+    "reference_samples": [
+      7.89738,
+      8.03086
+    ],
+    "cached_samples": [
+      6.10319,
+      6.12709
+    ],
+    "note": "Public foliage draw submission, rasterizer discard, glFinish outside the submission interval; not a whole-scene FPS result. Upload counts and visibility checksums match."
+  },
+  "depth_summary_benchmark": {
+    "captures": 10000,
+    "warmup_captures": 500,
+    "order": "ABBA",
+    "samples": 4,
+    "pattern": "different gradients in each sample",
+    "reference_seconds": 1.7743,
+    "optimized_seconds": 1.730875,
+    "time_reduction_percent": 2.4474440624471683,
+    "reference_samples": [
+      1.7784,
+      1.7702
+    ],
+    "optimized_samples": [
+      1.73088,
+      1.73087
+    ],
+    "note": "Includes depth copy, reduction and synchronous readback; not a whole-scene FPS result."
+  },
+  "group_visibility_benchmark": {
+    "checks": 10000,
+    "warmup_checks": 200,
+    "order": "ABBA",
+    "visible": {
+      "reference_us": 18.99605,
+      "candidate_us": 0.2003815,
+      "time_reduction_percent": 98.94514122672872
+    },
+    "hidden": {
+      "reference_us": 16.469549999999998,
+      "candidate_us": 2.51675,
+      "time_reduction_percent": 84.7187688795383
+    },
+    "note": "Incremental group-check cost with the current-frame MSAA summary already available. Includes production visibility code and scene-shader rebinding; excludes the shared depth capture."
+  }
+}

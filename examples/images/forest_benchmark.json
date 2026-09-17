@@ -1,0 +1,636 @@
+{
+  "platform": "Linux-7.0.0-31-generic-x86_64-with-glibc2.43",
+  "resolution": [
+    1280,
+    800
+  ],
+  "msaa": 4,
+  "warmup": 60,
+  "includes": "simulation, UI, rendering, swap, and GPU completion; excludes loading/warmup",
+  "gpu": "NVIDIA GeForce RTX 2070 SUPER",
+  "compiler": "Clang 20.1.8, Release",
+  "tree_instances": 1888,
+  "dynamic_objects": 12,
+  "foliage_shadows": "enabled by default",
+  "asset_loading": "Asynchronous import and base geometry preparation, persistent lossless LOD sidecars, and incremental render-thread uploads",
+  "rock_instances": 180,
+  "rock_variants": 6,
+  "runner": "forest_render_test workload, with separate after-timing diagnostic captures",
+  "ground_material": "Poly Haven mud_forest; normal strength 0.45, roughness 0.98, parallax disabled",
+  "sun_diffuse_rgb": [
+    18,
+    17.1,
+    15.3
+  ],
+  "sun_specular_rgb": [
+    18,
+    18,
+    18
+  ],
+  "base_exposure": 1.1,
+  "renderer_optimization": "small foliage culling and ordering, mixed color/shadow batching, buffer reuse, all-sample depth tiles, cached camera calculations, tighter box bounds and full-precision surface streams with shared constant vertex colors, and cached instance transform summaries, and opaque foliage shaders that omit unused vertex colors, and flat scalar instance color weights, and removal of unused single-map coordinates during cascaded foliage shading, and cached exact instance transforms/tints/wind phases across view and pass groups, and an exact shared maximum reducing depth-summary workgroup barriers from seven to two, and reuse of the current depth summary for whole-group visibility; unchanged geometry and quality; cached power-of-two depth-tile reciprocals and exact clamped truncation; cached exact world-space foliage bounds across cameras and shadow passes; framebuffer-specialized MSAA depth reduction with identical all-sample maxima; opaque foliage color-depth prepass variants remove unused lighting inputs while preserving exact positions and alpha coverage; exact split foliage position/UV and normal/tangent streams; full-transform depth variants for remaining instanced opaque-prepass draws; current-frame depth capture reuse across read-only foliage color batches; borrowed existing GPU instance buffers for single-source foliage batches; exact stable radix sorting of large foliage instance depth groups; exact wind-phase caching and direct foliage instance preparation; sum disjoint foliage group sizes instead of scanning instance visibility; reuse exact foliage bounding-box corner products; cache exact foliage occlusion tile coordinates; evaluate exact foliage frustum planes together; prepare exact foliage shadow-caster planes",
+  "frames": 600,
+  "runs": 2,
+  "fps": [
+    22.1412,
+    22.1467
+  ],
+  "median_fps": 22.14395,
+  "loading_updates": [
+    353,
+    315
+  ],
+  "max_loading_update_seconds": [
+    0.398259,
+    0.399827
+  ],
+  "grass_instances": 54000,
+  "ground_cover_instances": 61200,
+  "total_plant_instances": 63088,
+  "terrain_size_metres": [
+    80,
+    80
+  ],
+  "grass_coverage": "Entire heightmap, including former trail, steep slopes, edges and physics clearing; no brown trail tint.",
+  "previous_layout_comparison": {
+    "before": {
+      "fps": 18.7457,
+      "loading_updates": 3069,
+      "max_loading_update_seconds": 0.857824
+    },
+    "after": {
+      "fps": 17.058,
+      "loading_updates": 2976,
+      "max_loading_update_seconds": 0.825425
+    },
+    "frames": 300,
+    "order": "before, after",
+    "difference_percent": -9.00313138479758,
+    "note": "Single serial scene-layout comparison, not a renderer optimization benchmark. More grass is visible and casts shadows. Timing includes environmental variation."
+  },
+  "preview_sha256": "8fdbc2df3e0d55c1a89da54c538adb6057d1635819ee54e02d3fa7cfd9d75c34",
+  "asset_loading_benchmark": {
+    "reference_seconds": 27.1987,
+    "first_cache_creation_seconds": 26.8792,
+    "warm_seconds": [
+      4.90638,
+      4.7025
+    ],
+    "warm_median_seconds": 4.80444,
+    "reduction_percent": 82.33577340093461,
+    "cache_files": 16,
+    "cache_bytes": 295736014,
+    "identical_images": true
+  },
+  "depth_tile_optimization": {
+    "coordinates_per_run": 48243120,
+    "reference_seconds": 0.3017965,
+    "optimized_seconds": 0.06394735,
+    "reduction_percent": 78.81110284579178,
+    "stationary": {
+      "reference_fps": 17.012050000000002,
+      "optimized_fps": 17.102,
+      "difference_percent": 0.5287428616774559,
+      "identical_images": true
+    },
+    "moving": {
+      "reference_fps": 15.162849999999999,
+      "optimized_fps": 15.232199999999999,
+      "difference_percent": 0.45736784311656287,
+      "identical_images": true
+    },
+    "frames_per_run": 300,
+    "order": "ABBA",
+    "note": "Coordinate-operation CPU saving only; complete forest FPS changes remain within variation. All captures are identical."
+  },
+  "world_bounds_optimization": {
+    "reference_seconds": 7.656775,
+    "optimized_seconds": 6.617295,
+    "reduction_percent": 13.57595071031863,
+    "instances": 63088,
+    "draws_per_run": 800,
+    "stationary": {
+      "reference_fps": 17.0901,
+      "optimized_fps": 17.014,
+      "difference_percent": -0.44528703752465537,
+      "identical_images": true
+    },
+    "moving": {
+      "reference_fps": 15.229700000000001,
+      "optimized_fps": 15.2881,
+      "difference_percent": 0.3834612631896883,
+      "identical_images": true
+    },
+    "frames_per_run": 300,
+    "order": "ABBA",
+    "note": "Focused renderer preparation/submission saving; full forest FPS changes remain within variation. All captures are identical."
+  },
+  "depth_kernel_specialization": {
+    "moving": {
+      "reference_fps": 15.24855,
+      "candidate_fps": 15.26115,
+      "change_percent": 0.08263080751940155
+    },
+    "stationary": {
+      "reference_fps": 16.78485,
+      "candidate_fps": 16.768250000000002,
+      "change_percent": -0.09889870925267052
+    },
+    "depth_replay": {
+      "reference_seconds": 1.70922125,
+      "candidate_seconds": 1.6696487500000001,
+      "time_reduction_percent": 2.3152356665352647,
+      "captures_per_run": 10000,
+      "inputs": 4,
+      "runs_per_input": 4
+    },
+    "overall_fps_gain_established": false,
+    "paired_images_identical": true,
+    "tests_passed": 41
+  },
+  "color_depth_prepass_optimization": {
+    "moving": {
+      "reference_fps": 14.4234,
+      "candidate_fps": 17.596049999999998,
+      "fps_gain_percent": 21.996547277340973,
+      "frame_time_reduction_percent": 18.030467065051514,
+      "frames_per_run": 300,
+      "order": "ABBA",
+      "identical_images": true,
+      "max_loading_update_seconds": 0.406666
+    },
+    "stationary": {
+      "reference_fps": 18.1466,
+      "candidate_fps": 20.2926,
+      "fps_gain_percent": 11.825906781435647,
+      "frame_time_reduction_percent": 10.575283600918562,
+      "frames_per_run": 600,
+      "order": "ABBA",
+      "identical_images": true,
+      "max_loading_update_seconds": 0.411037
+    },
+    "paired_images_identical": true,
+    "tests_passed": 47,
+    "order": "ABBA",
+    "note": "Actual complete-forest gain; 300 moving-camera and 600 stationary measured frames per run, after 60 warmup frames and completed asynchronous loading. One calling thread. Scene and quality unchanged."
+  },
+  "prepass_inputs_optimization": {
+    "moving": {
+      "reference_fps": 18.4878,
+      "candidate_fps": 19.18505,
+      "fps_gain_percent": 3.7714060082865375,
+      "frame_time_reduction_percent": 3.6343402805830594,
+      "order": "ABBA",
+      "frames_per_run": 300,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.412688
+    },
+    "stationary": {
+      "reference_fps": 21.0629,
+      "candidate_fps": 21.7088,
+      "fps_gain_percent": 3.0665293003337757,
+      "frame_time_reduction_percent": 2.975291126179247,
+      "order": "ABBA",
+      "frames_per_run": 600,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.422104
+    },
+    "paired_images_identical": true,
+    "tests_passed": 47,
+    "note": "Compared against the preceding optimized renderer; 300 moving and 600 stationary frames per run, after loading and 60 warmup frames. Serial A/B/B/A, one calling thread, identical scene quality."
+  },
+  "depth_capture_reuse_optimization": {
+    "moving": {
+      "reference_fps": 19.261699999999998,
+      "candidate_fps": 19.7125,
+      "fps_gain_percent": 2.340395707543985,
+      "frame_time_reduction_percent": 2.2868738110336184,
+      "order": "ABBA",
+      "frames_per_run": 300,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.410471
+    },
+    "stationary": {
+      "reference_fps": 21.93125,
+      "candidate_fps": 21.84055,
+      "fps_gain_percent": -0.4135651182673006,
+      "frame_time_reduction_percent": -0.4152825821694073,
+      "order": "ABBA",
+      "frames_per_run": 600,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.40481
+    },
+    "stationary_repeat": {
+      "reference_fps": 21.7304,
+      "candidate_fps": 21.55675,
+      "fps_gain_percent": -0.7991109229466442,
+      "frame_time_reduction_percent": -0.805548146172308,
+      "order": "ABBA",
+      "frames_per_run": 1200,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.406882
+    },
+    "stationary_queued": {
+      "reference_fps": 22.5155,
+      "candidate_fps": 22.4009,
+      "fps_gain_percent": -0.5089827008061043,
+      "frame_time_reduction_percent": -0.5115865880388704,
+      "order": "ABBA",
+      "frames_per_run": 600,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.407229
+    },
+    "focused": {
+      "reference_ms": 1.6018949999999998,
+      "candidate_ms": 1.42337,
+      "frame_time_reduction_percent": 11.144613098861022,
+      "frames_per_run": 300,
+      "order": "ABBA"
+    },
+    "paired_images_identical": true,
+    "tests_passed": 48,
+    "note": "Serial A/B/B/A; one calling thread, identical quality. Moving 300 frames/run, stationary 600 and 1200 frames/run, after loading and 60 warmup frames. Stationary GPU-synchronized runs measured -0.41% initially and -0.80% in the longer repeat; queued stationary rendering measured -0.51%. No stationary speedup is claimed."
+  },
+  "borrowed_buffers_optimization": {
+    "moving": {
+      "reference_fps": 19.6384,
+      "candidate_fps": 19.871499999999997,
+      "fps_gain_percent": 1.186960241160162,
+      "frame_time_reduction_percent": 1.1730367611906378,
+      "order": "ABBA",
+      "frames_per_run": 300,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.402213
+    },
+    "stationary": {
+      "reference_fps": 21.7545,
+      "candidate_fps": 21.784,
+      "fps_gain_percent": 0.13560412788158338,
+      "frame_time_reduction_percent": 0.13542049210428786,
+      "order": "ABBA",
+      "frames_per_run": 600,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.406088
+    },
+    "focused": {
+      "reference_ms": 0.282022,
+      "candidate_ms": 0.1627,
+      "frame_time_reduction_percent": 42.30946521902547,
+      "frames_per_run": 500,
+      "order": "ABBA"
+    },
+    "paired_images_identical": true,
+    "tests_passed": 49,
+    "uploads_per_profile_frame": [
+      200,
+      101
+    ],
+    "upload_bytes_per_profile_frame": [
+      10117040,
+      5058880
+    ],
+    "note": "Serial A/B/B/A, one calling thread, unchanged quality. Moving 300 and stationary 600 frames/run after loading and 60 warmup frames. The moving-camera gain repeats in both the screen and A/B/B/A comparison;\nboth optimized runs beat both controls. Stationary performance is effectively\nunchanged (+0.14% with overlapping run ranges); no stationary speedup is claimed."
+  },
+  "instance_sort_optimization": {
+    "moving": {
+      "reference_fps": 19.9557,
+      "candidate_fps": 20.587899999999998,
+      "fps_gain_percent": 3.1680171580049654,
+      "frame_time_reduction_percent": 3.070735723410345,
+      "order": "ABBA",
+      "frames_per_run": 300,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.409501
+    },
+    "stationary": {
+      "reference_fps": 21.8477,
+      "candidate_fps": 21.827399999999997,
+      "fps_gain_percent": -0.09291595911699035,
+      "frame_time_reduction_percent": -0.09300237316400839,
+      "order": "ABBA",
+      "frames_per_run": 600,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.406265
+    },
+    "focused": {
+      "reference_ms": 1.396285,
+      "candidate_ms": 0.2005675,
+      "sort_time_reduction_percent": 85.6356331264749,
+      "iterations_per_run": 500,
+      "instances_per_sort": 18000,
+      "order": "ABBA"
+    },
+    "paired_images_identical": true,
+    "tests_passed": 50,
+    "exact_cpu_comparisons": 396,
+    "note": "Serial A/B/B/A, one calling thread, unchanged quality. Moving 300 and stationary 600 frames/run after loading and 60 warmup frames. The moving-camera gain repeats in the initial screen and A/B/B/A comparison;\nboth optimized runs beat both controls. Stationary performance is effectively\nunchanged (-0.09% with overlapping run ranges); no stationary speedup is claimed."
+  },
+  "instance_preparation_optimization": {
+    "moving": {
+      "reference_fps": 20.556350000000002,
+      "candidate_fps": 20.8795,
+      "fps_gain_percent": 1.5720203246198716,
+      "frame_time_reduction_percent": 1.5476903182547352,
+      "order": "ABBA",
+      "frames_per_run": 300,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.422849
+    },
+    "moving_repeat": {
+      "reference_fps": 20.636699999999998,
+      "candidate_fps": 20.8373,
+      "fps_gain_percent": 0.9720546405190822,
+      "frame_time_reduction_percent": 0.9626967025478383,
+      "order": "ABBA",
+      "frames_per_run": 300,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.401913
+    },
+    "stationary": {
+      "reference_fps": 21.834049999999998,
+      "candidate_fps": 21.86365,
+      "fps_gain_percent": 0.1355680691397243,
+      "frame_time_reduction_percent": 0.13538453094520397,
+      "order": "ABBA",
+      "frames_per_run": 600,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.415207
+    },
+    "focused": {
+      "order": "ABBA",
+      "draws_per_run": 800,
+      "instances": 18000,
+      "visible_checksum": 12860826,
+      "submission_reference_ms_per_draw": 0.9741968749999999,
+      "submission_candidate_ms_per_draw": 0.789906875,
+      "submission_time_reduction_percent": 18.917120833507074,
+      "completed_reference_ms_per_draw": 1.162284375,
+      "completed_candidate_ms_per_draw": 0.92913625,
+      "completed_time_reduction_percent": 20.05947339694728
+    },
+    "paired_images_identical": true,
+    "tests_passed": 51,
+    "exact_gpu_cases": 28,
+    "note": "Serial A/B/B/A, one calling thread, unchanged quality. Moving 300 and stationary 600 frames/run after loading and 60 warmup frames. The combined moving-camera gain repeats: +1.57% in the first A/B/B/A trial and +0.97% in the repeat. Both optimized runs beat both controls in each trial. Stationary performance is effectively unchanged (+0.14%, with overlapping run ranges); no stationary speedup is claimed."
+  },
+  "visible_count_optimization": {
+    "moving": {
+      "reference_fps": 20.871650000000002,
+      "candidate_fps": 20.9224,
+      "fps_gain_percent": 0.24315279338240625,
+      "frame_time_reduction_percent": 0.24256299468511378,
+      "order": "ABBA",
+      "frames_per_run": 300,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.401734
+    },
+    "stationary": {
+      "reference_fps": 21.966250000000002,
+      "candidate_fps": 22.069850000000002,
+      "fps_gain_percent": 0.47163261822114055,
+      "frame_time_reduction_percent": 0.4694186865792038,
+      "order": "ABBA",
+      "frames_per_run": 600,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.408976
+    },
+    "focused": {
+      "order": "ABBA",
+      "draws_per_run": 800,
+      "instances": 18000,
+      "visible_checksum": 12860826,
+      "submission_reference_ms_per_draw": 0.810145,
+      "submission_candidate_ms_per_draw": 0.7508243750000001,
+      "submission_time_reduction_percent": 7.322223182269827,
+      "completed_reference_ms_per_draw": 0.950250625,
+      "completed_candidate_ms_per_draw": 0.890490625,
+      "completed_time_reduction_percent": 6.288867213320703
+    },
+    "paired_images_identical": true,
+    "tests_passed": 51,
+    "exact_gpu_cases": 54,
+    "note": "Serial A/B/B/A, one calling thread, unchanged quality. Moving 300 and stationary 600 frames/run after loading and 60 warmup frames. The initial moving screen measured +0.46%; the moving A/B/B/A repeat measured +0.24%, and stationary A/B/B/A measured +0.47%. Run ranges overlap in both A/B/B/A trials, so these results do not establish an overall FPS gain. The retained benefit is a measured reduction in CPU preparation/submission work with unchanged output."
+  },
+  "box_projection_optimization": {
+    "moving": {
+      "reference_fps": 20.918,
+      "candidate_fps": 21.154049999999998,
+      "fps_gain_percent": 1.1284539630939783,
+      "frame_time_reduction_percent": 1.115861974420973,
+      "order": "ABBA",
+      "frames_per_run": 300,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.40229
+    },
+    "stationary": {
+      "reference_fps": 22.13675,
+      "candidate_fps": 22.075499999999998,
+      "fps_gain_percent": -0.27668921589665274,
+      "frame_time_reduction_percent": -0.2774569092432788,
+      "order": "ABBA",
+      "frames_per_run": 600,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.408295
+    },
+    "focused": {
+      "order": "ABBA",
+      "boxes_per_run": 9000000,
+      "inputs": 18000,
+      "repeats": 500,
+      "checksum": 85638522343212000,
+      "reference_ms": 450.703,
+      "candidate_ms": 295.8745,
+      "time_reduction_percent": 34.35266683381295,
+      "exact_comparisons": 140376
+    },
+    "paired_images_identical": true,
+    "tests_passed": 52,
+    "exact_cpu_comparisons": 140376,
+    "note": "Serial A/B/B/A, one calling thread, unchanged quality. Moving 300 and stationary 600 frames/run after loading and 60 warmup frames. Moving performance improved by 1.13% in A/B/B/A, with both optimized runs faster than both controls; the initial screen measured +0.32%. Stationary performance is effectively unchanged (-0.28%, with overlapping run ranges); no stationary speedup is claimed."
+  },
+  "tile_bounds_optimization": {
+    "moving": {
+      "reference_fps": 21.0036,
+      "candidate_fps": 21.071,
+      "fps_gain_percent": 0.3208973699746931,
+      "frame_time_reduction_percent": 0.3198709126287391,
+      "order": "ABBA",
+      "frames_per_run": 300,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.402206
+    },
+    "stationary": {
+      "reference_fps": 22.033299999999997,
+      "candidate_fps": 22.1923,
+      "fps_gain_percent": 0.7216349797806165,
+      "frame_time_reduction_percent": 0.7164647197451468,
+      "order": "ABBA",
+      "frames_per_run": 600,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.399926
+    },
+    "focused": {
+      "order": "ABBA",
+      "queries_per_run": 9000000,
+      "inputs": 18000,
+      "repeats": 500,
+      "checksum": 5955000,
+      "reference_ms": 161.40300000000002,
+      "candidate_ms": 83.7381,
+      "time_reduction_percent": 48.11862233043996
+    },
+    "paired_images_identical": true,
+    "tests_passed": 52,
+    "note": "Serial A/B/B/A, one calling thread, unchanged quality. Moving 300 and stationary 600 frames/run after loading and 60 warmup frames. The moving repeat improves by 0.32% with overlapping run ranges; stationary improves by 0.72%, but its controls drift downward. These small differences do not establish a reliable overall FPS gain. The retained benefit is 48.12% less CPU time for repeated occlusion queries when bounds can be reused, with unchanged visibility and pixels."
+  },
+  "frustum_planes_optimization": {
+    "moving": {
+      "reference_fps": 21.16355,
+      "candidate_fps": 21.25745,
+      "fps_gain_percent": 0.4436873775902406,
+      "reference_range": [
+        21.071,
+        21.2561
+      ],
+      "candidate_range": [
+        21.1892,
+        21.3257
+      ],
+      "order": "ABBA",
+      "frames_per_run": 300,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.404996
+    },
+    "stationary": {
+      "reference_fps": 22.2105,
+      "candidate_fps": 22.2384,
+      "fps_gain_percent": 0.12561626257849845,
+      "reference_range": [
+        22.082,
+        22.339
+      ],
+      "candidate_range": [
+        22.2132,
+        22.2636
+      ],
+      "order": "ABBA",
+      "frames_per_run": 600,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.40201
+    },
+    "focused": {
+      "order": "ABBA",
+      "queries_per_run": 31544000,
+      "inputs": 63088,
+      "repeats": 500,
+      "checksum": 13004555,
+      "reference_ms": 346.3285,
+      "candidate_ms": 100.072,
+      "time_reduction_percent": 71.10489029923902
+    },
+    "submission": {
+      "reference_ms": 604.0185,
+      "candidate_ms": 588.255,
+      "time_reduction_percent": 2.609771058336796,
+      "order": "ABBA",
+      "draws_per_measurement": 800,
+      "default_path_measurements_per_run": 2,
+      "checksum": 12860826
+    },
+    "paired_images_identical": true,
+    "tests_passed": 53,
+    "note": "Serial A/B/B/A, one calling thread, unchanged quality. Moving 300 and stationary 600 frames/run after loading and 60 warmup frames. The moving repeat measures +0.44% and stationary rendering +0.13%, with overlapping run ranges and drifting controls. These differences do not establish a reliable overall FPS gain. The retained benefit is 71.10% less CPU time for the exact frustum check and 2.61% less CPU preparation/submission time in the renderer fixture."
+  },
+  "receiver_planes_optimization": {
+    "screen": {
+      "reference_fps": 21.3411,
+      "candidate_fps": 21.0561,
+      "fps_gain_percent": -1.3354513122566303,
+      "reference_range": [
+        21.3411,
+        21.3411
+      ],
+      "candidate_range": [
+        21.0561,
+        21.0561
+      ],
+      "order": "AB",
+      "frames_per_run": 300,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.403125
+    },
+    "moving": {
+      "reference_fps": 21.214,
+      "candidate_fps": 21.1604,
+      "fps_gain_percent": -0.252663335533132,
+      "reference_range": [
+        21.177,
+        21.251
+      ],
+      "candidate_range": [
+        21.0673,
+        21.2535
+      ],
+      "order": "ABBA",
+      "frames_per_run": 300,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.407502
+    },
+    "moving_repeat": {
+      "reference_fps": 20.37565,
+      "candidate_fps": 20.270699999999998,
+      "fps_gain_percent": -0.5150755926804917,
+      "reference_range": [
+        20.2344,
+        20.5169
+      ],
+      "candidate_range": [
+        20.2499,
+        20.2915
+      ],
+      "order": "ABBA",
+      "frames_per_run": 600,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.40184
+    },
+    "stationary": {
+      "reference_fps": 22.092799999999997,
+      "candidate_fps": 22.14395,
+      "fps_gain_percent": 0.23152339223639906,
+      "reference_range": [
+        22.0601,
+        22.1255
+      ],
+      "candidate_range": [
+        22.1412,
+        22.1467
+      ],
+      "order": "ABBA",
+      "frames_per_run": 600,
+      "identical_images": true,
+      "max_loading_update_seconds": 0.400272
+    },
+    "focused": {
+      "order": "ABBA",
+      "queries_per_run": 31544000,
+      "inputs": 63088,
+      "repeats": 500,
+      "checksum": 14381212,
+      "reference_ms": 481.4575,
+      "candidate_ms": 265.7835,
+      "time_reduction_percent": 44.79606195770135
+    },
+    "submission": {
+      "reference_ms": 703.4212500000001,
+      "candidate_ms": 661.99075,
+      "time_reduction_percent": 5.889856185038489,
+      "order": "ABBA",
+      "draws_per_measurement": 800,
+      "default_path_measurements_per_run": 2,
+      "checksum": 12860826
+    },
+    "paired_images_identical": true,
+    "tests_passed": 54,
+    "note": "Serial A/B/B/A, one calling thread, unchanged quality. Longer moving and stationary runs use 600 frames after loading and 60 warmup frames. The initial moving screen measured -1.34%; moving A/B/B/A measured -0.25%, and the longer repeat measured -0.52%. Stationary rendering measured +0.23%. Moving run ranges overlap and the controls drift, so no reliable overall FPS improvement is established; a small moving-camera regression cannot be excluded. The retained benefit is cheaper CPU receiver checks and repeatably lower CPU draw-preparation/submission time, with identical output."
+  }
+}

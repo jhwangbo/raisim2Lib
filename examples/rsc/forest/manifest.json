@@ -1,0 +1,411 @@
+{
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "plants": [
+    "pine_sapling_small",
+    "fir_sapling",
+    "tree_small_02",
+    "grass_bermuda_01",
+    "grass_medium_01",
+    "grass_medium_02",
+    "fern_02",
+    "dandelion_01",
+    "nettle_plant",
+    "periwinkle_plant"
+  ],
+  "files": [
+    {
+      "path": "ATTRIBUTION.md",
+      "bytes": 2323,
+      "sha256": "97dcebf0a18d4d8b0087f9b316494e6e2f33dbf7cb78ebe94864d139a44c2ff0"
+    },
+    {
+      "path": "LICENSE-CC0-1.0.txt",
+      "bytes": 7048,
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+    },
+    {
+      "path": "dandelion_01/mesh.bin",
+      "bytes": 728580,
+      "sha256": "e67c689681623ca77773e3b4bf9586a4422cc1e2f0893023bc95e4a322a6cccd"
+    },
+    {
+      "path": "dandelion_01/model.gltf",
+      "bytes": 1800,
+      "sha256": "c0389b6b386d94900b3c62b4967cf0e2e37fa541ba98c459be1d0426b9cbc99b"
+    },
+    {
+      "path": "dandelion_01/textures/dandelion_01_arm_1k.jpg",
+      "bytes": 448489,
+      "sha256": "dad70c20756581fd795548f52a23580d94a2af538664dbbfe64e66a76e4eebb6"
+    },
+    {
+      "path": "dandelion_01/textures/dandelion_01_diff_1k.jpg",
+      "bytes": 470035,
+      "sha256": "17e49d535dfce890e539038a80eaa77d90dab5f1781350266dd8f736ee7370d6"
+    },
+    {
+      "path": "dandelion_01/textures/dandelion_01_nor_gl_1k.jpg",
+      "bytes": 495857,
+      "sha256": "fd69513a4803145f634b5ace49fed8709e454b3026d060687071757a72c33250"
+    },
+    {
+      "path": "fern_02/mesh.bin",
+      "bytes": 67424,
+      "sha256": "4bcc32411fc8b8b92f7f41bad659b680cdeb1000370b117b1ff547c918bc9260"
+    },
+    {
+      "path": "fern_02/model.gltf",
+      "bytes": 1683,
+      "sha256": "947f5cc431e622cff62969a0f4f83967bcdc8e695138e8fdef6b8aab0f1be53a"
+    },
+    {
+      "path": "fern_02/textures/fern_02_arm_1k.jpg",
+      "bytes": 280359,
+      "sha256": "ebfb5d76ce9cbdaec20bcd22dce9b755f0b1b8650ef29ca13555e3e6961025d7"
+    },
+    {
+      "path": "fern_02/textures/fern_02_diff_1k.jpg",
+      "bytes": 315705,
+      "sha256": "a828a6e7b4c01c826911e2eac4b3afc7457dab7b3b392a31c681ed88b7d50029"
+    },
+    {
+      "path": "fern_02/textures/fern_02_nor_gl_1k.jpg",
+      "bytes": 367222,
+      "sha256": "45bce132c6e96a0864bc89ab5da51361ab3f4afa83a6669ae499ab5ca811f621"
+    },
+    {
+      "path": "fir_sapling/mesh.bin",
+      "bytes": 7879340,
+      "sha256": "b0af3dbba66fbaf8448def767fe394ee6af9d722c9fdec3e05ede109d6f250e5"
+    },
+    {
+      "path": "fir_sapling/model.gltf",
+      "bytes": 3456,
+      "sha256": "9d68d320b34db476d9d4e213950f91a74a3939cd38c91ef295c3772e7e86988e"
+    },
+    {
+      "path": "fir_sapling/textures/fir_sapling_branches_arm_1k.jpg",
+      "bytes": 793567,
+      "sha256": "44c32b056b78c1046aeeb44c973a1d1352ea12d0d7ef2425527555f1256a0964"
+    },
+    {
+      "path": "fir_sapling/textures/fir_sapling_branches_diff_1k.jpg",
+      "bytes": 776633,
+      "sha256": "46d216526b6203dbd5dc3cfce5e49d7a4cc1770da2420faab45adf33671c7de4"
+    },
+    {
+      "path": "fir_sapling/textures/fir_sapling_branches_nor_gl_1k.jpg",
+      "bytes": 1137599,
+      "sha256": "dbe474f6cd593d51a19fb92a627ad900b9ab47dabd1bf60117a2cf9d110f79ea"
+    },
+    {
+      "path": "fir_sapling/textures/fir_sapling_twigs_arm_1k.jpg",
+      "bytes": 300249,
+      "sha256": "d1ec27a55bb67bfe5fa2c8a41a545dc71769934b142db56ad7c703d4146e1770"
+    },
+    {
+      "path": "fir_sapling/textures/fir_sapling_twigs_diff_1k.jpg",
+      "bytes": 252678,
+      "sha256": "a9900fafad850deeb5f79b928fd7590bca9e8ec8734d2368d4c64bba8b0c5b22"
+    },
+    {
+      "path": "fir_sapling/textures/fir_sapling_twigs_nor_gl_1k.jpg",
+      "bytes": 474717,
+      "sha256": "34928b2a9d1f722d2f64a7da468c790ecaca9b89c00ac0878a9e0bad26748368"
+    },
+    {
+      "path": "grass_bermuda_01/mesh.bin",
+      "bytes": 4884,
+      "sha256": "8da1e7d0e42fc1e570aaf279fe5ac48cba7fdeb62006460d2b68db9263fb3181"
+    },
+    {
+      "path": "grass_bermuda_01/model.gltf",
+      "bytes": 1951,
+      "sha256": "c3c3e967d17c73850742105abbc6388f03bd48b8b0cb7cc72cd4029e5641a03f"
+    },
+    {
+      "path": "grass_bermuda_01/textures/grass_bermuda_01_arm_1k.jpg",
+      "bytes": 500088,
+      "sha256": "38190d342fe951c33ff8c37dd2e3de37aca4cc7633e91be8b0d1c1f71057a641"
+    },
+    {
+      "path": "grass_bermuda_01/textures/grass_bermuda_01_diff_1k.jpg",
+      "bytes": 175425,
+      "sha256": "ef202eeb8f8fb3312446009acecc87e5679a7d612e4dee859d8a849e00af5fcb"
+    },
+    {
+      "path": "grass_bermuda_01/textures/grass_bermuda_01_nor_gl_1k.jpg",
+      "bytes": 709845,
+      "sha256": "4475b37d6e4d217ce03547216f62d1ef6e65cafda2355fd0cb2aeb6d919b9338"
+    },
+    {
+      "path": "grass_medium_01/mesh.bin",
+      "bytes": 263940,
+      "sha256": "0f59647894fa094e40406bc74f4c37e9687d82fac877dabb6accfac89cbf14ba"
+    },
+    {
+      "path": "grass_medium_01/model.gltf",
+      "bytes": 1998,
+      "sha256": "5ec2469ae185d9979d9190c0db3923d26faf678add8fb14c5e125fd49cb42ced"
+    },
+    {
+      "path": "grass_medium_01/textures/grass_medium_01_arm_1k.jpg",
+      "bytes": 679518,
+      "sha256": "9a3a30f72bc02f4398967c5b08f2d20cce30bd423a2613b42a727034296fa3ae"
+    },
+    {
+      "path": "grass_medium_01/textures/grass_medium_01_diff_1k.jpg",
+      "bytes": 395673,
+      "sha256": "71495bd6a11fddcab0aaff38246fea1a7b802a705483f1c7cbca53955daa8050"
+    },
+    {
+      "path": "grass_medium_01/textures/grass_medium_01_nor_gl_1k.jpg",
+      "bytes": 956166,
+      "sha256": "cae298d3d1d7ff7c7e210ad8ac772b96706e356f9315a6b04fde373ce01ccf1e"
+    },
+    {
+      "path": "grass_medium_02/mesh.bin",
+      "bytes": 59328,
+      "sha256": "95990545208d529293877bccafe086d5222e043d7f5fe2bdbec60676d6483499"
+    },
+    {
+      "path": "grass_medium_02/model.gltf",
+      "bytes": 1993,
+      "sha256": "b7fee8690e5a72e32fc27e888ce53a4e120bf86c86abd6591ac89bcf1ccebb5d"
+    },
+    {
+      "path": "grass_medium_02/textures/grass_medium_02_arm_1k.jpg",
+      "bytes": 241181,
+      "sha256": "f0d57bfd95bff7710526b49d47cf2326ee3796e425639d53b983d1472480b57d"
+    },
+    {
+      "path": "grass_medium_02/textures/grass_medium_02_diff_1k.jpg",
+      "bytes": 161235,
+      "sha256": "91ae99005b449011aceb207a68a937258fd9bfd66ff367d344c50398b1df389c"
+    },
+    {
+      "path": "grass_medium_02/textures/grass_medium_02_nor_gl_1k.jpg",
+      "bytes": 118146,
+      "sha256": "0b464550366ed72a6cad9c357e19ac4c83fc9adc87272771479138129853b300"
+    },
+    {
+      "path": "ground/mud_forest_diff_1k.jpg",
+      "bytes": 952076,
+      "sha256": "6b874ef298dd06671624032311e0dd1456251a92e396883852bf5ec75cd099eb"
+    },
+    {
+      "path": "ground/mud_forest_nor_gl_1k.jpg",
+      "bytes": 1480930,
+      "sha256": "7ccce706a05d804ecf961c4c6be2ab5f496e717e05b13bd87fa086c9e082c3cf"
+    },
+    {
+      "path": "nettle_plant/mesh.bin",
+      "bytes": 182096,
+      "sha256": "a3a64df6c2ff474decad859f1d892d1fa1fbb50952f9e8328b24bbd04e6bb3b8"
+    },
+    {
+      "path": "nettle_plant/model.gltf",
+      "bytes": 1793,
+      "sha256": "585134ce62011a6e2f201161c534a87387ee9b73da099d834ccb081738a81ce5"
+    },
+    {
+      "path": "nettle_plant/textures/nettle_plant_arm_1k.jpg",
+      "bytes": 467172,
+      "sha256": "8fb33e5e939b4e089f08c867bf449d9e27aa32af94990c3cad1a89dcabd44f14"
+    },
+    {
+      "path": "nettle_plant/textures/nettle_plant_diff_1k.jpg",
+      "bytes": 388629,
+      "sha256": "7172a9971818a18a7cb7ebaa144d9d2313b83d2a6180c9582000f7260542ea7b"
+    },
+    {
+      "path": "nettle_plant/textures/nettle_plant_nor_gl_1k.jpg",
+      "bytes": 654754,
+      "sha256": "ab5d0cdc9a487a8874b6e9a11bf67ef90319f02bbd74579576198aca90b0fa85"
+    },
+    {
+      "path": "periwinkle_plant/mesh.bin",
+      "bytes": 234832,
+      "sha256": "8a1e679ee36123ecbd26f0ec4fbd5bcfd5e551b3ed6054eb64a363b9b14f914b"
+    },
+    {
+      "path": "periwinkle_plant/model.gltf",
+      "bytes": 2276,
+      "sha256": "aa497a41f0d06ffb88b5b67232bd8543fcac1d1d13fceeb7b3dbe456dbb36e72"
+    },
+    {
+      "path": "periwinkle_plant/textures/periwinkle_plant_arm_1k.jpg",
+      "bytes": 281673,
+      "sha256": "d964e2e1118c2ca88c137b45590f48d83d3471fef48e913cbd57bf7122bbe4a3"
+    },
+    {
+      "path": "periwinkle_plant/textures/periwinkle_plant_diff_1k.jpg",
+      "bytes": 349879,
+      "sha256": "32d61084e6c07fa3ca8e03b35b347a12717f971efc90e8fe1185931ee2298c56"
+    },
+    {
+      "path": "periwinkle_plant/textures/periwinkle_plant_nor_gl_1k.jpg",
+      "bytes": 418428,
+      "sha256": "36d2464e7500f741500228b955c1fb0f26d954e869bd26f93dd25c0fafc5087d"
+    },
+    {
+      "path": "pine_sapling_small/mesh.bin",
+      "bytes": 6362672,
+      "sha256": "c6943db888a52dc4e04bf0ac4bc1b8a9c162ba02a2c00eac6075781f88b6b527"
+    },
+    {
+      "path": "pine_sapling_small/model.gltf",
+      "bytes": 3718,
+      "sha256": "775956359a7a22a1cba345f24c2d10ac7b618a811459ab67b2d66dd715477bb2"
+    },
+    {
+      "path": "pine_sapling_small/textures/pine_sapling_small_bark_arm_1k.jpg",
+      "bytes": 801278,
+      "sha256": "336a4680cd571b6076b67afee2310b290b8900d9d126eb39ec1ae92e95be2ea9"
+    },
+    {
+      "path": "pine_sapling_small/textures/pine_sapling_small_bark_diff_1k.jpg",
+      "bytes": 725265,
+      "sha256": "5c76836b01c3536fa0e24207b67bf4f3315b53ebe2b4ecc6f08dfcf3f8d74929"
+    },
+    {
+      "path": "pine_sapling_small/textures/pine_sapling_small_bark_nor_gl_1k.jpg",
+      "bytes": 1016849,
+      "sha256": "05c46455531781b6cf18cae0648cf627f60ee942adaa8bcbfd1592fc2506a9e0"
+    },
+    {
+      "path": "pine_sapling_small/textures/pine_sapling_small_twig_arm_1k.jpg",
+      "bytes": 394056,
+      "sha256": "2eb0aa44124b5a4ae9401e00b23b3c916f4c3f421616ce1bb932f248fc061288"
+    },
+    {
+      "path": "pine_sapling_small/textures/pine_sapling_small_twig_diff_1k.jpg",
+      "bytes": 477942,
+      "sha256": "54af7d6fb664b5a38bcb118b557bc50e01e86ec54d6f1a573c3e32c649a53362"
+    },
+    {
+      "path": "pine_sapling_small/textures/pine_sapling_small_twig_nor_gl_1k.jpg",
+      "bytes": 692711,
+      "sha256": "76af87821d7ff00e25768d5d97a449394fe64a21ae55d099da7f5ed46d9098c8"
+    },
+    {
+      "path": "rock_moss_0/model.gltf",
+      "bytes": 4946,
+      "sha256": "29edbf71935195f0862ca9aedcb9f47b4d4c3d7317f395ab7ffa7a4b96e93d68"
+    },
+    {
+      "path": "rock_moss_1/model.gltf",
+      "bytes": 4942,
+      "sha256": "82a70ad1c9b0f5b23388b8f73baa16afe13576c62eb751fa4f958155f9ce312b"
+    },
+    {
+      "path": "rock_moss_2/model.gltf",
+      "bytes": 4937,
+      "sha256": "0190d0193b7dbc7cae70e82e99109d3ed22aa9fb5da2ee9b7dc6a1177a8f841e"
+    },
+    {
+      "path": "rock_moss_3/model.gltf",
+      "bytes": 4939,
+      "sha256": "44038ab183ecd6494ec1dc1f4dcbabed0a04e58480ade668d14a738fff178f9e"
+    },
+    {
+      "path": "rock_moss_4/model.gltf",
+      "bytes": 4943,
+      "sha256": "1f21be64d15b0dbfec0d5f6853b85c8a6d24b259301f9d6e97f2c2138e48d34b"
+    },
+    {
+      "path": "rock_moss_5/model.gltf",
+      "bytes": 4947,
+      "sha256": "0ccbb50f80595e906b144c07d7160d4edffc55b93b7dee0e6291ab7812479b3c"
+    },
+    {
+      "path": "rock_moss_set_01/rock_moss_set_01.bin",
+      "bytes": 1466380,
+      "sha256": "de8360e6175879aaf02c171911069cf5f1852547f9ca7f10e440085dbcc3315e"
+    },
+    {
+      "path": "rock_moss_set_01/textures/rock_moss_set_01_diff_1k.jpg",
+      "bytes": 168099,
+      "sha256": "40cea65d8aa4ee73a93b04af19963834d061eee9779c3fc2c1cba76eef812ccc"
+    },
+    {
+      "path": "rock_moss_set_01/textures/rock_moss_set_01_nor_gl_1k.jpg",
+      "bytes": 209975,
+      "sha256": "eb4aad3f207f1dc5b624d74ae240372171626a66912bd71adf7bd3e518181d6e"
+    },
+    {
+      "path": "rock_moss_set_01/textures/rock_moss_set_01_rough_1k.jpg",
+      "bytes": 82624,
+      "sha256": "4d6ec46623abd8e2cdb855f59c7ce31873ad61b36b60e4de579e9e776a497c6b"
+    },
+    {
+      "path": "sources.json",
+      "bytes": 19508,
+      "sha256": "0596ae3003e52c8d288cdb13b618b450f6e979ea8e28e68bd5f0d6eee2e9c7cd"
+    },
+    {
+      "path": "tree_small_02/mesh.bin",
+      "bytes": 95102324,
+      "sha256": "d8802b9cc89be083b3985f35833703f962a1645daba2dbee13ffaff6443c45c7"
+    },
+    {
+      "path": "tree_small_02/model.gltf",
+      "bytes": 5660,
+      "sha256": "4018bd862b96c963e046dc88555477ed25b6b0c062eb972820fe0f17c9239198"
+    },
+    {
+      "path": "tree_small_02/textures/tree_small_02_arm_1k.jpg",
+      "bytes": 708242,
+      "sha256": "891c5a1bb124292984b01558e9f2b0302d27d2fa3ccf9dfc6c34f9ea4ca24e6c"
+    },
+    {
+      "path": "tree_small_02/textures/tree_small_02_branch_arm_1k.jpg",
+      "bytes": 375732,
+      "sha256": "8968b46d76c67da09ebbf4eed04b8123c9e0ddf5b55d123968b35b32aa76d27a"
+    },
+    {
+      "path": "tree_small_02/textures/tree_small_02_branch_diff_1k.jpg",
+      "bytes": 449977,
+      "sha256": "a71b768e330c0c6cca097e30314f6b4e842ef724a1370f6aab14b4434eec64cb"
+    },
+    {
+      "path": "tree_small_02/textures/tree_small_02_branch_nor_gl_1k.jpg",
+      "bytes": 581596,
+      "sha256": "a2efae9e7fede259601188cd5cb7e561fc502bd87e04d862a9532b2d8e647a62"
+    },
+    {
+      "path": "tree_small_02/textures/tree_small_02_diff_1k.jpg",
+      "bytes": 863246,
+      "sha256": "4e0093f407b3a1120a36de49a48ebe5a465a9a9b77e361c7a3e66866e115e404"
+    },
+    {
+      "path": "tree_small_02/textures/tree_small_02_leaves_arm_1k.jpg",
+      "bytes": 633698,
+      "sha256": "71f81374daf5a8f3e6eb2c694264a1769fdb0bea508178e4105618eecea83c3e"
+    },
+    {
+      "path": "tree_small_02/textures/tree_small_02_leaves_diff_1k.jpg",
+      "bytes": 340003,
+      "sha256": "261e7d7a5ac7d2e16ea8823ff8510be8f3f615999724232994039ad2885e5c36"
+    },
+    {
+      "path": "tree_small_02/textures/tree_small_02_leaves_nor_gl_1k.jpg",
+      "bytes": 681604,
+      "sha256": "8c72e04fb23e16ae1df79c01385a638473d1dd4dede3d51e83d70153c129f09b"
+    },
+    {
+      "path": "tree_small_02/textures/tree_small_02_nor_gl_1k.jpg",
+      "bytes": 1228646,
+      "sha256": "9c83be074c950ea1b94c732c0c0291b53b9ba357f932d378bafe3ca3b4418871"
+    }
+  ],
+  "rocks": [
+    "rock_moss_0",
+    "rock_moss_1",
+    "rock_moss_2",
+    "rock_moss_3",
+    "rock_moss_4",
+    "rock_moss_5"
+  ]
+}
