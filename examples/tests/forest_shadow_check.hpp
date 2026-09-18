@@ -7,6 +7,9 @@
 // Exercise the real example configuration, not a separately authored scene.
 inline void checkForestShadows(ExampleApp& app, raisin::RayraiWindow& viewer,
     const std::vector<std::shared_ptr<raisin::InstancedVisuals>>& foliage) {
+  const auto shadows = viewer.shadowDebugOverlaySummary();
+  if (!shadows.cascadeRendered || shadows.cascadeCount != 3)
+    throw std::runtime_error("Forest requires three rendered directional shadow cascades");
   for (const auto& visual : foliage) {
     if (!visual->castsShadows())
       throw std::runtime_error("Forest foliage batch does not cast shadows");

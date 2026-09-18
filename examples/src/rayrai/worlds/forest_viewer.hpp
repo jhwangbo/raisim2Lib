@@ -42,6 +42,9 @@ struct ForestViewer {
     weather.sunElevationDegrees = 48;
     weather.windSpeed = 1.2f;
     weather.cloudCoverage = .06f;
+    // Gentle distance haze keeps nearby leaves crisp and separates the far canopy.
+    weather.visibilityMeters = 1200.f;
+    weather.fogColor = glm::vec3(.65f,.70f,.75f);
     viewer->setWeatherSettings(weather);
     auto sky = viewer->generateWeatherSkyEnvironment(256,32,false);
     viewer->setEnvironmentBackground(sky.environmentMap,1);
