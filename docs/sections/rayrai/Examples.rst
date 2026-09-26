@@ -4,7 +4,7 @@ Example targets
 
 Examples
 ========
-Rayrai examples are documented in :doc:`Examples <Examples>`. Each example
+Rayrai examples are documented in :doc:`../Examples`. Each example
 page includes a short explanation, CMake target, and build-tree usage.
 
 Quick map to the current rayrai-related targets:
@@ -13,6 +13,9 @@ Quick map to the current rayrai-related targets:
   scenes.
 * ``rayrai_basic_scene``: minimal ImGui + SDL2 app showing the standard update
   loop, custom visuals, and the offscreen render texture.
+* :doc:`rayrai_forest <../examples/rayrai/rayrai_forest>`: terrain-grounded trees,
+  grass, and rocks with foliage LOD, wind, shadows, asynchronous loading,
+  and twelve dynamic RaiSim objects.
 * ``rayrai_complete_showcase``: broad in-process scene that combines RGB/depth
   cameras, raw buffer readback, LiDAR visualization, camera frustums, and
   custom visuals.

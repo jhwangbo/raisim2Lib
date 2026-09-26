@@ -217,6 +217,7 @@ Rayrai Tools And Examples
    examples/rayrai/rayrai_aruco_marker
    examples/rayrai/rayrai_custom_visuals
    examples/rayrai/rayrai_instancing_grid
+   examples/rayrai/rayrai_forest
    examples/rayrai/rayrai_pointcloud_animation
    examples/rayrai/rayrai_pbr_material_grid
    examples/rayrai/rayrai_pbr_texture_maps

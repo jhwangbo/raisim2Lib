@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="docs/image/rayrai_complete_showcase.gif" alt="rayrai complete showcase" width="49%" />
-  <img src="docs/image/granular_media.gif" alt="granular media example" width="49%" />
+  <img src="docs/image/forest_pan.gif" alt="Camera panning across forest trees and crates in rayrai" width="49%" />
   <br />
   <img src="docs/image/deformable_objects.gif" alt="deformable objects example" width="49%" />
   <img src="docs/image/procedural_heightmap.gif" alt="procedural heightmap example" width="49%" />

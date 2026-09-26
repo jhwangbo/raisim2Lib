@@ -40,6 +40,7 @@ struct ForestViewer {
     weather.useExplicitSunAngles = true;
     weather.sunAzimuthDegrees = 210;
     weather.sunElevationDegrees = 48;
+    weather.sunDiskSize = .001f; // Compact sun disk in the baked sky background.
     weather.windSpeed = 1.2f;
     weather.cloudCoverage = .06f;
     viewer->setWeatherSettings(weather);

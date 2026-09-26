@@ -272,6 +272,10 @@ procedural cloud layer adds ``proceduralCloudLayerEnabled``,
 
 Foliage wind
 ============
+See :doc:`Foliage` for foliage materials, instance LOD and shadows, and the
+:doc:`dense forest example <../examples/rayrai/rayrai_forest>` for a complete
+terrain-grounded scene with animated vegetation.
+
 Authored foliage and instanced grass deform under a global wind field when
 ``foliageWindEnabled`` is set. ``foliageWindDirection`` and
 ``foliageWindSpeed`` drive the base motion; ``foliageWindTimeSeconds`` is

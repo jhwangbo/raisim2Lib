@@ -237,12 +237,19 @@ side.
     skin.subsurfaceMap = subsurfaceMapId;
     skin.subsurfaceTransmittanceMap = transmittanceMapId;
 
-    // Translucent leaf with backlight response.
+    // Translucent leaf with direct/indirect transmission and a backlight map.
     auto leaf = raisin::Material::foliage(
       "leaf", raisin::Material::FoliageType::LeafCard,
       glm::vec4(0.32f, 0.58f, 0.21f, 1.0f));
+    leaf.foliageTransmissionStrength = 0.35f;
+    leaf.foliageTransmissionColor = glm::vec3(0.55f, 0.95f, 0.35f);
     leaf.backlightMap = leafBacklightMapId;
     leaf.cullMode = raisin::Material::CullMode::Disabled;  // two-sided
+
+Foliage transmission also gathers light from the opposite hemisphere in the
+high-fidelity indirect lighting path. Its tint is linear RGB and modulates the
+leaf base color. See :doc:`Foliage` for alpha cutouts, wind, shadows, and dense
+vegetation rendering.
 
 .. list-table::
    :header-rows: 1

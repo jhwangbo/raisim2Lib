@@ -1,6 +1,6 @@
 # Dense forest terrain and physics
 
-![Grass-covered forest terrain with Raisim objects](../../../images/forest.png)
+![Grass-covered forest terrain with Raisim objects](../../../../docs/image/forest.png)
 
 `rayrai_forest` is a small native Rayrai example with an **80 × 80 m** rolling
 heightmap, hills, a gully, and continuous grass coverage. The terrain is static;

@@ -9,8 +9,8 @@ RaiSim |raisim_version_title|
    * - .. image:: image/rayrai_complete_showcase.gif
           :alt: rayrai_complete_showcase animated example
           :width: 100%
-     - .. image:: image/granular_media.gif
-          :alt: granular_media animated example
+     - .. image:: image/forest_pan.gif
+          :alt: Camera panning across forest trees and crates in rayrai
           :width: 100%
    * - .. image:: image/deformable_objects.gif
           :alt: deformable_objects animated example

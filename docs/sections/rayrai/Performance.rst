@@ -42,6 +42,27 @@ main performance controls explicit:
 * Deformable TCP streaming sends topology/indices only during initialization or topology
   changes; normal frames send vertex positions only.
 
+Dense foliage
+=============
+
+The foliage path combines per-instance visibility and mesh LOD selection with
+reused bounds, selection/upload caches, and compatible color/shadow draw batching.
+For application controls, see :doc:`Foliage`. Shadow-only LOD, projected-size
+thinning, and distant impostors trade image detail for throughput; evaluate
+them separately from optimizations that preserve the selected geometry.
+
+Enable asynchronous mesh loading before creating a large scene so import and
+LOD preparation can run while the viewer displays a loading indicator. Prepared
+LOD caches shorten subsequent launches; texture resolution and GPU uploads
+still use the render thread. ``pendingAsyncMeshLoadCount()`` includes unfinished
+preparation/upload work, not just file reads.
+
+The :doc:`forest example <../examples/rayrai/rayrai_forest>` provides separate
+completed-frame and cold/cached-loading benchmarks. Keep resolution, MSAA,
+camera, lighting, wind, and shadow settings fixed when comparing runs. Loading
+time, CPU preparation time, and completed-frame FPS measure different costs;
+a focused CPU improvement alone does not establish an overall FPS gain.
+
 Shared mesh buffers across contexts
 ===================================
 

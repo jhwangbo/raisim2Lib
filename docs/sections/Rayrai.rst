@@ -32,6 +32,7 @@ point is ``raisin::RayraiWindow``.
    rayrai/Lighting
    rayrai/Materials
    rayrai/Visuals
+   rayrai/Foliage
    rayrai/PostProcess
    rayrai/Weather
    rayrai/Capture
@@ -196,6 +197,7 @@ Where to go next
 * Light the scene and set up HDR/IBL reflections — :doc:`rayrai/Lighting`
 * Apply PBR materials and authored asset imports — :doc:`rayrai/Materials`
 * Add visual primitives, instanced visuals, and overlays — :doc:`rayrai/Visuals`
+* Render dense vegetation with wind, leaf lighting, and LOD — :doc:`rayrai/Foliage`
 * Enable cinematic post-process / SSR / SSAO / DoF — :doc:`rayrai/PostProcess`
 * Drive weather and atmospherics — :doc:`rayrai/Weather`
 * Run headlessly, capture screenshots, and run diagnostics — :doc:`rayrai/Capture`

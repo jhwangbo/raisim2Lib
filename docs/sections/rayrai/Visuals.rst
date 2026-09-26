@@ -114,6 +114,11 @@ For repeated geometry, use ``InstancedVisuals`` to reduce draw overhead:
     instanced->addInstance(glm::vec3(0.0f, 0.0f, 0.1f), 0.0f);
     instanced->addInstance(glm::vec3(0.2f, 0.0f, 0.1f), 1.0f);
 
+For vegetation, see :doc:`Foliage` for bulk instance creation, per-plant LOD,
+shadow policies, rooted wind, and asynchronous asset loading. The
+:doc:`dense forest example <../examples/rayrai/rayrai_forest>` demonstrates
+these together on a collision heightmap.
+
 If you want to load meshes once and share them across visuals, use
 ``raisin::RayraiGlobalAsset`` and ``addVisualCustomMesh``:
 
