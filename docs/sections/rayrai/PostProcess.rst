@@ -4,10 +4,12 @@ Post-process effects
 
 This page covers cinematic and screen-space effects driven by
 ``RenderQualitySettings`` — DoF, lens flares, vignette, motion blur, SSR,
-SSAO, SSIL, contact shadows, refraction, and stylized looks plus the debug
-visualisation passes. ``WeatherSettings`` overrides atmospheric state (fog,
-wetness, sky) and is documented in :doc:`Weather`. Bloom, HDR/IBL, and PBR
-materials live in :doc:`Materials` and :doc:`Lighting`.
+SSAO, SSIL, contact shadows, refraction, bloom, temporal AA, linear HDR
+output, and stylized looks plus the debug visualisation passes.
+``WeatherSettings`` overrides atmospheric state (fog, wetness, sky) and is
+documented in :doc:`Weather`. HDR/IBL environments and PBR materials live in
+:doc:`Lighting` and :doc:`Materials`. Many effects are not available on
+macOS; see `Platform notes`_ below.
 
 Cinematic post-process effects
 ==============================
@@ -61,8 +63,12 @@ Screen-space reflections and refraction:
 * ``ssrEnabled``, ``ssrStrength``, ``ssrSteps``, ``ssrMaxDistance``,
   ``ssrThickness`` — depth-only screen-space reflections.
 * ``screenSpaceRefraction``, ``screenSpaceRefractionStrength``,
-  ``screenSpaceRefractionMaxPixels`` — IOR-aware refraction for transparent
-  meshes.
+  ``screenSpaceRefractionMaxPixels`` — refraction of the opaque scene through
+  transmissive (glass) materials. It requires ``highFidelityPbr`` and resolves
+  MSAA before sampling; rough glass reads a blurred copy of the scene.
+  ``Strength`` and ``MaxPixels`` only scale the artistic screen-space offset.
+  Other transparent layers and exit faces are not traced; see :doc:`Materials`
+  for glass materials and the ``geometryRefraction`` tracer.
 
 Indirect lighting and contact effects:
 
@@ -95,7 +101,13 @@ Specular AA, aerial perspective, and detail normals:
 Bloom controls (``bloomEnabled``, ``bloomThreshold``, ``bloomStrength``,
 ``bloomRadius``, ``bloomKnee``, ``bloomQuality``, ``bloomSourceClamp``,
 ``bloomAnamorphic``, ``bloomDirtStrength``, ``bloomDirtScale``,
-``bloomDirtTexture``, ``bloomMix``) cover both clean and lens-dirt looks.
+``bloomDirtTexture``) cover both clean and lens-dirt looks.
+``bloomBlendMode`` (``GlowBlendMode``) sets how the glow is composited:
+``Additive`` (default), ``Screen``, ``Softlight``, ``Replace`` (glow only), or
+``Mix``, which scales the scene by ``1 - bloomMix`` before adding the glow. In
+the default pipeline, materials are already tone-mapped and gamma-encoded when
+bloom runs; with `Linear HDR rendering`_ ``bloomThreshold`` is compared against
+scene-linear radiance.
 
 Diagnostics: ``PostProcessDebugMode`` (``Final``, ``BloomSource``,
 ``AmbientOcclusion``, ``AmbientOcclusionRaw``, ``FogTransmittance``,
@@ -168,6 +180,13 @@ corners, and tight contacts using ``screenSpaceAoRadius`` (with
 (``screenSpaceAoDenoiseEnabled``) is geometry-aware and preserves edges.
 ``contactAoRadius`` / ``contactAoStrength`` add a separate tight contact-AO
 pass on top of SSAO for surfaces that touch.
+
+With the denoiser on and temporal AA off (as in the High preset), AO is
+computed once per pixel in a prepass and the denoiser reuses it; results can
+differ from per-tap evaluation by a few 8-bit levels. With temporal AA on
+(Ultra) each denoise tap evaluates AO again, which costs noticeably more. Set
+``RAYRAI_DISABLE_CACHED_AO=1`` to force the per-tap path. AO is stable from
+frame to frame at sky silhouettes, including on Apple GPUs.
 
 Screen-space indirect lighting (``screenSpaceIndirectLightingEnabled``)
 bounces one indirect ray per pixel against the colour buffer to add coloured
@@ -416,4 +435,60 @@ looks; the calibration reference is intended to drive
           :alt: Auto exposure key/speed driving the loop
      - .. image:: ../../image/rayrai/showcase/48_calibration_reference.png
           :alt: Calibration patches for output transform tuning
+
+Linear HDR rendering
+********************
+By default each material shader applies exposure, the tone curve, and gamma
+before writing the scene buffer, so MSAA resolve, fog, bloom, and depth of
+field work on display-encoded colour.
+``RayraiWindow::setLinearHdrRenderingEnabled(true)`` keeps scene radiance
+linear until the final post pass, which then applies ``pbrExposure`` (times
+the auto-exposure factor), the ``colorMode`` curve when ``pbrToneMapping`` is
+set, and ``gamma`` once. It is a renderer toggle, not a
+``RenderQualitySettings`` field, so presets do not change it.
+
+.. code-block:: cpp
+
+    viewer.setLinearHdrRenderingEnabled(true);
+    auto q = viewer.getRenderQualitySettings();
+    q.bloomEnabled = true;
+    q.bloomThreshold = 1.3f;   // scene-linear radiance in this mode
+    q.bloomKnee = 0.5f;
+    q.bloomStrength = 0.045f;
+    viewer.setRenderQualitySettings(q);
+
+Bright highlights keep their energy through MSAA and bloom, FXAA picks edges
+on perceptual luminance, and white balance, saturation, and colour grading run
+on linear colour before the tone curve. The sky background keeps its own
+exposure and goes through the same tone curve. Bloom thresholds tuned for the
+default pipeline need to be raised. Frames rendered with a
+``RAYRAI_PBR_DEBUG_OUTPUT`` view keep the previous output, and
+:doc:`Capture` describes how the mode affects captures and RGB sensor images.
+Changing the exposure, tone curve, or gamma resets temporal-AA history, which
+also happens while auto exposure adapts.
+
+Temporal anti-aliasing
+**********************
+``temporalAaEnabled`` blends each frame with the previous result, sampled at
+the same screen position and clamped to the current pixel neighbourhood;
+``temporalAaBlend`` (default 0.08, at most 0.95) is the history weight. There
+are no motion vectors, so moving content relies on that clamp. Ultra enables
+temporal AA with ``temporalAaJitterScale = 0``. Keep the jitter at zero: the
+resolve does not compensate for it, so a non-zero jitter shifts static images
+every frame. ``RenderOverrides::allowTemporalAa`` turns it off for an
+individual external render.
+
+Platform notes
+**************
+On macOS, and on other GPUs that expose 16 or fewer fragment texture units,
+rayrai uses a reduced post-process program (see the GPU capability tiers in
+:doc:`Materials`). FXAA, additive bloom, SSAO and contact AO with denoising,
+temporal AA, depth of field, and linear HDR output work. The rest of this page
+is not rendered there: white balance, saturation, colour grading, vignette,
+chromatic aberration, film grain, lens flare, starburst, lens distortion,
+letterbox, motion and zoom blur, SSR, SSIL, contact shadows, aerial
+perspective, volumetric fog and lighting, light shafts, local fog volumes,
+projected decals, heat haze, underwater, the stylized looks, non-``Additive``
+bloom blend modes, and every ``postProcessDebugMode`` except ``Final``. Lens
+droplets and precipitation are separate passes and still render.
 

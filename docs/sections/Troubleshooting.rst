@@ -74,10 +74,33 @@ platform install script and rebuild ``rayrai_tcp_viewer`` in
 rayrai Window Or Offscreen Context Fails
 ========================================
 
-rayrai requires a working OpenGL context. On Linux, make sure OpenGL and SDL2
-development/runtime packages are available. On headless systems, use the
-offscreen context helpers documented in :doc:`Rayrai` and verify that the
-machine provides a usable software or hardware OpenGL stack.
+rayrai requires a working OpenGL 3.3 core-profile context; its context helpers
+request 4.3 first. On Linux, make sure OpenGL and SDL2 development/runtime
+packages are available. On headless systems, use the offscreen context helpers
+documented in :doc:`Rayrai` and verify that the machine provides a usable
+software or hardware OpenGL stack.
+
+Post-Processing Effect Missing On macOS
+=======================================
+
+macOS provides OpenGL 4.1 with 16 fragment texture units, so rayrai uses its
+compact PBR programs and the common post-process program there. Effects such
+as screen-space reflections, volumetric fog, color grading, saturation, and
+white balance are not applied on macOS; see :ref:`rayrai-platform-support` for
+the full list.
+
+Some rayrai examples print the Apple driver message ``unit 10
+GLD_TEXTURE_INDEX_2D is unloadable``. No program samples a 2D texture on that
+unit at those draws, so the message has no visible effect.
+
+First Launch Of An Example Is Slow
+==================================
+
+``rayrai_coacd_mesh_approximation`` runs CoACD for every mesh on its first run,
+which can take a few minutes; Ctrl-C stops it during that phase. RaiSim caches
+the parts beside each mesh, so later runs load them directly. ``rayrai_forest``
+builds mesh LODs on its first launch and saves them as ``rayrai_cache_*.lods``
+files beside its assets. Delete these cache files to force regeneration.
 
 Example Asset Missing
 =====================

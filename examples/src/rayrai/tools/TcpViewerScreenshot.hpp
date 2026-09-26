@@ -17,6 +17,7 @@ namespace tcp_viewer
 
 void flipRgbaRows(std::vector<unsigned char>& rgba, int width, int height);
 std::filesystem::path timestampedCapturePath(const std::filesystem::path& dir, const char* prefix);
+std::filesystem::path nextAvailableOutputPath(const std::filesystem::path& requested);
 /**
  * @brief Read the viewer's final colour texture into a top-down RGBA buffer.
  *

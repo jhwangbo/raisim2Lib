@@ -144,12 +144,12 @@ Successful ``MeshCollisionMode::CONVEXIFY`` calls write an OBJ cache beside the
 source mesh. This keeps repeated runs cheap: the first call pays the CoACD decomposition cost, while later calls with
 the same parameters load the saved convex parts directly.
 
-The file name starts with ``raisim_coacd_`` and includes the source mesh stem, a content hash,
-scale, and CoACD option values, for example:
+The file name starts with ``raisim_coacd_`` and includes the source mesh stem, a hash of the
+source mesh contents, and a hash of the scale and CoACD option values, for example:
 
 .. code-block:: text
 
-    raisim_coacd_model_hash_0123456789abcdef_scale_1_threshold_0_08_maxhull_8_..._realmetric_0.obj
+    raisim_coacd_model_src_0123456789abcdef_opt_fedcba9876543210.obj
 
 The cache stores each convex part as a separate OBJ group named ``raisim_coacd_part_N``. On later
 ``addMesh`` calls with the same source mesh contents and CoACD parameters, RaiSim loads these groups

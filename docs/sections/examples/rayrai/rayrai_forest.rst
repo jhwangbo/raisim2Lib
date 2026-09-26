@@ -1,125 +1,71 @@
-############################
-Rayrai Example: Dense Forest
-############################
+######################
+Rayrai Example: Forest
+######################
 
-``rayrai_forest`` demonstrates dense foliage rendering and RaiSim physics in
-one native window. It uses the shared 161 by 161 heightmap for both collision
-and terrain-grounded plant placement across an 80 by 80 metre landscape.
-
-.. image:: ../../../image/forest.png
-   :alt: Grass-covered forest hills, mossy rocks, crates, and rolling balls
+.. image:: ../../../../examples/images/forest.png
+   :alt: rayrai_forest example
    :width: 100%
 
-Scene and rendering
-===================
+Overview
+========
+Renders an 80 m × 80 m rolling heightmap covered by instanced Poly Haven
+vegetation: 1,888 trees, 61,200 ground-cover instances, and 180 mossy rocks.
+Six crates and six balls fall onto the same heightmap that places the plants.
+Vegetation and rocks are visual-only; collision comes from the terrain and the
+twelve bodies.
 
-* 1,888 trees: 880 pine saplings, 880 fir saplings, and 128 broadleaf trees.
-* 61,200 ground-cover instances: 18,000 each of three grasses, plus 1,800 each
-  of fern, dandelion, nettle, and periwinkle.
-* 180 mossy rocks from six instanced meshes.
-* Twelve dynamic RaiSim bodies: six crates and six balls.
+Target
+======
+CMake target: ``rayrai_forest`` (C++20).
 
-Trees, ground cover, and rocks are visual-only. The static terrain and twelve
-dynamic objects provide collision. Grass covers slopes, terrain edges, the
-view corridor, and the physics clearing. A fixed scatter seed gives repeatable
-placement; plants are rooted before scattering and rocks are embedded using
-terrain samples around their bases.
+The example uses rayrai APIs that are newer than the 2.6.1 release package, so
+it builds only against the upcoming rayrai release. With the 2.6.1 package,
+build the other targets explicitly, for example
+``cmake --build build-examples --target rayrai_basic_scene``.
 
-Rendering uses automatic mesh LOD, projected-size instance thinning, shadow-only
-foliage LOD, wind, three directional shadow cascades, and 4x MSAA. All vegetation
-batches cast shadows by default; foliage impostors are disabled. Strong direct
-sunlight, subdued neutral environment fill, and ACES tone mapping create bright
-leaf highlights and shaded canopy areas. See :doc:`../../rayrai/Foliage` for
-the APIs and their quality/performance tradeoffs.
-
-The loading overlay tracks asynchronous import, LOD preparation, and GPU uploads.
-Physics starts after all assets are ready, then advances eight 2 ms steps per
-rendered frame on the calling thread. Camera input remains available while
-loading. The interactive executable accepts only an optional ``--assets DIR``;
-bounded runs and timing use separate test executables.
-
-Build and run
-=============
-
-CMake target: ``rayrai_forest``. With the normal top-level examples build:
+Run
+===
+Run the build-tree executable:
 
 .. code-block:: bash
 
-    cmake --build build-examples --target rayrai_forest -j12
-    ./build-examples/examples/rayrai_forest
+   ./build-examples/examples/rayrai_forest
+   ./build-examples/examples/rayrai_forest --assets /path/to/forest
 
-Windows builds place ``rayrai_forest.exe`` in ``build-examples/bin``.
-For an isolated Linux build with the optional tests, run from the
-``raisim2Lib`` root:
+On Windows, run ``rayrai_forest.exe`` instead. The asset directory defaults to
+``examples/rsc/forest`` in the checkout used to configure the build. Copy that
+directory and pass ``--assets`` when you move the executable.
 
-.. code-block:: bash
+Loading and caches
+==================
+Meshes load asynchronously while a progress bar across the top of the window
+counts the finished assets; physics starts once loading completes. The first
+launch builds mesh LODs for the high-detail plants and can take tens of
+seconds. Rayrai saves the prepared levels beside each model as
+``rayrai_cache_model.gltf.lods`` and reads them on later launches. When the
+asset directory is read-only, the cache goes to the system temporary directory
+instead. Set ``RAYRAI_ASYNC_LOD_CACHE_DIR`` to choose a cache directory, or set
+``RAYRAI_DISABLE_ASYNC_LOD_CACHE`` to disable the cache. The cache files are
+ignored by Git and can be deleted at any time.
 
-    cmake -S examples -B /tmp/raisim-forest-build -G Ninja \
-      -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-20 \
-      -DRAISIM_PREFIX="$PWD/raisim" -DRAYRAI_PREFIX="$PWD/rayrai" \
-      -DRAISIM_FOREST_EXAMPLE_TESTS=ON -DRAISIM_FOREST_GPU_TESTS=ON
-    cmake --build /tmp/raisim-forest-build --target rayrai_forest \
-      forest_scene_test forest_loading_test forest_render_test forest_shadow_test -j12
-    /tmp/raisim-forest-build/rayrai_forest
+Details
+=======
+- Uses one 161 × 161 heightmap for both collision and plant placement, with a
+  fixed-seed scatter.
+- Renders ten plant types and six rock shapes as ``InstancedVisuals`` with
+  automatic mesh LOD, projected-size thinning, foliage shadow LOD, per-type
+  wind, and shadows enabled for every batch.
+- Uses the ``High`` preset with ACES tone mapping, 4× MSAA, three directional
+  shadow cascades out to 80 m, and clear weather with a distance haze.
+- Integrates eight 2 ms physics steps per rendered frame.
 
-Use the platform compiler/generator and a temporary build directory on macOS
-or Windows. The forest target requires C++20 and a valid RaiSim activation key.
-It opens its own renderer window and needs no external visualization client.
+Tests
+=====
+``-DRAISIM_FOREST_EXAMPLE_TESTS=ON`` registers terrain-placement/physics,
+loading-overlay, and asset-integrity checks; the asset check needs Python 3.
+``-DRAISIM_FOREST_GPU_TESTS=ON`` registers a rendering smoke test and a
+foliage-shadow check; both need a display and OpenGL.
 
-Assets default to ``examples/rsc/forest`` in the checkout. To relocate the
-executable, copy that complete directory and select it explicitly:
-
-.. code-block:: bash
-
-    /tmp/raisim-forest-build/rayrai_forest --assets /path/to/forest
-
-Tests and measurements
-======================
-
-.. code-block:: bash
-
-    ctest --test-dir /tmp/raisim-forest-build -j12 --output-on-failure -R '^forest_'
-    python3 examples/tools/benchmark_forest.py \
-      --viewer /tmp/raisim-forest-build/forest_render_test \
-      --out /tmp/forest-benchmark.json --frames 300 --runs 3
-
-The checks cover terrain placement/physics, asset integrity, loading progress,
-rendering, and foliage shadows. GPU tests run serially and require a working
-desktop OpenGL context even for hidden windows. The benchmark runs one viewer
-at a time with numerical-library thread counts set to one. It measures physics,
-UI, rendering, swap, and GPU completion after loading and 60 warm-up frames.
-Asynchronous asset preparation remains enabled.
-
-First loading can take substantially longer while mesh LODs are generated.
-Subsequent runs reuse persistent LOD caches. To measure cold and cached loading
-separately, use a new, empty cache directory:
-
-.. code-block:: bash
-
-    python3 examples/tools/benchmark_forest_loading.py \
-      --viewer /tmp/raisim-forest-build/forest_render_test \
-      --out /tmp/forest-loading-results --cache-dir /tmp/forest-loading-cache \
-      --runs 3
-
-Source and assets
-=================
-
-The source is under ``examples/src/rayrai/worlds``:
-``rayrai_forest.cpp`` supplies the application loop, ``forest_viewer.hpp``
-configures rendering, ``forest_scene.hpp`` builds terrain/scatter/physics, and
-``forest_loading.hpp`` implements the overlay. ``FOREST.md`` contains additional
-asset preparation details and recorded measurements.
-
-Models and ground textures are Poly Haven CC0 assets. The bundle records source
-URLs and hashes in ``examples/rsc/forest/sources.json`` and prepared-file hashes
-in ``manifest.json``. The optional download/preparation workflow is:
-
-.. code-block:: bash
-
-    python3 examples/tools/download_forest_assets.py /tmp/forest-assets
-    python3 examples/tools/prepare_forest_assets.py /tmp/forest-assets
-    python3 examples/tests/test_forest_assets.py /tmp/forest-assets/prepared
-
-The viewer itself has no runtime Python or editor-scene dependency. Regenerating
-assets downloads the current upstream versions; the shipped manifests identify
-the versions used in the bundled scene.
+The assets are from Poly Haven under CC0; see
+``examples/rsc/forest/ATTRIBUTION.md``. ``examples/src/rayrai/worlds/FOREST.md``
+documents asset preparation, the benchmark scripts, and measured loading times.

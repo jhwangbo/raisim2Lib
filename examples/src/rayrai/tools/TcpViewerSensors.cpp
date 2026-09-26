@@ -2,6 +2,7 @@
 // All rights reserved.
 
 #include "TcpViewerSensors.hpp"
+#include "TcpViewerSensorLimits.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -134,6 +135,13 @@ SensorRenderer::~SensorRenderer() {
 
 bool SensorRenderer::render(RayraiWindow& viewer, std::vector<PendingSensorUpdate>& updates,
                             std::string& status) {
+  // Keep the update handshake alive even when a remote sensor advertises an
+  // unusable size. The caller sends an empty acknowledgment if all updates
+  // are filtered, and the server can continue serving scene frames.
+  updates.erase(std::remove_if(updates.begin(), updates.end(),
+      [](const PendingSensorUpdate& update) {
+        return !validSensorDimensions(update.info.width, update.info.height);
+      }), updates.end());
   RayraiWindow::RenderOverrides overrides;
   overrides.doShadows = true;
   overrides.drawCoordinateFrames = false;
@@ -149,7 +157,7 @@ bool SensorRenderer::render(RayraiWindow& viewer, std::vector<PendingSensorUpdat
     const auto& info = update.info;
     if ((info.type != raisim::Sensor::Type::RGB &&
          info.type != raisim::Sensor::Type::DEPTH) ||
-        info.width <= 0 || info.height <= 0) {
+        !validSensorDimensions(info.width, info.height)) {
       status = "unsupported or invalid sensor request: " + info.name;
       return false;
     }

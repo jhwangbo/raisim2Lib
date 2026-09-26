@@ -210,6 +210,17 @@ create_rayrai_executable(rayrai_rolling_spinning_friction src/rayrai/dynamics/ra
 create_rayrai_executable(rayrai_pbr_material_grid src/rayrai/materials/rayrai_pbr_material_grid.cpp)
 create_rayrai_executable(rayrai_pbr_texture_maps src/rayrai/materials/rayrai_pbr_texture_maps.cpp)
 create_rayrai_executable(rayrai_quality_lighting src/rayrai/materials/rayrai_quality_lighting.cpp)
+create_rayrai_executable(rayrai_nested_glass src/rayrai/materials/rayrai_nested_glass.cpp)
+option(RAISIM_NESTED_GLASS_GPU_TESTS "Register the nested-glass render smoke test (needs OpenGL)" OFF)
+if(RAISIM_NESTED_GLASS_GPU_TESTS)
+    enable_testing()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    add_test(NAME rayrai_nested_glass_smoke COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_rayrai_nested_glass.py
+        $<TARGET_FILE:rayrai_nested_glass>)
+    set_tests_properties(rayrai_nested_glass_smoke PROPERTIES RUN_SERIAL TRUE TIMEOUT 120
+        ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1;MKL_NUM_THREADS=1")
+endif()
 create_rayrai_executable(rayrai_coacd_mesh_approximation src/rayrai/assets/rayrai_coacd_mesh_approximation.cpp)
 create_rayrai_executable(rayrai_visual_asset_support src/rayrai/assets/rayrai_visual_asset_support.cpp)
 

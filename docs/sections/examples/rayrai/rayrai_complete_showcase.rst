@@ -4,7 +4,7 @@ Rayrai Example: Complete Showcase
 
 Overview
 ========
-Comprehensive rayrai showcase with Go1, Livox LiDAR, D455 RGB/depth sensors, heightmap terrain, YCB objects, custom visuals, instanced geometry, and a live LiDAR point cloud. Use it as an end-to-end check for rayrai and sensor rendering.
+Comprehensive rayrai showcase with a sensored ANYmal (spinning LiDAR and front RGB/depth camera), heightmap terrain, YCB objects, custom visuals, instanced geometry, and a live LiDAR point cloud. Use it as an end-to-end check for rayrai and sensor rendering.
 
 Screenshot
 ==========

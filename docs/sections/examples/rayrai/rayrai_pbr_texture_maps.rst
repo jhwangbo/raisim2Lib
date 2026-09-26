@@ -30,10 +30,17 @@ Run the build-tree executable:
 On Windows, run ``rayrai_pbr_texture_maps.exe`` instead.
 This example uses the in-process rayrai renderer (no external client required).
 
+Pass ``--screenshot PATH`` to render with a hidden window, wait until every
+asset has loaded, save the final image as a PNG, and exit:
+
+.. code-block:: bash
+
+   ./build-examples/examples/rayrai_pbr_texture_maps --screenshot /tmp/pbr_texture_maps.png
+
 
 Details
 =======
-- Loads these glTF assets from ``examples/rsc/rayrai/pbr``:
+- Loads these glTF assets from ``rsc/rayrai/pbr``:
   ``FlightHelmet``, ``DamagedHelmet``, ``SciFiHelmet``, ``AntiqueCamera``,
   ``Lantern``, ``BoomBox``, ``Avocado``, and ``WaterBottle``.
 - Normalizes asset scale after asynchronous mesh loading completes so all eight assets

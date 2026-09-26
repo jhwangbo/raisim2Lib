@@ -4,9 +4,9 @@ Weather and atmospherics
 
 Weather is preset-driven and exposes both renderer-side state
 (``RenderQualitySettings``) and runtime atmospheric overrides
-(``WeatherSettings``). When ``WeatherSettings::enabled = true`` the
-atmospheric fields on ``WeatherSettings`` override the matching
-``RenderQualitySettings`` fields for that frame.
+(``WeatherSettings``). While ``WeatherSettings::enabled = true``, applying
+weather writes the resolved sun, sky, fog, cloud, and wet/snow state into the
+renderer's ``RenderQualitySettings``.
 
 Weather presets
 ===============
@@ -15,12 +15,19 @@ Presets cover ``Clear``, ``Hazy``, ``Overcast``, ``Fog``, ``Rain``,
 ``Custom``. Quality steps (``Low``, ``Medium``, ``High``, ``Ultra``) trade
 fidelity against particle and texture budgets.
 
-``WeatherSettings`` and ``RenderQualitySettings`` overlap on atmospheric
-fields (fog density, wetness, volumetric fog, sky tinting). The precedence
-rule is: when ``WeatherSettings::enabled = true``, the renderer reads
-weather fields and ignores the corresponding ``RenderQualitySettings``
-fields for that frame. When ``enabled = false``, ``RenderQualitySettings``
-applies. Numeric units in ``WeatherSettings``: ``timeOfDayHours`` in hours
+Weather is applied by ``setWeatherSettings``, ``setWeatherPreset``,
+``transitionWeather``, and by ``updateWeather`` while a transition or wetness
+accumulation is running. Each application starts from the current
+``RenderQualitySettings``; overrides the main light (direction, colour,
+ambient); adjusts ``shadowStrength`` and ``shadowPcfRadius``; sets the
+environment intensity and tints, the clouds, and the wet/snow fields; scales
+``pbrExposure``; re-enables the procedural sky; takes the larger of the two
+fog densities; and passes the result to ``setRenderQualitySettings``. That
+call rebuilds the main light and removes all additional lights (see
+:doc:`Lighting`), so add lights after weather is applied and again after
+later weather updates. Disabling weather stops further updates but does not
+restore the previous values; call ``setRenderQualitySettings`` with your own
+settings afterwards. Numeric units in ``WeatherSettings``: ``timeOfDayHours`` in hours
 ``[0, 24)``, ``latitude`` / ``longitude`` in degrees, ``windSpeed`` in m/s,
 ``visibilityMeters`` / ``radius`` / distance-fade fields in metres,
 ``fogDensity`` in metres⁻¹ (exponential extinction), ``fogAnisotropy`` is
@@ -130,7 +137,7 @@ Hillaire sky as the background out of the box. You do not need to do
 anything to turn it on; you only need to call the helpers below if you
 want it to *light* the scene as ambient.
 
-Two-step recipe to get a sky that also drives shaded-side ambient:
+To let the sky light PBR materials, bake it into cubemaps and assign them:
 
 .. code-block:: cpp
 
@@ -141,18 +148,25 @@ Two-step recipe to get a sky that also drives shaded-side ambient:
     viewer.setRenderQualityPreset(
         raisin::RayraiWindow::RenderQualityPreset::High);
 
-    // 2) Bake the procedural sky into a real IBL environment cubemap +
-    //    irradiance cubemap so PBR materials sample sky colour for
-    //    indirect lighting. Without this call the sky is "background
-    //    only" — PBR surfaces see no environment contribution.
-    viewer.generateWeatherSkyEnvironment(
+    // 2) Bake the current sky into an environment cubemap plus a diffuse
+    //    irradiance cubemap. setAsBackground=true also shows the baked
+    //    map as the background.
+    auto sky = viewer.generateWeatherSkyEnvironment(
         /*envFaceSize=*/128,
         /*irradianceFaceSize=*/32,
         /*setAsBackground=*/true);
 
-After that, ``RenderQualitySettings::pbrEnvironmentIntensity`` controls
-how strong the IBL contribution is. The preset defaults are tuned for
-outdoor daylight; lower it for an overcast or indoor feel.
+    // 3) Assign the maps to each visual that should receive sky light.
+    visual->setPbrEnvironment(sky.environmentMap, sky.irradianceMap,
+                              /*prefilteredEnvironmentMap=*/0, /*brdfLut=*/0);
+
+The bake is not applied to materials automatically. Materials without an
+environment map, and all instanced visuals, use the neutral procedural
+daylight fallback tinted by ``pbrEnvironmentLightingTint`` (see
+:doc:`Lighting`), not the sky's colours.
+``RenderQualitySettings::pbrEnvironmentIntensity`` scales both the fallback
+and assigned environment maps. The preset defaults are tuned for outdoor
+daylight; lower it for an overcast or indoor feel.
 
 If you want to **turn the sky off** (for a flat colour background or to
 use an HDR environment instead):
@@ -165,19 +179,23 @@ use an HDR environment instead):
     viewer.setRenderQualitySettings(q);
     viewer.setBackgroundColorRgb255({20, 22, 32, 255});  // flat fallback
 
-To swap in your own HDR environment (the
-:doc:`PbrEnvironment <Lighting>` bundle), load the HDR file, set it as
-the background, and the PBR shader will use it instead of the procedural
-sky:
+While weather is enabled, each weather application turns the procedural sky
+back on.
+
+To use your own HDR environment (the :doc:`PbrEnvironment <Lighting>`
+bundle), assign it to visuals for lighting and optionally show it as the
+background; ``setEnvironmentBackground`` alone only changes the background:
 
 .. code-block:: cpp
 
     auto env = raisin::PbrEnvironment::loadFromHdrFile("/path/studio.hdr");
+    visual->setPbrEnvironment(env);  // lighting
     viewer.setEnvironmentBackground(env.environmentCubemap, /*exposure=*/1.0f);
 
-The procedural sky is cheap (a few small LUTs); the IBL bake is a
-one-time cost when the renderer initialises or when weather state
-changes substantially. Both are documented in more detail below.
+The procedural sky is cheap (a few small LUTs).
+``generateWeatherSkyEnvironment`` evaluates the sky on the CPU for every
+cubemap texel, so call it at setup or at weather transitions, not every frame.
+Both are documented in more detail below.
 
 Volumetric fog, sky, and light shafts
 =====================================
@@ -243,6 +261,25 @@ procedural cloud layer adds ``proceduralCloudLayerEnabled``,
 
     viewer.setRenderQualitySettings(quality);
 
+Weather drives the same height fog, which makes it a cheap way to add
+distance haze. With ``WeatherSettings::enabled``, a ``visibilityMeters``
+below 5000 (or a ``fogDensity`` above 0.001) enables height fog with an
+extinction of ``max(0.85 * fogDensity, 3 / visibilityMeters)`` per metre,
+coloured by ``WeatherSettings::fogColor``. Weather adds the volumetric fog
+pass only at ``WeatherQuality::Ultra`` when that extinction exceeds 0.004 per
+metre. ``weatherDiagnostics()`` reports ``heightFogActive``,
+``heightFogDensity``, ``visibilityTransmittance100m``, and
+``visibilityTransmittance1km``.
+
+.. code-block:: cpp
+
+    raisin::RayraiWindow::WeatherSettings weather;
+    weather.enabled = true;
+    weather.preset = raisin::RayraiWindow::WeatherPreset::Clear;
+    weather.visibilityMeters = 1200.0f;                 // ~78% transmittance at 100 m
+    weather.fogColor = glm::vec3(0.65f, 0.70f, 0.75f);  // cool grey haze
+    viewer.setWeatherSettings(weather);
+
 .. image:: ../../image/rayrai/rayrai_volumetric_fog.png
    :alt: Pillars slicing the main light into volumetric shafts
    :width: 100%
@@ -282,9 +319,17 @@ Authored foliage and instanced grass deform under a global wind field when
 the wind clock the application drives from its frame loop.
 ``foliageWindGustStrength`` and ``foliageWindGustScale`` add slower gust
 noise on top, while ``foliageWindBranchBend`` controls coarse trunk/branch
-bend and ``foliageWindLeafFlutter`` controls fine leaf flutter. The
-per-mesh response amplitude comes from the material's ``FoliageType`` and
-the vertex color channels populated by the importer.
+bend and ``foliageWindLeafFlutter`` controls fine leaf flutter.
+``WeatherSettings::windSpeed`` does not move foliage.
+
+Only materials with ``foliageWindStrength > 0`` move. The bend grows from
+``foliageRootHeight`` to ``foliageTipHeight`` in mesh-local height and is
+divided by ``foliageStiffness``; ``foliageFlutterWeight`` scales the flutter,
+and wet or snowy foliage moves less. ``FoliageType`` classifies the material
+but does not enable wind by itself. For instanced batches,
+``InstancedVisuals::configureFoliageWind`` (and ``configureGrassPatch`` for
+grass) sets the same response per batch; see :doc:`Materials` for foliage
+materials.
 
 Foliage uses two-sided lighting and weather-driven leaf colour shifts.
 Grass patches and dense bushes are usually rendered through
@@ -297,17 +342,23 @@ per-instance scale and rotation driving subtle variation.
     quality.foliageWindEnabled = true;
     quality.foliageWindDirection = glm::vec2(0.7f, 0.7f);  // diagonal wind
     quality.foliageWindSpeed = 2.4f;                       // base m/s
-    quality.foliageWindTimeSeconds = currentTimeSeconds;   // animation clock
     quality.foliageWindGustStrength = 0.6f;                // gust amplitude
     quality.foliageWindGustScale = 1.2f;                   // gust spatial scale
     quality.foliageWindBranchBend = 0.22f;                 // coarse trunk bend
     quality.foliageWindLeafFlutter = 0.10f;                // fine flutter
     viewer.setRenderQualitySettings(quality);
 
-    // Mark a material as foliage so the wind shader applies to it.
+    // Per frame: advance the wind clock. Unlike setRenderQualitySettings,
+    // this does not rebuild the lights.
+    viewer.advanceFoliageWindTime(dt);   // or setFoliageWindTimeSeconds(t)
+
+    // A foliage material only moves with a positive wind strength.
     auto leaf = raisin::Material::foliage(
       "oak_leaves", raisin::Material::FoliageType::LeafCard,
       glm::vec4(0.32f, 0.55f, 0.21f, 1.0f));
+    leaf.foliageWindStrength = 1.0f;
+    leaf.foliageRootHeight = 0.0f;   // mesh-local height where bending starts
+    leaf.foliageTipHeight = 1.0f;    // full bend at this height
 
 .. list-table::
    :header-rows: 1
@@ -346,7 +397,9 @@ can ramp it independently of the weather state. Enable
 ``weatherSnowRoughness``, ``weatherSnowMetallicScale``, and
 ``weatherSnowNormalSoftening``. The ``WeatherMask`` texture slot on
 ``Material`` masks these effects per-asset, so authored awnings or
-undersides of overhangs stay dry.
+undersides of overhangs stay dry. PBR meshes show the wet and snow response
+only in the full PBR program; see the GPU capability tiers in
+:doc:`Materials`.
 
 Wet response darkens albedo, drops roughness, and adds animated rain
 ripples on upward-facing surfaces; ``wetnessAccumulationEnabled`` lets the
@@ -418,7 +471,11 @@ than configured independently. Storms add stochastic lightning controlled by
 ``lightningRate`` and the ``lightningLocalPoint*`` fields; subscribe with
 ``setWeatherThunderCallback`` to play audio cues. Solar position uses the
 configured latitude / longitude / date and shifts the directional light
-accordingly throughout ``timeOfDayHours``.
+accordingly throughout ``timeOfDayHours``, which is civil time at
+``utcOffsetHours`` (default 9) or local solar time when
+``automaticUtcOffset`` derives the offset from ``longitude / 15``. Set
+``useExplicitSunAngles`` with ``sunAzimuthDegrees`` and
+``sunElevationDegrees`` (clamped to -8..89) to place the sun directly.
 
 .. code-block:: cpp
 

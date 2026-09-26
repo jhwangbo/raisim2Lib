@@ -43,6 +43,9 @@ struct ForestViewer {
     weather.sunDiskSize = .001f; // Compact sun disk in the baked sky background.
     weather.windSpeed = 1.2f;
     weather.cloudCoverage = .06f;
+    // Gentle distance haze keeps nearby leaves crisp and separates the far canopy.
+    weather.visibilityMeters = 1200.f;
+    weather.fogColor = glm::vec3(.65f,.70f,.75f);
     viewer->setWeatherSettings(weather);
     auto sky = viewer->generateWeatherSkyEnvironment(256,32,false);
     viewer->setEnvironmentBackground(sky.environmentMap,1);
@@ -68,8 +71,8 @@ struct ForestViewer {
       for (const auto& p : plants) if (p.type == type) {
         raisin::InstancedVisuals::InstanceSpec instance;
         instance.position = {p.x,p.y,p.z};
-        // Rayrai's vec4 instance setter accepts XYZW.
-        instance.orientation = {0,0,std::sin(p.yaw*.5),std::cos(p.yaw*.5)};
+        // Rayrai's vec4 instance orientation is WXYZ.
+        instance.orientation = {std::cos(p.yaw*.5),0,0,std::sin(p.yaw*.5)};
         instance.scale = glm::vec3(p.scale);
         instance.colorWeight = float((p.scale/std::max(1.,p.scale))*.4);
         instances.push_back(instance);
@@ -94,7 +97,7 @@ struct ForestViewer {
       for (const auto& p:rocks) if (p.type==type) {
         raisin::InstancedVisuals::InstanceSpec instance;
         instance.position={p.x,p.y,p.z};
-        instance.orientation={0,0,std::sin(p.yaw*.5),std::cos(p.yaw*.5)};
+        instance.orientation={std::cos(p.yaw*.5),0,0,std::sin(p.yaw*.5)};
         instance.scale=glm::vec3(p.scale);
         instances.push_back(instance);
       }

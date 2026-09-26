@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include "forest_viewer.hpp"
 #include "forest_loading.hpp"
@@ -72,6 +73,19 @@ int main(int argc, char** argv) {
         for (const auto& visual:group)
           if (!visual->sourceMeshCountForDiagnostics() || !visual->castsShadows())
             throw std::runtime_error("Forest asset failed to load or cast shadows");
+      const auto atmosphere=viewer.weatherDiagnostics();
+      const auto& quality=viewer.getRenderQualitySettings();
+      // Check the applied weather/render path: light haze at distance, with no
+      // volumetric pass or loss of close-range visibility.
+      if (!atmosphere.heightFogActive || !quality.heightFogEnabled ||
+          !quality.fogColorOverrideEnabled || quality.heightFogDensity<=0.f ||
+          atmosphere.visibilityTransmittance100m<.65f ||
+          atmosphere.visibilityTransmittance100m>.95f ||
+          std::exp(-quality.heightFogDensity*5.f)<.97f ||
+          quality.volumetricFogEnabled)
+        throw std::runtime_error("Forest haze must be subtle and active after rendering");
+      std::cout << "Haze transmittance at 100 m: "
+                << atmosphere.visibilityTransmittance100m << '\n';
 #ifdef FOREST_VERIFY_SHADOWS
       checkForestShadows(app,viewer,forest.foliage);
 #endif

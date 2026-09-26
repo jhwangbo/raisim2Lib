@@ -24,6 +24,8 @@ objects. The same 161 × 161 heightmap supplies both collision and plant heights
   and base exposure 1.1 give exposed leaves bright, near-white highlights under
   the ACES tone curve. Ambient fill stays unchanged to preserve deep canopy
   shadows; no light-shaft effect is added.
+- A subtle cool-gray haze separates distant foliage, using 1,200 m weather
+  visibility and the existing height fog. Nearby leaves retain their contrast.
 
 Vegetation and rocks are visual-only; collision is provided by the terrain and twelve
 physics objects. Every imported plant is individually rooted at local Z=0.
@@ -94,7 +96,7 @@ to 4.70–4.91 seconds** (about **82% less time**); first-time cache creation ta
 26.88 seconds. Async loading and the progress bar remain active throughout.
 
 The 16 optional cache files add **282 MiB** to the original 131.5 MiB bundle.
-They are already generated in this checkout and can be deleted to reclaim space;
+They are generated locally, ignored by Git, and can be deleted to reclaim space;
 Rayrai recreates them on demand. Full geometry fingerprints detect changed
 external buffers and LOD-affecting material settings. Other material and texture
 properties come from the current import. Invalid or damaged caches are ignored.

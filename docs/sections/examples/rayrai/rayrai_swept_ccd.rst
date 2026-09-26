@@ -19,9 +19,6 @@ Target
 ======
 CMake target: ``rayrai_swept_ccd``.
 
-This example is only built when the installed RaiSim package exposes swept CCD
-settings in ``contact::ContactSettings``.
-
 Run
 ===
 Run the build-tree executable:

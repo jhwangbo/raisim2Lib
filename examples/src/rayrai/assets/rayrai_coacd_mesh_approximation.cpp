@@ -8,20 +8,8 @@
 #include "raisim/World.hpp"
 
 int main(int argc, char* argv[]) {
-  ExampleApp app;
-  if (!app.init("rayrai_coacd_mesh_approximation", 1600, 900))
-    return -1;
-
   auto world = std::make_shared<raisim::World>();
   world->setGravity({0.0, 0.0, 0.0});
-
-  auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1600, 900);
-  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Balanced));
-  raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {24, 26, 30, 255});
-  viewer->setFogDensity(0.0f);
-  viewer->setShadowOrtho(8.0f, 0.1f, 40.0f);
-  viewer->setShadowCenterOffset(4.0f);
 
   raisim::CoacdOptions options;
   options.threshold = 0.04;
@@ -48,6 +36,11 @@ int main(int argc, char* argv[]) {
   const double rowSpacing = 0.72;
   const double startY = 1.45;
 
+  // CoACD runs before the window opens: the first run takes a few minutes (the parts are cached
+  // next to each mesh afterwards), and until SDL installs its signal handler Ctrl-C stops it
+  // right away instead of waiting for the render loop.
+  std::cout << "Generating CoACD collision parts; the first run can take a few minutes..."
+            << std::endl;
   for (size_t row = 0; row < meshFiles.size(); ++row) {
     const std::string path = rayraiRscPath(argv[0], meshFiles[row]);
     const double y = startY - static_cast<double>(row) * rowSpacing;
@@ -72,6 +65,18 @@ int main(int argc, char* argv[]) {
               << coacd->getCoacdConvexParts().size()
               << " CoACD collision parts" << std::endl;
   }
+
+  ExampleApp app;
+  if (!app.init("rayrai_coacd_mesh_approximation", 1600, 900))
+    return -1;
+
+  auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1600, 900);
+  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
+    raisin::RayraiWindow::RenderQualityPreset::Balanced));
+  raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {24, 26, 30, 255});
+  viewer->setFogDensity(0.0f);
+  viewer->setShadowOrtho(8.0f, 0.1f, 40.0f);
+  viewer->setShadowCenterOffset(4.0f);
 
   auto& camera = viewer->getCamera();
   camera.target = {0.0f, 0.0f, 0.8f};

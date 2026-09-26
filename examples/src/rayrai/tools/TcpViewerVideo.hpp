@@ -31,6 +31,11 @@ inline constexpr double kMaxVideoFramesPerSecond = 240.0;
 inline constexpr int kMinVideoQuality = 0;
 inline constexpr int kMaxVideoQuality = 51;
 
+inline bool canStartServerRecording(bool videoOpen, bool pngSequenceActive,
+                                    bool serverOwnsRecording) {
+  return serverOwnsRecording || (!videoOpen && !pngSequenceActive);
+}
+
 /** Number of frames needed to cover elapsed wall time at a constant frame rate.
  * Independent of render frequency and the PNG sequence's capture interval. */
 size_t videoFramesDue(double elapsedSeconds, double framesPerSecond, size_t framesWritten);
