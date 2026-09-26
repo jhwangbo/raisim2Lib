@@ -70,8 +70,8 @@ struct ForestViewer {
       for (const auto& p : plants) if (p.type == type) {
         raisin::InstancedVisuals::InstanceSpec instance;
         instance.position = {p.x,p.y,p.z};
-        // Rayrai's vec4 instance setter accepts XYZW.
-        instance.orientation = {0,0,std::sin(p.yaw*.5),std::cos(p.yaw*.5)};
+        // Rayrai's vec4 instance orientation is WXYZ.
+        instance.orientation = {std::cos(p.yaw*.5),0,0,std::sin(p.yaw*.5)};
         instance.scale = glm::vec3(p.scale);
         instance.colorWeight = float((p.scale/std::max(1.,p.scale))*.4);
         instances.push_back(instance);
@@ -96,7 +96,7 @@ struct ForestViewer {
       for (const auto& p:rocks) if (p.type==type) {
         raisin::InstancedVisuals::InstanceSpec instance;
         instance.position={p.x,p.y,p.z};
-        instance.orientation={0,0,std::sin(p.yaw*.5),std::cos(p.yaw*.5)};
+        instance.orientation={std::cos(p.yaw*.5),0,0,std::sin(p.yaw*.5)};
         instance.scale=glm::vec3(p.scale);
         instances.push_back(instance);
       }

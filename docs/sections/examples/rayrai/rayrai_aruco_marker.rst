@@ -29,7 +29,8 @@ This example uses the in-process rayrai renderer (no external client required).
 
 Details
 =======
-- Adds a mesh visual as a stand-in marker and rotates it to face the camera.
+- Loads the textured ``aruco_marker/aruco_marker.dae`` mesh as a visual and
+  rotates it to face the camera.
 - Configures a directional light and disables shadows for flat lighting.
 - Uses an orthographic camera to render a marker-like view.
 

@@ -4,8 +4,10 @@
 #include "TcpViewerSettings.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cerrno>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -13,6 +15,13 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 namespace raisin::tcp_viewer
 {
@@ -558,7 +567,17 @@ std::filesystem::path settingsFilePath() {
   if (home && *home) {
     return std::filesystem::path(home) / ".rayrai" / "settings.yaml";
   }
-  return std::filesystem::current_path() / ".rayrai" / "settings.yaml";
+#if defined(_WIN32)
+  const char* appData = std::getenv("APPDATA");
+  if (appData && *appData)
+    return std::filesystem::path(appData) / "rayrai" / "settings.yaml";
+  const char* userProfile = std::getenv("USERPROFILE");
+  if (userProfile && *userProfile)
+    return std::filesystem::path(userProfile) / ".rayrai" / "settings.yaml";
+#endif
+  std::error_code ec;
+  const auto cwd = std::filesystem::current_path(ec);
+  return (ec ? std::filesystem::path(".") : cwd) / ".rayrai" / "settings.yaml";
 }
 
 void loadViewerSettings(ViewerSettings& settings) {
@@ -569,9 +588,12 @@ void loadViewerSettings(ViewerSettings& settings) {
 
   std::string line;
   while (std::getline(input, line)) {
-    const auto comment = line.find('#');
-    if (comment != std::string::npos) {
-      line.resize(comment);
+    for (size_t i = 0; i < line.size(); ++i) {
+      if (line[i] == '#' && (i == 0 || line[i - 1] == ' ' ||
+                             line[i - 1] == '\t')) {
+        line.resize(i);
+        break;
+      }
     }
     const auto sep = line.find(':');
     if (sep == std::string::npos) {
@@ -694,7 +716,12 @@ void loadViewerSettings(ViewerSettings& settings) {
     else if (key == "recent_connection") {
       ConnectionEntry entry;
       if (parseConnectionLabel(value, entry)) {
-        recordConnection(settings.recentConnections, entry.host, entry.port);
+        auto& connections = settings.recentConnections;
+        if (std::find_if(connections.begin(), connections.end(),
+              [&](const ConnectionEntry& existing) {
+                return existing.host == entry.host && existing.port == entry.port;
+              }) == connections.end() && connections.size() < 8)
+          connections.push_back(entry);
       }
     }
     else if (key == "pane_layout") {
@@ -712,23 +739,57 @@ void loadViewerSettings(ViewerSettings& settings) {
       }
     }
     else if (key == "resource_dir") {
-      if (!value.empty()) {
-        recordResourceDir(settings.resourceDirs, value);
-      }
+      auto& dirs = settings.resourceDirs;
+      if (!value.empty() &&
+          std::find(dirs.begin(), dirs.end(), value) == dirs.end() &&
+          dirs.size() < 24)
+        dirs.push_back(value);
     }
   }
   sanitizeViewerSettings(settings);
 }
 
-void saveViewerSettings(const ViewerSettings& settings) {
-  const std::filesystem::path path = settingsFilePath();
+namespace detail {
+bool writeSettingsFileAtomically(
+    const std::filesystem::path& path,
+    const std::function<void(std::ostream&)>& write) {
   std::error_code ec;
   std::filesystem::create_directories(path.parent_path(), ec);
-  std::ofstream output(path);
-  if (!output) {
-    std::cerr << "WARN: Failed to write " << path << "\n";
-    return;
+  if (ec) return false;
+  static std::atomic<uint64_t> sequence{0};
+  auto temporary = path;
+  temporary += ".tmp." + std::to_string(
+      std::chrono::steady_clock::now().time_since_epoch().count()) + "." +
+      std::to_string(sequence.fetch_add(1, std::memory_order_relaxed));
+  std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+  if (!output) return false;
+  try {
+    write(output);
+  } catch (...) {
+    output.close();
+    std::filesystem::remove(temporary, ec);
+    return false;
   }
+  output.flush();
+  const bool written = static_cast<bool>(output);
+  output.close();
+  if (!written || !output) {
+    std::filesystem::remove(temporary, ec);
+    return false;
+  }
+#if defined(_WIN32)
+  const bool replaced = MoveFileExW(temporary.c_str(), path.c_str(),
+                                   MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+#else
+  std::filesystem::rename(temporary, path, ec);
+  const bool replaced = !ec;
+#endif
+  if (!replaced) std::filesystem::remove(temporary, ec);
+  return replaced;
+}
+} // namespace detail
+
+void writeViewerSettings(std::ostream& output, const ViewerSettings& settings) {
 
   output << "# rayrai TCP viewer settings\n";
   output << std::boolalpha << std::setprecision(6);
@@ -862,6 +923,15 @@ void saveViewerSettings(const ViewerSettings& settings) {
   }
   for (const auto& dir : settings.resourceDirs) {
     output << "resource_dir: " << dir << "\n";
+  }
+}
+
+void saveViewerSettings(const ViewerSettings& settings) {
+  const auto path = settingsFilePath();
+  if (!detail::writeSettingsFileAtomically(path, [&](std::ostream& output) {
+        writeViewerSettings(output, settings);
+      })) {
+    std::cerr << "WARN: Failed to write " << path << "\n";
   }
 }
 

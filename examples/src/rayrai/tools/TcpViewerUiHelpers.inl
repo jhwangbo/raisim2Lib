@@ -470,14 +470,16 @@ glm::vec3 mouseForceFromDragPixels(
   return mouseForceFromDragPixels(camera.right, camera.up, dragPixels, accelerationPerPixel);
 }
 
+// quat holds w, x, y, z in its x, y, z, w components (VisualEntry::lastQuat).
 glm::quat normalizedQuatFromWxyz(const glm::vec4& quat) {
-  const float norm2 = quat.w * quat.w + quat.x * quat.x + quat.y * quat.y + quat.z * quat.z;
+  const float norm2 = glm::dot(quat, quat);
   if (!std::isfinite(norm2) || norm2 <= 1.0e-12f) {
-    return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    return glm::quat::wxyz(1.0f, 0.0f, 0.0f, 0.0f);
   }
-  const float invNorm = 1.0f / std::sqrt(norm2);
-  return glm::quat(quat.w * invNorm, quat.x * invNorm, quat.y * invNorm, quat.z * invNorm);
+  const glm::vec4 q = quat / std::sqrt(norm2);
+  return glm::quat::wxyz(q.x, q.y, q.z, q.w);
 }
+
 
 glm::vec3 visualWorldPointToLocal(const VisualEntry& entry, const glm::vec3& worldPoint) {
   const glm::quat q = normalizedQuatFromWxyz(entry.lastQuat);
@@ -1230,13 +1232,13 @@ std::string buildSpawnRequest(
   request.angVel =
     glm::vec3(form.angularVelocity[0], form.angularVelocity[1], form.angularVelocity[2]);
 
-  const glm::vec4 quatXyzw(form.quatWxyz[1], form.quatWxyz[2], form.quatWxyz[3], form.quatWxyz[0]);
-  const float quatNorm2 = glm::dot(quatXyzw, quatXyzw);
+  const glm::vec4 quatWxyz(form.quatWxyz[0], form.quatWxyz[1], form.quatWxyz[2], form.quatWxyz[3]);
+  const float quatNorm2 = glm::dot(quatWxyz, quatWxyz);
   if (!std::isfinite(quatNorm2) || quatNorm2 <= 1.0e-12f) {
     return "orientation quaternion is degenerate";
   }
   const float invQuatNorm = 1.0f / std::sqrt(quatNorm2);
-  request.quat = quatXyzw * invQuatNorm;
+  request.quat = quatWxyz * invQuatNorm;
 
   if (shape.needsMass && !(form.mass > 0.0f)) {
     return "mass must be positive";
@@ -1806,9 +1808,8 @@ float quaternionAngularSpeed(const glm::vec4& previous, const glm::vec4& current
   if (dt <= 1e-9) {
     return 0.0f;
   }
-  const glm::quat q0(previous.w, previous.x, previous.y, previous.z);
-  const glm::quat q1(current.w, current.x, current.y, current.z);
-  const float dotValue = std::abs(glm::dot(glm::normalize(q0), glm::normalize(q1)));
+  const float dotValue = std::abs(glm::dot(normalizedQuatFromWxyz(previous),
+                                           normalizedQuatFromWxyz(current)));
   const float angle = 2.0f * std::acos(std::clamp(dotValue, 0.0f, 1.0f));
   return angle / static_cast<float>(dt);
 }
@@ -2169,7 +2170,7 @@ void applyViewerSettings(raisin::RayraiWindow& viewer, const ViewerSettings& set
   // the render preset default and the weather-driven promotion. Auto leaves
   // cloudQuality at whatever the preset + weather logic resolved to.
   if (settings.skyCloudQuality != 0) {
-    auto rs = viewer.getRenderQualitySettings();
+    auto rs = viewer.getUserRenderQualitySettings();
     switch (settings.skyCloudQuality) {
       case 1: rs.cloudQuality = raisin::CloudQuality::Off; break;
       case 2: rs.cloudQuality = raisin::CloudQuality::Texture; break;
@@ -2180,6 +2181,10 @@ void applyViewerSettings(raisin::RayraiWindow& viewer, const ViewerSettings& set
     // the cloud layer on so the chosen quality has something to draw.
     rs.proceduralCloudLayerEnabled = (settings.skyCloudQuality != 1);
     viewer.setRenderQualitySettings(rs);
+    if (viewer.getWeatherSettings().enabled) {
+      const auto activeWeather = viewer.getWeatherSettings();
+      viewer.setWeatherSettings(activeWeather);
+    }
   }
 }
 
@@ -2255,25 +2260,25 @@ const char* tcpViewerJointTypeName(int32_t rawType) {
   }
 }
 
-glm::vec4 normalizedWxyz(glm::vec4 quat) {
-  const float norm2 = quat.w * quat.w + quat.x * quat.x + quat.y * quat.y + quat.z * quat.z;
+// Unit wxyz quaternion vector; a degenerate one becomes the identity (1, 0, 0, 0).
+glm::vec4 normalizedWxyz(const glm::vec4& quat) {
+  const float norm2 = glm::dot(quat, quat);
   if (!std::isfinite(norm2) || norm2 <= 1e-12f) {
-    return glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    return glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
   }
-  const float invNorm = 1.0f / std::sqrt(norm2);
-  return quat * invNorm;
+  return quat / std::sqrt(norm2);
 }
 
+// Normalizes the w, x, y, z values at values[offset..offset + 3] in place.
 void normalizeWxyzSlice(std::vector<float>& values, size_t offset) {
   if (offset + 3 >= values.size()) {
     return;
   }
-  glm::vec4 quat(values[offset], values[offset + 1], values[offset + 2], values[offset + 3]);
-  quat = normalizedWxyz(quat);
-  values[offset] = quat.w;
-  values[offset + 1] = quat.x;
-  values[offset + 2] = quat.y;
-  values[offset + 3] = quat.z;
+  const glm::vec4 quat = normalizedWxyz(
+    glm::vec4(values[offset], values[offset + 1], values[offset + 2], values[offset + 3]));
+  for (int i = 0; i < 4; ++i) {
+    values[offset + static_cast<size_t>(i)] = quat[i];
+  }
 }
 
 const char* objectTypeLabel(int objectTypeRaw) {
@@ -2391,6 +2396,27 @@ void clearCameraFrustums(raisin::RayraiWindow& viewer, CameraFrustumUiStates& st
     removeCameraSensorFrame(viewer, state);
   }
   states.clear();
+}
+
+void clearRemoteSceneAndFrustums(raisin::RayraiWindow& viewer,
+                                 RemoteScene& scene,
+                                 CameraFrustumUiStates& states) {
+  // Frustums are viewer-owned visuals, so remove them while their names still
+  // exist in the renderer's visualization map.
+  clearCameraFrustums(viewer, states);
+  scene.clear();
+}
+
+void refreshRequestedEntry(RemoteScene& scene,
+                           raisin::RayraiWindow& viewer,
+                           uint32_t& tag,
+                           int& index,
+                           const VisualEntry*& entry) {
+  tag = 0;
+  index = 0;
+  entry = nullptr;
+  scene.getVisualInfo(viewer.getTargetVisual(), tag, index, entry);
+  if (!entry) viewer.setTargetVisual(nullptr);
 }
 
 raisin::CoordinateFrame::Pose cameraSensorFramePose(const SensorInfo& sensor) {
@@ -2643,7 +2669,7 @@ std::filesystem::path timestampedDataPath(const std::filesystem::path& dir, cons
   std::ostringstream name;
   name << (prefix ? prefix : "rayrai") << "_" << std::put_time(&tm, "%Y%m%d_%H%M%S")
        << (extension ? extension : "");
-  return dir / name.str();
+  return raisin::tcp_viewer::nextAvailableOutputPath(dir / name.str());
 }
 
 std::vector<AssetDiagnostic> collectAssetDiagnostics(const RemoteScene& scene) {
@@ -2789,8 +2815,8 @@ bool exportSceneJson(const std::filesystem::path& path, const RemoteScene& scene
            << ", \"mesh\": \"" << jsonEscape(entry->meshFile) << "\""
            << ", \"mesh_path\": \"" << jsonEscape(entry->meshPath) << "\""
            << ", \"position\": [" << entry->lastPos.x << ", " << entry->lastPos.y << ", " << entry->lastPos.z << "]"
-           << ", \"quaternion_wxyz\": [" << entry->lastQuat.w << ", " << entry->lastQuat.x << ", "
-           << entry->lastQuat.y << ", " << entry->lastQuat.z << "]}";
+           << ", \"quaternion_wxyz\": [" << entry->lastQuat.x << ", " << entry->lastQuat.y << ", "
+           << entry->lastQuat.z << ", " << entry->lastQuat.w << "]}";
   }
   output << "\n  ],\n  \"assets\": [\n";
   for (size_t i = 0; i < assets.size(); ++i) {
@@ -2824,8 +2850,8 @@ void writeTrajectoryRows(std::ofstream& output, const RemoteScene& scene, double
     output << timeSeconds << ',' << tag << ',' << index << ',' << csvEscape(name) << ','
            << csvEscape(objectTypeLabel(entry->objectTypeRaw)) << ','
            << entry->lastPos.x << ',' << entry->lastPos.y << ',' << entry->lastPos.z << ','
-           << entry->lastQuat.w << ',' << entry->lastQuat.x << ',' << entry->lastQuat.y << ','
-           << entry->lastQuat.z << '\n';
+           << entry->lastQuat.x << ',' << entry->lastQuat.y << ',' << entry->lastQuat.z << ','
+           << entry->lastQuat.w << '\n';
   }
 }
 

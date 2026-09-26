@@ -33,6 +33,7 @@ class SessionRecorder {
 
   bool record(const std::vector<char>& payload, std::chrono::steady_clock::time_point now,
               std::string& status);
+  bool recordReset(std::chrono::steady_clock::time_point now, std::string& status);
 
  private:
   std::ofstream output_;
@@ -44,6 +45,17 @@ class SessionRecorder {
 
 bool loadSessionFile(const std::filesystem::path& path, std::vector<RecordedFrame>& frames,
                      std::string& status);
+
+/** An empty frame is a scene reset marker, never a TCP scene payload. */
+template <typename ClearScene, typename ApplyPayload>
+bool applyRecordedFrame(const RecordedFrame& frame, ClearScene&& clearScene,
+                        ApplyPayload&& applyPayload) {
+  if (frame.payload.empty()) {
+    clearScene();
+    return true;
+  }
+  return applyPayload(frame.payload);
+}
 
 /** Return the first frame whose timestamp is not earlier than timeMicros. */
 size_t findSessionFrameAtOrAfter(const std::vector<RecordedFrame>& frames, uint64_t timeMicros);

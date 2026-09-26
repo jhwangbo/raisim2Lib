@@ -289,13 +289,13 @@ struct PoseGrabberGesture {
   uint32_t tag = 0;
   int index = 0;
   glm::vec3 anchorWorld{0.0f};   // body origin captured on drag start
-  // Quaternion vec4 layout used throughout: x=X, y=Y, z=Z, w=W (XYZW), matching
-  // VisualEntry::lastQuat, ClientRequest::quat, and Visuals::setOrientation.
-  glm::vec4 anchorQuat{0.0f, 0.0f, 0.0f, 1.0f};
+  // Quaternion vec4s here are wxyz (x holds w), like VisualEntry::lastQuat,
+  // ClientRequest::quat and Visuals::setOrientation.
+  glm::vec4 anchorQuat{1.0f, 0.0f, 0.0f, 0.0f};
   ImVec2 anchorMouse{0.0f, 0.0f};
   float anchorScreenAngle = 0.0f;                  // mouse angle around body center at start
   glm::vec3 currentTarget{0.0f};                   // proposed position during drag
-  glm::vec4 currentQuat{0.0f, 0.0f, 0.0f, 1.0f};   // proposed orientation during drag (XYZW)
+  glm::vec4 currentQuat{1.0f, 0.0f, 0.0f, 0.0f};   // proposed orientation during drag
 
   // Held pose: while `heldActive` is true the body identified by `heldTag` has
   // its visual pose forced to (heldPos, heldQuat) each frame. Survives across
@@ -306,7 +306,7 @@ struct PoseGrabberGesture {
   bool heldDirty = false;
   uint32_t heldTag = 0;
   glm::vec3 heldPos{0.0f};
-  glm::vec4 heldQuat{0.0f, 0.0f, 0.0f, 1.0f};      // XYZW
+  glm::vec4 heldQuat{1.0f, 0.0f, 0.0f, 0.0f};
 };
 
 // 3-point angle measurement. Picks three points; the angle is measured at the
@@ -2188,7 +2188,7 @@ struct ViewerPane {
   uint32_t controlSelectionTag = 0;
   int controlSelectionIndex = -1;
   glm::vec3 controlPosePosition{0.0f};
-  glm::vec4 controlPoseQuat{0.0f, 0.0f, 0.0f, 1.0f};
+  glm::vec4 controlPoseQuat{1.0f, 0.0f, 0.0f, 0.0f};
   uint32_t controlPoseTag = 0;
   bool controlPoseInitialized = false;
   std::vector<float> controlGc;
@@ -2388,6 +2388,18 @@ int main(int argc, char* argv[]) {
     },
     false);
 
+  gl::GLint fragmentTextureUnits = 0;
+  gl::glGetIntegerv(gl::GL_MAX_TEXTURE_IMAGE_UNITS, &fragmentTextureUnits);
+  const std::string capabilityError =
+    raisin::rayrai_internal::rendererCapabilityError(fragmentTextureUnits);
+  if (!capabilityError.empty()) {
+    std::cerr << "ERROR: " << capabilityError << '\n';
+    SDL_GL_DeleteContext(context);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    return 1;
+  }
+
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGui_ImplSDL2_InitForOpenGL(window, context);
@@ -2550,9 +2562,7 @@ int main(int argc, char* argv[]) {
     pane.scene = std::make_unique<RemoteScene>(pane.viewer);
     pane.scene->setShowCollisionBodies(false);
     pane.scene->setForceTransparent(false);
-    for (const auto& dir : resourceDirs) {
-      pane.scene->addSearchPath(dir);
-    }
+    pane.scene->setResourceSearchPaths(resourceDirs);
     pane.appliedResourceDirSerial = resourceDirSerial;
 
     std::snprintf(pane.host, sizeof(pane.host), "%s", options.host.c_str());
@@ -2562,12 +2572,16 @@ int main(int argc, char* argv[]) {
                   options.screenshotDir.string().c_str());
     const std::filesystem::path defaultSessionPath =
       options.recordSessionPath.empty()
-        ? timestampedDataPath(options.screenshotDir, "rayrai_tcp_viewer_session", ".rrtcs")
+        ? timestampedDataPath(options.screenshotDir,
+            ("rayrai_tcp_viewer_session_pane" + std::to_string(pane.id)).c_str(),
+            ".rrtcs")
         : options.recordSessionPath;
     std::snprintf(pane.sessionPathBuf, sizeof(pane.sessionPathBuf), "%s",
                   defaultSessionPath.string().c_str());
     std::snprintf(pane.videoPathBuf, sizeof(pane.videoPathBuf), "%s",
-                  timestampedDataPath(options.screenshotDir, "rayrai_tcp_viewer_video", ".mp4")
+                  timestampedDataPath(options.screenshotDir,
+                    ("rayrai_tcp_viewer_video_pane" + std::to_string(pane.id)).c_str(),
+                    ".mp4")
                     .string().c_str());
     pane.videoStatus = ffmpegAvailable
       ? std::string()
@@ -3026,6 +3040,9 @@ int main(int argc, char* argv[]) {
   };
 
   auto clearSceneState = [&]() {
+    if (sessionRecorder.active() && !replayMode) {
+      sessionRecorder.recordReset(std::chrono::steady_clock::now(), sessionStatus);
+    }
     viewer->setTargetVisual(nullptr);
     requestedTag = 0;
     requestedIndex = 0;
@@ -3045,10 +3062,9 @@ int main(int argc, char* argv[]) {
       bodyFramesNode->poses.clear();
       bodyFramesNode->enable(false);
     }
-    scene.clear();
+    clearRemoteSceneAndFrustums(*viewer, scene, cameraFrustums);
     sensorRenderer.clear();
     sceneReceived = false;
-    clearCameraFrustums(*viewer, cameraFrustums);
     motionEstimates.clear();
     signalRecords.clear();
     pinnedSignalObjects.clear();
@@ -3144,6 +3160,12 @@ int main(int argc, char* argv[]) {
       for (const auto& command : scene.takeViewerCommands()) {
         switch (command.type) {
           case raisin::tcp_viewer::ViewerCommandType::StartRecording: {
+            if (!raisin::tcp_viewer::canStartServerRecording(
+                    videoEncoder.isOpen(), recordPngSequence,
+                    serverRequestedRecording)) {
+              captureStatus = "server recording ignored while a user recording is active";
+              break;
+            }
             const std::filesystem::path requested(command.path);
             recordFramePrefix = requested.stem().empty()
               ? "rayrai_tcp_viewer_video"
@@ -3454,8 +3476,11 @@ int main(int argc, char* argv[]) {
       clearSceneState();
       size_t appliedCount = 0;
       for (size_t i = 0; i <= target; ++i) {
-        std::vector<PendingSensorUpdate> ignoredSensors;
-        if (!applyScenePayload(replayFrames[i].payload, true, now, ignoredSensors)) {
+        if (!raisin::tcp_viewer::applyRecordedFrame(replayFrames[i], clearSceneState,
+            [&](const std::vector<char>& payload) {
+              std::vector<PendingSensorUpdate> ignoredSensors;
+              return applyScenePayload(payload, true, now, ignoredSensors);
+            })) {
           break;
         }
         appliedCount = i + 1u;
@@ -3481,7 +3506,10 @@ int main(int argc, char* argv[]) {
           stats.bytes += frame.payload.size();
           stats.updates++;
           std::vector<PendingSensorUpdate> pending;
-          applyScenePayload(frame.payload, true, now, pending);
+          raisin::tcp_viewer::applyRecordedFrame(frame, clearSceneState,
+              [&](const std::vector<char>& payload) {
+                return applyScenePayload(payload, true, now, pending);
+              });
           ++replayIndex;
           if (replayStep) break;
         }
@@ -3790,6 +3818,10 @@ int main(int argc, char* argv[]) {
             }
             std::vector<PendingSensorUpdate> pending;
             const bool parsedOk = applyScenePayload(payload, false, now, pending);
+            // applyScenePayload may erase the selected VisualEntry or rehash
+            // the visual map. Do not use the pointer captured earlier this frame.
+            refreshRequestedEntry(scene, *viewer,
+                                  requestedTag, requestedIndex, requestedEntry);
             if (!parsedOk) {
               networkFailed = lastStatus.find("disconnect") != std::string::npos;
             } else if (!pending.empty()) {
@@ -3893,9 +3925,7 @@ int main(int argc, char* argv[]) {
       pane.appliedSettingsSerial = settingsSerial;
     }
     if (pane.appliedResourceDirSerial != resourceDirSerial) {
-      for (const auto& dir : resourceDirs) {
-        scene.addSearchPath(dir);
-      }
+      scene.setResourceSearchPaths(resourceDirs);
       pane.appliedResourceDirSerial = resourceDirSerial;
     }
     if (settingsSavePending && now - lastSettingsDirtyTime >= kSettingsSaveDebounce) {
@@ -3946,8 +3976,8 @@ int main(int argc, char* argv[]) {
           if (!s.entry.hasState) continue;
           raisin::CoordinateFrame::Pose p;
           p.position = s.entry.lastPos;
-          // lastQuat is wxyz; glm::quat constructor takes (w,x,y,z).
-          p.quaternion = glm::quat(
+          // lastQuat is wxyz: x holds w.
+          p.quaternion = glm::quat::wxyz(
             s.entry.lastQuat.x, s.entry.lastQuat.y, s.entry.lastQuat.z, s.entry.lastQuat.w);
           bodyFramesNode->poses.push_back(p);
         }
@@ -4179,10 +4209,9 @@ int main(int argc, char* argv[]) {
       // (which is the held pose captured at drag start).
       glm::vec3 worldAxis(0.0f);
       worldAxis[poseGrabber.axis] = 1.0f;
-      // anchorQuat vec4 layout is XYZW (matches the rest of the codebase).
-      // glm::quat constructor takes (W, X, Y, Z).
-      const glm::quat aq(poseGrabber.anchorQuat.w, poseGrabber.anchorQuat.x,
-                         poseGrabber.anchorQuat.y, poseGrabber.anchorQuat.z);
+      // anchorQuat is wxyz: x holds w.
+      const glm::quat aq = glm::quat::wxyz(poseGrabber.anchorQuat.x, poseGrabber.anchorQuat.y,
+                                           poseGrabber.anchorQuat.z, poseGrabber.anchorQuat.w);
 
       if (poseGrabber.mode == PoseGrabberGesture::Mode::Translate) {
         ImVec2 originScreen, axisScreen;
@@ -4226,8 +4255,8 @@ int main(int argc, char* argv[]) {
           const glm::quat dq = glm::angleAxis(rotAngle, worldAxis);
           // Pre-multiply: world-frame rotation applied to the held pose.
           const glm::quat nq = glm::normalize(dq * aq);
-          // Pack glm::quat (W,X,Y,Z) back into XYZW vec4 storage.
-          poseGrabber.currentQuat = glm::vec4(nq.x, nq.y, nq.z, nq.w);
+          // Pack glm::quat back into wxyz vec4 storage.
+          poseGrabber.currentQuat = glm::vec4(nq.w, nq.x, nq.y, nq.z);
           poseGrabber.currentTarget = poseGrabber.anchorWorld;
         }
       }
@@ -4849,7 +4878,11 @@ int main(int argc, char* argv[]) {
             encoderSettings.height = viewer->getCamera().rtHeight();
             encoderSettings.framesPerSecond = videoFramesPerSecond;
             encoderSettings.quality = videoQuality;
-            videoEncoder.open(std::filesystem::path(videoPathBuf), encoderSettings, videoStatus);
+            const auto output = raisin::tcp_viewer::nextAvailableOutputPath(
+                std::filesystem::path(videoPathBuf));
+            std::snprintf(videoPathBuf, sizeof(videoPathBuf), "%s",
+                          output.string().c_str());
+            videoEncoder.open(output, encoderSettings, videoStatus);
             captureStatus = videoStatus;
           }
         } else {
@@ -4919,7 +4952,11 @@ int main(int argc, char* argv[]) {
       if (!sessionRecorder.active()) {
         if (drawIconTextButton(uiIcons, TcpViewerIconKind::Save, "Start Session Log",
                                "start_session_log")) {
-          sessionRecorder.open(sessionPathBuf, sessionStatus);
+          const auto output = raisin::tcp_viewer::nextAvailableOutputPath(
+              std::filesystem::path(sessionPathBuf));
+          std::snprintf(sessionPathBuf, sizeof(sessionPathBuf), "%s",
+                        output.string().c_str());
+          sessionRecorder.open(output, sessionStatus);
         }
       } else {
         if (drawIconTextButton(uiIcons, TcpViewerIconKind::Stop, "Stop Session Log",
@@ -5949,6 +5986,7 @@ int main(int argc, char* argv[]) {
               }
               if (removeIndex < resourceDirs.size()) {
                 resourceDirs.erase(resourceDirs.begin() + static_cast<long>(removeIndex));
+                ++resourceDirSerial;
                 settingsDirty = true;
               }
               ImGui::EndCombo();
@@ -5963,7 +6001,6 @@ int main(int argc, char* argv[]) {
                 {},
                 [&](const std::filesystem::path& chosen) {
                   const std::string path = chosen.string();
-                  scene.addSearchPath(path);
                   recordResourceDir(resourceDirs, path);
                   ++resourceDirSerial;
                   settingsDirty = true;
@@ -6413,16 +6450,9 @@ int main(int argc, char* argv[]) {
                 }
                 drawVec3Control("Position", "##selected_pose_position", controlPosePosition, 0.01f);
                 ImGui::TextUnformatted("Quaternion WXYZ");
-                float poseQuatWxyz[4] = {controlPoseQuat.w, controlPoseQuat.x,
-                  controlPoseQuat.y, controlPoseQuat.z};
                 ImGui::SetNextItemWidth(controlVecWidth);
-                if (compactDragFloat4("##selected_pose_quat", poseQuatWxyz, 0.005f,
-                      -1.0f, 1.0f, "%.3f")) {
-                  controlPoseQuat.w = poseQuatWxyz[0];
-                  controlPoseQuat.x = poseQuatWxyz[1];
-                  controlPoseQuat.y = poseQuatWxyz[2];
-                  controlPoseQuat.z = poseQuatWxyz[3];
-                }
+                compactDragFloat4("##selected_pose_quat", &controlPoseQuat.x, 0.005f,
+                  -1.0f, 1.0f, "%.3f");
                 if (drawIconTextButton(uiIcons, TcpViewerIconKind::Save, "Set Pose", "set_selected_pose")) {
                   raisin::tcp_viewer::ClientRequest r;
                   r.type = ClientRequestType::CR_SET_POSE;
@@ -6865,8 +6895,8 @@ int main(int argc, char* argv[]) {
             ImGui::TableSetColumnIndex(0);
             ImGui::TextUnformatted("Quat");
             ImGui::TableSetColumnIndex(1);
-            ImGui::TextColored(metaColor, "%.3f %.3f %.3f %.3f", selectedEntry->lastQuat.w,
-              selectedEntry->lastQuat.x, selectedEntry->lastQuat.y, selectedEntry->lastQuat.z);
+            ImGui::TextColored(metaColor, "%.3f %.3f %.3f %.3f", selectedEntry->lastQuat.x,
+              selectedEntry->lastQuat.y, selectedEntry->lastQuat.z, selectedEntry->lastQuat.w);
 
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);

@@ -44,7 +44,20 @@ std::filesystem::path timestampedCapturePath(const std::filesystem::path& dir, c
 #endif
   std::ostringstream name;
   name << (prefix ? prefix : "rayrai") << "_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".png";
-  return dir / name.str();
+  return nextAvailableOutputPath(dir / name.str());
+}
+
+std::filesystem::path nextAvailableOutputPath(const std::filesystem::path& requested) {
+  std::error_code ec;
+  if (!std::filesystem::exists(requested, ec) && !ec) return requested;
+  for (unsigned int suffix = 1; suffix < 100000; ++suffix) {
+    const auto candidate = requested.parent_path() /
+        (requested.stem().string() + "_" + std::to_string(suffix) +
+         requested.extension().string());
+    ec.clear();
+    if (!std::filesystem::exists(candidate, ec) && !ec) return candidate;
+  }
+  return requested;
 }
 
 bool captureViewerRgba(RayraiWindow& viewer, std::vector<unsigned char>& rgba, int& width,

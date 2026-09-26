@@ -6,6 +6,8 @@
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -16,6 +18,12 @@
 
 namespace raisin::tcp_viewer
 {
+
+namespace detail {
+bool writeSettingsFileAtomically(
+    const std::filesystem::path& path,
+    const std::function<void(std::ostream&)>& write);
+}
 
 inline constexpr float kTcpUpdateRateDefaultHz = 60.0f;
 inline constexpr float kTcpUpdateRateMinHz = 15.0f;

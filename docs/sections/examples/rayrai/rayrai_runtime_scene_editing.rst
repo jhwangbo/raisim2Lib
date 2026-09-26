@@ -21,9 +21,6 @@ Target
 ======
 CMake target: ``rayrai_runtime_scene_editing``.
 
-This example is only built when the installed RaiSim package exposes the
-runtime scene editing APIs.
-
 Run
 ===
 Run the build-tree executable:

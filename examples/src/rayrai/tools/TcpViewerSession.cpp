@@ -106,6 +106,11 @@ bool SessionRecorder::record(const std::vector<char>& payload,
   return true;
 }
 
+bool SessionRecorder::recordReset(std::chrono::steady_clock::time_point now,
+                                  std::string& status) {
+  return record({}, now, status);
+}
+
 bool loadSessionFile(const std::filesystem::path& path, std::vector<RecordedFrame>& frames,
                      std::string& status) {
   frames.clear();
