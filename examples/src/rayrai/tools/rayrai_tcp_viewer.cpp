@@ -107,6 +107,7 @@ constexpr int kAutoConnectTimeoutMs = 100;
 constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
 constexpr float kRadToDeg = 180.0f / 3.14159265358979323846f;
 constexpr auto kAutoConnectInterval = std::chrono::seconds(3);
+constexpr auto kLoopbackAutoConnectInterval = std::chrono::milliseconds(250);
 // How long an update request may go unanswered before the connection is treated
 // as dead. Generous next to the 60 Hz request rate, short enough that a server
 // which will never answer does not hold the pane hostage.
@@ -2304,6 +2305,12 @@ static void restorePaneConnection(ViewerPane& pane, const ConnectionEntry& endpo
   pane.autoConnect = autoConnect;
 }
 
+static void scheduleAutoConnectRetry(ViewerPane& pane, const ConnectionEntry& endpoint,
+                                     std::chrono::steady_clock::time_point attemptTime) {
+  pane.nextAutoConnectAttempt = attemptTime +
+      (isLoopbackHostName(endpoint.host) ? kLoopbackAutoConnectInterval : kAutoConnectInterval);
+}
+
 #ifndef RAYRAI_TCP_VIEWER_NO_MAIN
 int main(int argc, char* argv[]) {
   std::setlocale(LC_ALL, "C");
@@ -3534,11 +3541,14 @@ int main(int argc, char* argv[]) {
       ConnectionEntry endpoint;
       if (!normalizeConnectionEndpoint(host, port, endpoint)) {
         lastStatus = "invalid endpoint";
+        nextAutoConnectAttempt = now + kAutoConnectInterval;
       } else {
         connectToEndpoint(
-          endpoint, false, "auto-connecting", "auto-connect failed", kAutoConnectTimeoutMs);
+          endpoint, false, "auto-connecting",
+          isLoopbackHostName(endpoint.host) ? "waiting for local server" : "auto-connect failed",
+          kAutoConnectTimeoutMs);
+        scheduleAutoConnectRetry(pane, endpoint, now);
       }
-      nextAutoConnectAttempt = now + kAutoConnectInterval;
     }
 
     requestedTag = 0;

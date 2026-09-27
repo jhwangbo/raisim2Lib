@@ -2,7 +2,7 @@
 Rayrai Example: Swept CCD
 ##############################
 
-.. image:: ../../../image/rayrai_swept_ccd.png
+.. image:: ../../../../rsc/docs/image/rayrai_swept_ccd.png
    :alt: rayrai_swept_ccd example
    :width: 100%
 

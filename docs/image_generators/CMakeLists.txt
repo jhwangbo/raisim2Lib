@@ -1,7 +1,7 @@
 # Doc image generators for rayrai.
 #
 # Each binary renders a small headless scene and writes one or more PNGs into
-# ${RAISIM_DOC_IMAGE_OUTPUT_DIR} (default: ${CMAKE_CURRENT_SOURCE_DIR}/../image/rayrai).
+# ${RAISIM_DOC_IMAGE_OUTPUT_DIR} (default: ${CMAKE_CURRENT_SOURCE_DIR}/../../rsc/docs/image/rayrai).
 # The docs/CMakeLists.txt wires a custom target that runs every generator
 # before sphinx-build, so a fresh doc build always uses up-to-date images.
 
@@ -30,8 +30,13 @@ if(NOT TARGET SDL2::SDL2)
 endif()
 
 set(RAISIM_DOC_IMAGE_OUTPUT_DIR
-    "${CMAKE_CURRENT_SOURCE_DIR}/../image/rayrai"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../rsc/docs/image/rayrai"
     CACHE PATH "Directory where doc image generators write PNGs")
+if(RAISIM_DOC_IMAGE_OUTPUT_DIR STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}/../image/rayrai")
+  set(RAISIM_DOC_IMAGE_OUTPUT_DIR
+      "${CMAKE_CURRENT_SOURCE_DIR}/../../rsc/docs/image/rayrai"
+      CACHE PATH "Directory where doc image generators write PNGs" FORCE)
+endif()
 file(MAKE_DIRECTORY "${RAISIM_DOC_IMAGE_OUTPUT_DIR}")
 get_filename_component(RAISIM_DOC_IMAGE_OUTPUT_DIR
     "${RAISIM_DOC_IMAGE_OUTPUT_DIR}" REALPATH)

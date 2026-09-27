@@ -2,7 +2,7 @@
 Rayrai Example: Runtime Scene Editing
 #####################################
 
-.. image:: ../../../image/rayrai_runtime_scene_editing.png
+.. image:: ../../../../rsc/docs/image/rayrai_runtime_scene_editing.png
    :alt: rayrai_runtime_scene_editing example
    :width: 100%
 

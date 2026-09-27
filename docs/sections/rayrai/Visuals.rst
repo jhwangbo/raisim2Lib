@@ -15,7 +15,7 @@ mesh approximation. It shows the source mesh and generated convex parts side by
 side. The decomposition side uses per-part colors so individual convex bodies
 can be inspected. The example is registered as the
 ``rayrai_coacd_mesh_approximation`` target. Package examples keep its source
-under ``examples/src/rayrai/assets``.
+under ``rsc/rayrai/flaticon``.
 
 This example uses real meshes from ``rsc`` such as YCB and Minitaur assets. Some robot
 visual meshes are intentionally not used because they are non-manifold visual shells and
@@ -509,19 +509,19 @@ geometry without rendering colour.
 
    * - Light colour temperature + distance fade
      - Negative lights
-   * - .. image:: ../../image/rayrai/showcase/122_light_temperature_distance_fade.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/122_light_temperature_distance_fade.png
           :alt: Multiple lights at different colour temperatures
-     - .. image:: ../../image/rayrai/showcase/120_light_negative.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/120_light_negative.png
           :alt: Subtractive negative lights
    * - Spotlight projectors (gobos)
      - Shadow casting modes
-   * - .. image:: ../../image/rayrai/showcase/96_light_projectors.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/96_light_projectors.png
           :alt: Spotlight cookie projector textures
-     - .. image:: ../../image/rayrai/showcase/127_visual_shadow_casting_modes.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/127_visual_shadow_casting_modes.png
           :alt: Off / On / DoubleSided / ShadowsOnly compared
    * - Visibility range
      - Material override / overlay
-   * - .. image:: ../../image/rayrai/showcase/124_visual_visibility_range.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/124_visual_visibility_range.png
           :alt: Visuals fading at near and far range
-     - .. image:: ../../image/rayrai/showcase/125_visual_material_override_overlay.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/125_visual_material_override_overlay.png
           :alt: Material override and material overlay on a single visual

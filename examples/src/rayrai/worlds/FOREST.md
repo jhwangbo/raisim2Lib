@@ -1,6 +1,10 @@
 # Dense forest terrain and physics
 
-![Grass-covered forest terrain with Raisim objects](../../../../docs/image/forest.png)
+![Grass-covered forest terrain with Raisim objects](../../../../rsc/docs/image/forest.png)
+
+The saved-scene viewer uses the same forest assets and placements:
+
+![Forest loaded from rayrai_forest.rscene](../../../../rsc/docs/image/forest_rscene.png)
 
 `rayrai_forest` is a small native Rayrai example with an **80 × 80 m** rolling
 heightmap, hills, a gully, and continuous grass coverage. The terrain is static;
@@ -14,7 +18,9 @@ objects. The same 161 × 161 heightmap supplies both collision and plant heights
   ground-cover types to the original forest's one tree and two grasses.
 - **180 mossy rocks:** six Poly Haven shapes with varied sizes and orientations,
   shared textures, instancing, automatic LOD, and shadows.
-- **Twelve dynamic Raisim objects:** six crates and six rolling balls.
+- **100 dynamic Raisim primitives:** the original six crates and six balls,
+  72 colorful boxes, spheres, and capsules stacked along the camera's trail,
+  and 16 balls dropped over nearby tree trunks to show capsule collisions.
 - Instanced batches, automatic mesh LOD, projected-size thinning, foliage shadow
   LOD, shadow casting enabled by default for every vegetation batch, three directional
   shadow cascades, 4× MSAA, wind, and brown soil with scattered leaf litter
@@ -27,8 +33,19 @@ objects. The same 161 × 161 heightmap supplies both collision and plant heights
 - A subtle cool-gray haze separates distant foliage, using 1,200 m weather
   visibility and the existing height fog. Nearby leaves retain their contrast.
 
-Vegetation and rocks are visual-only; collision is provided by the terrain and twelve
-physics objects. Every imported plant is individually rooted at local Z=0.
+The collision debug capture shows the 100 primitives from the saved scene with
+ground cover and broadleaf visuals hidden for clarity. All tree and rock
+collision bodies remain active in this view.
+
+![Colorful forest primitives along the trail](../../../../rsc/docs/image/forest_collision_primitives.png)
+
+Grass and small ground cover remain visual-only. Each of the 1,888 trees has one
+to three hidden static capsules fitted to its woody centerline, and each of the
+180 rocks has a convex collision mesh with about 100 triangles. The terrain and 100 dynamic physics objects retain their own
+collision shapes. Each tree and rock type ships a `model.rasset` descriptor that
+pairs `model.gltf` with its local collision shape. The scene loads nine descriptors
+once, then applies the same scatter transforms to the visuals and proxies.
+Every imported plant is individually rooted at local Z=0.
 Display-lineup translations are removed before scattering, preventing floating
 clusters on hillsides. Grass and ground cover span the entire heightmap, including
 the former trail, steep slopes, terrain edges and the area around the physics
@@ -44,14 +61,36 @@ stay outside the corridor and physics clearing, which now also contain grass.
 
 The example consists of [the viewer](rayrai_forest.cpp),
 [viewer setup](forest_viewer.hpp), and a
-[scene helper](forest_scene.hpp). No editor scene file or runtime
-Python dependency is needed. A small [loading overlay](forest_loading.hpp)
+[scene helper](forest_scene.hpp). The `.rasset` format is a versioned XML
+asset descriptor: one `<visual file="..."/>` and one or more local
+`<collision type="cylinder|capsule|sphere|box|convex_mesh" .../>` elements.
+Paths resolve relative to the descriptor. Collision shapes are invisible in
+Rayrai and stay in the physics world; missing assets and invalid dimensions
+are errors. `examples/tools/generate_forest_rassets.py` regenerates tree capsule
+fits from the woody glTF primitives and convex rock OBJ proxies. The rock
+triangle target defaults to 100 and can be changed with `--rock-triangles`;
+the actual face count can differ slightly because a convex hull has a discrete
+number of vertices. Asset
+preparation requires NumPy and SciPy; running the packaged example does not.
+The same forest is also saved as
+[`rayrai_forest.rscene`](../../../../rsc/forest/rayrai_forest.rscene). It contains
+the sampled terrain, exact deterministic plant and rock transforms, 2,068
+hidden `.rasset` collision objects, 16 instanced visual batches, and the
+100 dynamic primitives. Its roughly 15 MiB of scene text references the asset
+files in this directory without copying meshes or textures. A matching copy in the adjacent Raisim checkout
+is `raisim_engine2/examples/rayrai_forest.rscene`; its references point back
+to these assets. The `rayrai_forest_rscene` executable in that checkout loads
+the saved scene through Engine2 so it can be compared with this native viewer.
+Open either scene in Engine2 to edit collision assets and visual batches.
+Neither viewer needs runtime Python. A small
+[loading overlay](forest_loading.hpp)
 shows asset progress across the top while meshes import asynchronously and
 finish GPU uploads. It disappears automatically once all assets are ready,
 and does not intercept camera input. Physics waits until loading finishes.
-[Loading-screen capture](../../../images/forest_loading.png). Scattering uses a fixed seed and portable integer
+[Loading-screen capture](../../../../rsc/examples/images/forest_loading.png). Scattering uses a fixed seed and portable integer
 random-number conversion. Simulation runs eight 2 ms steps per rendered frame
-on the calling thread, including during benchmarks.
+on the calling thread, including during benchmarks. The example does not add
+physics worker threads.
 
 ## Build and run
 
@@ -62,9 +101,23 @@ From the `raisim2Lib` root on Linux:
 cmake -S examples -B /tmp/raisim-forest-build -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-20 \
   -DRAISIM_PREFIX="$PWD/raisim" -DRAYRAI_PREFIX="$PWD/rayrai" \
-  -DRAISIM_FOREST_EXAMPLE_TESTS=ON -DRAISIM_FOREST_GPU_TESTS=ON
-cmake --build /tmp/raisim-forest-build --target rayrai_forest forest_render_test forest_scene_test forest_shadow_test forest_loading_test -j12
+  -DRAISIM_FOREST_COLLISION_BENCHMARK=ON
+cmake --build /tmp/raisim-forest-build --target rayrai_forest forest_collision_benchmark -j12
 /tmp/raisim-forest-build/rayrai_forest
+```
+
+Forest tests live in the adjacent `raisim/test/examples` directory and are
+registered by the Raisim root build when this checkout is present. Configure
+that build with `RAISIM_TEST=ON` and `RAISIM_RAYRAI_TEST=ON`; set
+`RAISIM_FOREST_GPU_TESTS=ON` to include GPU checks.
+
+```sh
+cmake -S ../raisim -B /tmp/raisim-forest-tests -G Ninja \
+  -DCMAKE_CXX_COMPILER=clang++-20 -DRAISIM_TEST=ON \
+  -DRAISIM_RAYRAI_TEST=ON -DRAISIM_FOREST_GPU_TESTS=ON
+cmake --build /tmp/raisim-forest-tests --target \
+  forest_scene_test forest_loading_test forest_render_test forest_shadow_test -j12
+ctest --test-dir /tmp/raisim-forest-tests -j12 --output-on-failure -R '^forest_'
 ```
 
 The target also participates in the normal top-level examples build. Use the
@@ -72,17 +125,26 @@ platform's normal compiler/generator on macOS and Windows; the example has no
 Linux-specific API or architecture-specific flags. Those platforms have not
 been runtime-tested for this addition.
 
-The asset path defaults to this checkout's `../../../rsc/forest`. To relocate
+With the Raisim checkout beside `raisim2Lib`, build its
+`rayrai_forest_rscene` target and run it to view the saved scene. The
+`rayrai_forest_rscene_export` target regenerates both `.rscene` files from
+this example's `forest_scene.hpp`; see
+`raisim_engine2/examples/rayrai_forest.md` in that checkout for commands.
+
+The asset path defaults to this checkout's `../../../../rsc/forest`. To relocate
 an executable, copy that directory and pass `--assets /path/to/forest`.
 Use the viewer's standard mouse/keyboard camera controls to explore.
 
 ```sh
-ctest --test-dir /tmp/raisim-forest-build -j12 --output-on-failure -R '^forest_'
 python3 examples/tools/benchmark_forest.py \
-  --viewer /tmp/raisim-forest-build/forest_render_test \
+  --viewer /tmp/raisim-forest-tests/test/examples/forest_render_test \
   --out /tmp/forest-benchmark.json --frames 300 --runs 3
-/tmp/raisim-forest-build/forest_render_test --frames 3
+/tmp/raisim-forest-tests/test/examples/forest_render_test --frames 3
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 /tmp/raisim-forest-build/forest_collision_benchmark
 ```
+
+After preparing the source glTF files, regenerate collision proxies with
+`python3 examples/tools/generate_forest_rassets.py rsc/forest --rock-triangles 100`.
 
 GPU tests and hidden runs still require a desktop OpenGL context. GPU tests run
 serially; the benchmark forces numerical-library thread counts to one and runs
@@ -114,7 +176,7 @@ python3 examples/tools/benchmark_forest_loading.py \
   --runs 3
 ```
 
-[Loading measurements](../../../images/forest_loading_benchmark.json).
+[Loading measurements](../../../../rsc/examples/images/forest_loading_benchmark.json).
 
 Import, base-geometry preparation, and instanced LOD generation run on workers.
 Material/texture resolution and incremental GPU uploads use the render thread.
@@ -174,8 +236,8 @@ are 1K, and only one plant from each original model lineup is retained.
 All models and terrain textures are from [Poly Haven](https://polyhaven.com),
 under its [CC0 asset license](https://polyhaven.com/license).
 Powered by Poly Haven. Original download URLs and SHA-256 hashes are recorded
-in [sources.json](../../../rsc/forest/sources.json); the prepared bundle's hashes are in
-[manifest.json](../../../rsc/forest/manifest.json). Asset IDs correspond to
+in [sources.json](../../../../rsc/forest/sources.json); the prepared bundle's hashes are in
+[manifest.json](../../../../rsc/forest/manifest.json). Asset IDs correspond to
 `https://polyhaven.com/a/<asset-id>`.
 
 To reproduce the shipped resources using Python's standard library:
@@ -183,7 +245,7 @@ To reproduce the shipped resources using Python's standard library:
 ```sh
 python3 examples/tools/download_forest_assets.py /tmp/forest-assets
 python3 examples/tools/prepare_forest_assets.py /tmp/forest-assets
-python3 examples/tests/test_forest_assets.py /tmp/forest-assets/prepared
+python3 ../raisim/test/examples/test_forest_assets.py /tmp/forest-assets/prepared
 ```
 
 Run the viewer with `--assets /tmp/forest-assets/prepared` to inspect the result.
@@ -206,8 +268,8 @@ Focused receiver checks take 44.80% less CPU time;
 renderer preparation/submission takes 5.89% less.
 All fourteen captures are byte-identical; all 54 renderer/forest tests pass.
 The measured SDK and preview are installed with unchanged quality and async loading.
-See [measurements](../../../images/forest_benchmark.json) and
-[test results](../../../images/forest_tests.txt).
+See [measurements](../../../../rsc/examples/images/forest_benchmark.json) and
+[test results](../../../../rsc/examples/images/forest_tests.txt).
 
 Previous performance work:
 
@@ -218,8 +280,8 @@ The moving repeat measures +0.44% and stationary rendering +0.13%, with overlapp
 All paired captures are byte-identical; all 53 renderer/forest tests pass.
 The measured SDK and preview are installed with unchanged density, geometry,
 LOD, lighting, shadows, wind, MSAA, asynchronous loading and progress overlay.
-See [measurements](../../../images/forest_benchmark.json) and
-[test results](../../../images/forest_tests.txt).
+See [measurements](../../../../rsc/examples/images/forest_benchmark.json) and
+[test results](../../../../rsc/examples/images/forest_tests.txt).
 
 Previous performance work:
 
@@ -231,8 +293,8 @@ Focused repeated tile queries take 48.12% less CPU time.
 All paired captures are byte-identical; all 52 renderer/forest tests pass.
 The measured SDK and preview are installed with unchanged density, geometry,
 LOD, lighting, shadows, wind, MSAA, asynchronous loading and progress overlay.
-See [measurements](../../../images/forest_benchmark.json) and
-[test results](../../../images/forest_tests.txt).
+See [measurements](../../../../rsc/examples/images/forest_benchmark.json) and
+[test results](../../../../rsc/examples/images/forest_tests.txt).
 
 Previous performance work:
 
@@ -244,8 +306,8 @@ Focused CPU box projection takes 34.35% less time.
 All paired captures are byte-identical; all 52 renderer/forest tests pass.
 The measured SDK and preview are installed with unchanged density, geometry,
 LOD, lighting, shadows, wind, MSAA, asynchronous loading and progress overlay.
-See [measurements](../../../images/forest_benchmark.json) and
-[test results](../../../images/forest_tests.txt).
+See [measurements](../../../../rsc/examples/images/forest_benchmark.json) and
+[test results](../../../../rsc/examples/images/forest_tests.txt).
 
 Previous performance work:
 
@@ -257,8 +319,8 @@ Focused CPU submission takes 7.32% less time.
 All paired captures are byte-identical; all 51 renderer/forest tests pass.
 The measured SDK and preview are installed with unchanged density, geometry,
 LOD, lighting, shadows, wind, MSAA, asynchronous loading and progress overlay.
-See [measurements](../../../images/forest_benchmark.json) and
-[test results](../../../images/forest_tests.txt).
+See [measurements](../../../../rsc/examples/images/forest_benchmark.json) and
+[test results](../../../../rsc/examples/images/forest_tests.txt).
 
 Previous performance work:
 
@@ -270,8 +332,8 @@ Focused CPU submission takes 18.92% less time.
 All paired captures are byte-identical; all 51 renderer/forest tests pass.
 The measured SDK and preview are installed with unchanged density, geometry,
 LOD, lighting, shadows, wind, MSAA, asynchronous loading and progress overlay.
-See [measurements](../../../images/forest_benchmark.json) and
-[test results](../../../images/forest_tests.txt).
+See [measurements](../../../../rsc/examples/images/forest_benchmark.json) and
+[test results](../../../../rsc/examples/images/forest_tests.txt).
 
 Previous performance work:
 
@@ -284,8 +346,8 @@ unchanged (-0.09% with overlapping run ranges); no stationary speedup is claimed
 All paired captures are byte-identical; all 50 renderer/forest tests pass.
 The measured SDK and preview are installed with unchanged density, geometry,
 LOD, lighting, shadows, wind, MSAA, asynchronous loading and progress overlay.
-See [measurements](../../../images/forest_benchmark.json) and
-[test results](../../../images/forest_tests.txt).
+See [measurements](../../../../rsc/examples/images/forest_benchmark.json) and
+[test results](../../../../rsc/examples/images/forest_tests.txt).
 
 Previous performance work:
 
@@ -299,8 +361,8 @@ unchanged (+0.14% with overlapping run ranges); no stationary speedup is claimed
 All paired captures are byte-identical; all 49 renderer/forest tests pass.
 The measured SDK and preview are installed with unchanged density, geometry,
 LOD, lighting, shadows, wind, MSAA, asynchronous loading and progress overlay.
-See [measurements](../../../images/forest_benchmark.json) and
-[test results](../../../images/forest_tests.txt).
+See [measurements](../../../../rsc/examples/images/forest_benchmark.json) and
+[test results](../../../../rsc/examples/images/forest_tests.txt).
 
 Previous performance work:
 
@@ -311,8 +373,8 @@ Moving-camera serial A/B/B/A measured **19.2617 → 19.7125 FPS (+2.34%)** on an
 All paired captures are byte-identical and all 48 renderer/forest tests pass.
 The measured SDK and header are installed with unchanged geometry, density,
 LOD, lighting, shadows, wind, MSAA, async loading and progress overlay.
-See [measurements](../../../images/forest_benchmark.json) and
-[test results](../../../images/forest_tests.txt).
+See [measurements](../../../../rsc/examples/images/forest_benchmark.json) and
+[test results](../../../../rsc/examples/images/forest_tests.txt).
 
 Previous performance work:
 
@@ -324,8 +386,8 @@ Moving runs measure 300 frames; stationary runs measure 600, both after loading
 and 60 warmup frames. All eight captures are byte-identical. All 47 renderer and
 forest tests pass. The measured SDK, preview and results are updated, with
 unchanged geometry, density, LOD, wind, lighting, shadows, MSAA and async loading.
-See [measurements](../../../images/forest_benchmark.json) and
-[test results](../../../images/forest_tests.txt).
+See [measurements](../../../../rsc/examples/images/forest_benchmark.json) and
+[test results](../../../../rsc/examples/images/forest_tests.txt).
 
 Earlier prepass optimization:
 
@@ -341,8 +403,8 @@ All eight captures match byte for byte. Geometry, LOD, density, shadows, wind,
 lighting and 4× MSAA remain unchanged. The five forest tests and 42 renderer
 tests pass; asynchronous loading and its progress overlay remain active.
 The installed SDK contains the measured renderer. See
-[measurements](../../../images/forest_benchmark.json) and
-[test results](../../../images/forest_tests.txt). These timings describe this
+[measurements](../../../../rsc/examples/images/forest_benchmark.json) and
+[test results](../../../../rsc/examples/images/forest_tests.txt). These timings describe this
 scene and machine; GPU clocks and desktop activity were not fixed.
 
 ## Validation
@@ -366,8 +428,8 @@ scene and machine; GPU clocks and desktop activity were not fixed.
   with 1,888 trees, 180 rocks and foliage shadows enabled on an RTX 2070 SUPER.
   This is a single scene-layout comparison, not a renderer speedup measurement;
   the additional visible grass adds rendering work. See
-  [forest_benchmark.json](../../../images/forest_benchmark.json) and the
-  [previous-layout capture](../../../images/forest_grass_coverage/before.png).
+  [forest_benchmark.json](../../../../rsc/examples/images/forest_benchmark.json) and the
+  [previous-layout capture](../../../../rsc/examples/images/forest_grass_coverage/before.png).
 
 Rayrai culls small foliage individually, orders it front to back, batches
 compatible color/shadow draws, and reuses their GPU buffers. Large foliage
@@ -403,7 +465,7 @@ This measures additional query overhead after the shared depth capture; it is
 not a whole-forest FPS percentage.
 
 Earlier full-forest A/B/B/A, before filling the trail with grass
-([archived measurements](../../../images/forest_grass_coverage/previous_benchmark.json)): stationary **20.45 → 20.51 FPS
+([archived measurements](../../../../rsc/examples/images/forest_grass_coverage/previous_benchmark.json)): stationary **20.45 → 20.51 FPS
 (+0.30%)**, moving-camera queued rendering **16.52 → 16.63 FPS
 (+0.68%)**. These differences remain within variation. All paired captures
 are byte-identical, and all five forest tests pass against the installed SDK,

@@ -1,16 +1,24 @@
 # RaiSim2
 
 <p align="center">
-  <img src="docs/image/rayrai_complete_showcase.gif" alt="rayrai complete showcase" width="49%" />
-  <img src="docs/image/forest_pan.gif" alt="Camera panning across forest trees and crates in rayrai" width="49%" />
+  <img src="rsc/docs/image/rayrai_complete_showcase.gif" alt="rayrai complete showcase" width="49%" />
+  <img src="rsc/docs/image/forest_pan.gif" alt="Camera panning across forest trees and crates in rayrai" width="49%" />
   <br />
-  <img src="docs/image/deformable_objects.gif" alt="deformable objects example" width="49%" />
-  <img src="docs/image/procedural_heightmap.gif" alt="procedural heightmap example" width="49%" />
+  <img src="rsc/docs/image/deformable_objects.gif" alt="deformable objects example" width="49%" />
+  <img src="rsc/docs/image/procedural_heightmap.gif" alt="procedural heightmap example" width="49%" />
+  <br />
+  <img src="rsc/docs/image/rayrai_blue_wall_scene.png" alt="Blue Wall rayrai example" width="49%" />
+  <img src="rsc/docs/image/granular_media_showcase.png" alt="Granular media example with ANYmal" width="49%" />
+  <br />
+  <img src="rsc/docs/image/tendon_pulleys.png" alt="Tendon pulley example" width="49%" />
+  <img src="rsc/docs/image/rayrai_nested_glass_showcase.png" alt="Nested glass rayrai example" width="49%" />
 </p>
 
 For full documentation, see the [RaiSim documentation](https://raisim.com/sections/Simulator.html).
 
 RaiSim is a physics engine for robotics and artificial intelligence research. The public distribution is provided as binary packages with headers, libraries, examples, rayrai viewer sources, and documentation.
+
+Source assets live under [`rsc`](rsc), including example models, viewer icons, and documentation images in [`rsc/docs/image`](rsc/docs/image).
 
 ## Install
 
@@ -192,7 +200,7 @@ Use the source-built `rayrai_tcp_viewer` for applications that publish through `
 
 ### Rayrai TCP viewer
 
-<img src="docs/image/rayrai/tcp_viewer/tcp_viewer_overview.png" alt="rayrai TCP viewer" width="100%">
+<img src="rsc/docs/image/rayrai/tcp_viewer/tcp_viewer_overview.png" alt="rayrai TCP viewer" width="100%">
 
 `rayrai_tcp_viewer` is the recommended visualizer for `RaisimServer` simulations. It is built from the viewer sources in this repository and connects to a running server over TCP. The viewer renders the world with the full rayrai PBR pipeline (procedural sky, IBL, directional shadows, reflective ground, weather, tone mapping). The overlay surfaces:
 

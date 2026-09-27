@@ -9,7 +9,7 @@ Use it to visually inspect collision approximations generated from YCB meshes.
 
 Screenshot
 ==========
-.. image:: ../../../image/rayrai_coacd_mesh_approximation.png
+.. image:: ../../../../rsc/docs/image/rayrai_coacd_mesh_approximation.png
    :alt: rayrai_coacd_mesh_approximation example
    :width: 100%
 

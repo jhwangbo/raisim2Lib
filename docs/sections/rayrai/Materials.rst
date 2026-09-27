@@ -93,7 +93,7 @@ For in-process code, ``raisin::Material`` exposes static factory helpers that
 set sensible defaults for the common shading variants. Prefer these over hand-
 filling the data members.
 
-.. image:: ../../image/rayrai/rayrai_materials_factories.png
+.. image:: ../../../rsc/docs/image/rayrai/rayrai_materials_factories.png
    :alt: PBR, Unlit, Simple, Foliage, and DefaultGround spheres rendered side by side
    :width: 100%
 
@@ -361,9 +361,12 @@ BVH node counts, scene rebuilds, and the scheduled samples per pixel.
 from the GPU and can stall.
 
 The Vulkan backend exists only in Linux and Windows builds made with the Vulkan
-SDK tools. At run time it needs a Vulkan 1.2 GPU that matches the OpenGL device
-and supports ray queries, acceleration structures, and OpenGL memory and
-semaphore sharing (``GL_EXT_memory_object``, ``GL_EXT_semaphore``). Set
+headers and ``glslc`` shader compiler. Installing ``glslc`` later does not add
+the backend to an already-built rayrai package; use a package built with it or
+rebuild from source. See :ref:`rayrai-vulkan-ray-query-troubleshooting` for
+setup and verification. At run time it needs a Vulkan 1.2 GPU that matches
+the OpenGL device and supports ray queries, acceleration structures, and
+OpenGL memory and semaphore sharing (``GL_EXT_memory_object``, ``GL_EXT_semaphore``). Set
 ``RAYRAI_DISABLE_VULKAN_RAY_QUERY=1`` to force the portable tracer. Changing
 the backend restarts accumulation. While ``geometryRefraction`` is enabled the
 renderer's frame caches are bypassed even when no glass is visible, so leave it
@@ -553,13 +556,13 @@ side.
 
    * - viewerSubsurfaceWrap
      - Authored skin (SSS slots)
-   * - .. image:: ../../image/rayrai/showcase/66_subsurface_wrap.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/66_subsurface_wrap.png
           :alt: Wrap-light approximation
-     - .. image:: ../../image/rayrai/showcase/116_material_subsurface_skin.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/116_material_subsurface_skin.png
           :alt: Subsurface skin material with thickness map
    * - Backlight slot
      -
-   * - .. image:: ../../image/rayrai/showcase/100_material_sss_backlight.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/100_material_sss_backlight.png
           :alt: Backlight slot adding from-behind translucency
      -
 
@@ -616,21 +619,21 @@ included for context.
 
    * - HDR / IBL
      - PBR material maps
-   * - .. image:: ../../image/rayrai/showcase/08_hdr_ibl.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/08_hdr_ibl.png
           :alt: HDR environment driving IBL on metallic surfaces
-     - .. image:: ../../image/rayrai/showcase/07_pbr_material_maps.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/07_pbr_material_maps.png
           :alt: Spheres with progressive PBR map coverage
    * - Bloom (emissive)
      - Bloom with dirt mask
-   * - .. image:: ../../image/rayrai/showcase/14_bloom_emissive.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/14_bloom_emissive.png
           :alt: Emissive surfaces blooming above threshold
-     - .. image:: ../../image/rayrai/showcase/47_bloom_dirt_mask.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/47_bloom_dirt_mask.png
           :alt: Bloom modulated by a lens-dirt texture
    * - Material extensions
      - Authored scene (Poly Haven Blue Wall)
-   * - .. image:: ../../image/rayrai/showcase/15_material_extensions.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/15_material_extensions.png
           :alt: Clearcoat, sheen, anisotropy slots
-     - .. image:: ../../image/rayrai/showcase/09_blue_wall_scene.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/09_blue_wall_scene.png
           :alt: Authored Poly Haven blue wall scene
 
 GPU capability tiers

@@ -110,15 +110,15 @@ controls in runnable scenes.
 
    * - Fast
      - Balanced
-   * - .. image:: ../../image/rayrai/rayrai_quality_fast.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/rayrai_quality_fast.png
           :alt: Fast preset
-     - .. image:: ../../image/rayrai/rayrai_quality_balanced.png
+     - .. image:: ../../../rsc/docs/image/rayrai/rayrai_quality_balanced.png
           :alt: Balanced preset
    * - High
      - Ultra
-   * - .. image:: ../../image/rayrai/rayrai_quality_high.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/rayrai_quality_high.png
           :alt: High preset
-     - .. image:: ../../image/rayrai/rayrai_quality_ultra.png
+     - .. image:: ../../../rsc/docs/image/rayrai/rayrai_quality_ultra.png
           :alt: Ultra preset
 
 These four images are produced by ``doc_image_quality_presets`` in
@@ -321,19 +321,19 @@ look for cleaner skin tones; UnrealPreview matches the engine reference:
 
    * - FastLinear
      - ACES
-   * - .. image:: ../../image/rayrai/rayrai_tonemap_fast_linear.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/rayrai_tonemap_fast_linear.png
           :alt: FastLinear tone map
-     - .. image:: ../../image/rayrai/rayrai_tonemap_aces.png
+     - .. image:: ../../../rsc/docs/image/rayrai/rayrai_tonemap_aces.png
           :alt: ACES tone map
    * - UnrealPreview
      - Filmic
-   * - .. image:: ../../image/rayrai/rayrai_tonemap_unreal_preview.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/rayrai_tonemap_unreal_preview.png
           :alt: UnrealPreview tone map
-     - .. image:: ../../image/rayrai/rayrai_tonemap_filmic.png
+     - .. image:: ../../../rsc/docs/image/rayrai/rayrai_tonemap_filmic.png
           :alt: Filmic tone map
    * - AgX
      -
-   * - .. image:: ../../image/rayrai/rayrai_tonemap_agx.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/rayrai_tonemap_agx.png
           :alt: AgX tone map
      -
 
@@ -348,19 +348,19 @@ preset with ``viewerColorGradePreset`` (``Neutral``, ``Warm``, ``Cool``,
 
    * - Neutral
      - Warm
-   * - .. image:: ../../image/rayrai/rayrai_grade_neutral.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/rayrai_grade_neutral.png
           :alt: Neutral grade
-     - .. image:: ../../image/rayrai/rayrai_grade_warm.png
+     - .. image:: ../../../rsc/docs/image/rayrai/rayrai_grade_warm.png
           :alt: Warm grade
    * - Cool
      - Cinematic
-   * - .. image:: ../../image/rayrai/rayrai_grade_cool.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/rayrai_grade_cool.png
           :alt: Cool grade
-     - .. image:: ../../image/rayrai/rayrai_grade_cinematic.png
+     - .. image:: ../../../rsc/docs/image/rayrai/rayrai_grade_cinematic.png
           :alt: Cinematic grade
    * - Bleach
      -
-   * - .. image:: ../../image/rayrai/rayrai_grade_bleach.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/rayrai_grade_bleach.png
           :alt: Bleach grade
      -
 

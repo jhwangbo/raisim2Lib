@@ -100,8 +100,8 @@ void run(ExampleApp& app,const Options& o) {
   q.geometryRefractionAbsoluteError=o.absoluteError; q.geometryRefractionSeed=o.seed;
   q.viewerMsaaSamples=o.msaa; q.temporalAaEnabled=false; q.fxaaEnabled=true;
   q.autoExposureEnabled=false; q.screenSpaceAoEnabled=false; q.reflectiveGround=false;
-  q.shadowsEnabled=true; q.addViewerFillLights=false; q.mainLightAmbient=glm::vec3(.06f,.075f,.1f);
-  q.mainLightDiffuse=glm::vec3(2); q.mainLightDirection=glm::normalize(glm::vec3(-.4,.2,-1));
+  q.shadowsEnabled=true; q.addViewerFillLights=false; q.mainLightAmbient=glm::vec3(.09f,.11f,.14f);
+  q.mainLightDiffuse=glm::vec3(2.7f); q.mainLightDirection=glm::normalize(glm::vec3(-.4,.2,-1));
   q.bloomEnabled=false; q.depthOfFieldEnabled=false; q.fogDensity=0; q.heightFogEnabled=false;
   q.proceduralSkyBackgroundEnabled=false; q.pbrExposure=1; q.gamma=2.2f;
   viewer.setRenderQualitySettings(q); viewer.setLinearHdrRenderingEnabled(true); viewer.clearAdditionalLights();
@@ -117,9 +117,9 @@ void run(ExampleApp& app,const Options& o) {
   // Real offscreen emissive geometry: refraction and internal reflection rays
   // can hit these softboxes even though the primary camera cannot see them.
   box("softbox left",{-5,-6,4.8},o.rareLight?glm::vec3(.15,.18,.18):glm::vec3(.15,2.5,2.2),
-      o.rareLight?glm::vec3(250,240,230):glm::vec3(7.5,7.2,6.8),true)->setCastsShadows(false);
-  box("softbox right",{5,-6,4},{.15,2.5,2},{3,4.5,7},true)->setCastsShadows(false);
-  box("softbox ceiling",{0,1,6},{6,3,.1},{3.5,3.5,3.5},true)->setCastsShadows(false);
+      o.rareLight?glm::vec3(250,240,230):glm::vec3(9.5,9.1,8.6),true)->setCastsShadows(false);
+  box("softbox right",{5,-6,4},{.15,2.5,2},{4,6,9},true)->setCastsShadows(false);
+  box("softbox ceiling",{0,1,6},{6,3,.1},{4.5,4.5,4.5},true)->setCastsShadows(false);
   auto clear=Material::glass("clear solid",1,glm::vec3(.96,.99,1),4,0,1.5f);
   clear.roughnessFactor=o.roughness;
   clear.dielectricPriority=20;
@@ -175,7 +175,7 @@ void run(ExampleApp& app,const Options& o) {
   }
   if(o.opaqueOnly) for(const auto& item:moving) item.first->setColorPassVisible(false);
   viewer.updateObjectLists();
-  const glm::vec3 eye=o.objects?glm::vec3(10,-17,17):glm::vec3(2,-10.5,3.8);
+  const glm::vec3 eye=o.objects?glm::vec3(10,-17,17):glm::vec3(1.6f,-8.3f,3.22f);
   const glm::vec3 lookAt(0,.4f,.9f);
   if(o.benchmark || !o.output.empty()) {
     // Offscreen paths keep a private fixed camera so captures and timings stay

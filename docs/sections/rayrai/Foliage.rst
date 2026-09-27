@@ -10,7 +10,7 @@ added this way is visual-only; add RaiSim collision objects separately.
 The :doc:`dense forest example <../examples/rayrai/rayrai_forest>` puts these
 features together on an 80 by 80 metre heightmap with more than 63,000 plants.
 
-.. image:: ../../image/forest.png
+.. image:: ../../../rsc/docs/image/forest.png
    :alt: Instanced trees and grass on rolling terrain with dynamic RaiSim objects
    :width: 100%
 

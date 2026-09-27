@@ -14,7 +14,7 @@ bounces; ``--backend=portable`` selects the OpenGL tracer explicitly.
 
 Screenshot
 ==========
-.. image:: ../../../image/rayrai_nested_glass.png
+.. image:: ../../../../rsc/docs/image/rayrai_nested_glass_showcase.png
    :alt: Nested water, glass, and air with overlapping transparent solids
    :width: 100%
 

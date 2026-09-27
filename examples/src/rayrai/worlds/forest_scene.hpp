@@ -1,7 +1,10 @@
 #pragma once
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <random>
+#include <stdexcept>
+#include <string>
 #include <vector>
 #include "raisim/World.hpp"
 #include "raisim/object/terrain/HeightMap.hpp"
@@ -91,18 +94,128 @@ inline std::vector<Plant> scatterRocks(const raisim::HeightMap& terrain,
   }
   return rocks;
 }
-inline void addObjects(raisim::World& world, const raisim::HeightMap& terrain) {
-  world.setTimeStep(.002);
+enum class DemoShape { Box, Sphere, Capsule };
+enum class DemoColor { Blue, Coral, Gold, Cyan, Violet };
+
+struct DemoPrimitive {
+  std::string name;
+  DemoShape shape;
+  DemoColor color;
+  double x, y, z;
+  std::array<double, 3> size{1, 1, 1};
+  double radius = .3;
+  double height = .6;
+  double mass = 1;
+  int targetTree = -1;
+};
+
+inline const char* demoColorName(DemoColor color) {
+  switch (color) {
+    case DemoColor::Blue: return "blue";
+    case DemoColor::Coral: return "coral";
+    case DemoColor::Gold: return "gold";
+    case DemoColor::Cyan: return "cyan";
+    case DemoColor::Violet: return "violet";
+  }
+  throw std::logic_error("Unknown forest demo color");
+}
+
+inline std::array<double, 4> demoColorRgba(DemoColor color) {
+  switch (color) {
+    case DemoColor::Blue: return {.15, .35, .7, 1};
+    case DemoColor::Coral: return {.95, .25, .12, 1};
+    case DemoColor::Gold: return {.95, .72, .12, 1};
+    case DemoColor::Cyan: return {.08, .72, .9, 1};
+    case DemoColor::Violet: return {.65, .35, .9, 1};
+  }
+  throw std::logic_error("Unknown forest demo color");
+}
+
+inline std::vector<DemoPrimitive> demoPrimitives(
+    const raisim::HeightMap& terrain, const std::vector<Plant>& plants) {
+  std::vector<DemoPrimitive> result;
+  result.reserve(100);
+  // Keep the original physics clearing and stack visible shapes along the
+  // camera's first stretch of trail. The upper tiers fall onto lower tiers.
   for (int i = 0; i < 6; ++i) {
     const double x = (i % 3 - 1) * 1.15, y = -9 + (i / 3) * 1.4;
-    auto* box = world.addBox(.65,.65,.65,3);
-    box->setPosition(x,y,terrain.getHeight(x,y)+1.4);
-    box->setAppearance(i % 2 ? "0.75,0.22,0.08,1" : "0.15,0.35,0.7,1");
-    box->setName("Falling crate " + std::to_string(i));
-    auto* ball = world.addSphere(.3,1);
-    ball->setPosition(x,y+3,terrain.getHeight(x,y+3)+2.0);
-    ball->setAppearance("0.85,0.65,0.12,1");
-    ball->setName("Rolling ball " + std::to_string(i));
+    result.push_back({"Falling crate " + std::to_string(i), DemoShape::Box,
+      i % 2 ? DemoColor::Coral : DemoColor::Blue,
+      x, y, terrain.getHeight(x, y) + 1.4, {.65, .65, .65}, .3, .6, 3});
+    result.push_back({"Rolling ball " + std::to_string(i), DemoShape::Sphere,
+      DemoColor::Gold, x, y + 3, terrain.getHeight(x, y + 3) + 2});
+  }
+  constexpr std::array colors{DemoColor::Coral, DemoColor::Cyan,
+    DemoColor::Gold, DemoColor::Violet, DemoColor::Blue};
+  for (int row = 0; row < 6; ++row) {
+    const double y = -17.0 + row * 3.0;
+    for (int lane = 0; lane < 4; ++lane) {
+      const double x = trail(y) + (lane - 1.5) * .85;
+      const double ground = terrain.getHeight(x, y);
+      for (int tier = 0; tier < 3; ++tier) {
+        const int index = (row * 4 + lane) * 3 + tier;
+        const int shape = (row + lane + tier) % 3;
+        result.push_back({"Trail primitive " + std::to_string(index),
+          shape == 0 ? DemoShape::Box :
+            shape == 1 ? DemoShape::Sphere : DemoShape::Capsule,
+          colors[(row + lane + tier) % colors.size()],
+          x, y, ground + 1.8 + tier * 1.3 + row * .12,
+          {.55, .55, .55}, .28, .65, 1.5});
+      }
+    }
+  }
+  std::vector<std::size_t> nearby;
+  for (std::size_t i = 0; i < plants.size(); ++i) {
+    const auto& tree = plants[i];
+    const double sideways = std::abs(tree.x - trail(tree.y));
+    if (tree.type < 3 && tree.y > -20 && tree.y < 2 &&
+        sideways >= 3 && sideways <= 6.5)
+      nearby.push_back(i);
+  }
+  std::sort(nearby.begin(), nearby.end(), [&](std::size_t a, std::size_t b) {
+    const auto score = [&](const Plant& tree) {
+      return std::pow(tree.y + 12, 2) +
+        std::pow(std::abs(tree.x - trail(tree.y)) - 3.5, 2);
+    };
+    const double left = score(plants[a]), right = score(plants[b]);
+    return left == right ? a < b : left < right;
+  });
+  if (nearby.size() < 16)
+    throw std::runtime_error("Forest has too few nearby trees for collision drops");
+  for (int i = 0; i < 16; ++i) {
+    const auto& tree = plants[nearby[i]];
+    const double towardTrail = tree.x < trail(tree.y) ? .2 : -.2;
+    result.push_back({"Tree drop " + std::to_string(i), DemoShape::Sphere,
+      i % 2 ? DemoColor::Gold : DemoColor::Violet,
+      tree.x + towardTrail, tree.y,
+      tree.z + tree.scale * (tree.type == 2 ? 3.2 : 1.1) + 1.0,
+      {1, 1, 1}, .42, .6, 1.5, static_cast<int>(nearby[i])});
+  }
+  return result;
+}
+
+inline void addObjects(raisim::World& world, const raisim::HeightMap& terrain,
+                       const std::vector<Plant>& plants) {
+  world.setTimeStep(.002);
+  for (const auto& spec : demoPrimitives(terrain, plants)) {
+    raisim::SingleBodyObject* body = nullptr;
+    switch (spec.shape) {
+      case DemoShape::Box:
+        body = world.addBox(spec.size[0], spec.size[1], spec.size[2], spec.mass);
+        break;
+      case DemoShape::Sphere:
+        body = world.addSphere(spec.radius, spec.mass);
+        break;
+      case DemoShape::Capsule:
+        body = world.addCapsule(spec.radius, spec.height, spec.mass);
+        break;
+    }
+    if (!body) throw std::logic_error("Unknown forest demo shape");
+    body->setPosition(spec.x, spec.y, spec.z);
+    const auto color = demoColorRgba(spec.color);
+    body->setAppearance(std::to_string(color[0]) + "," +
+      std::to_string(color[1]) + "," + std::to_string(color[2]) + ",1");
+    body->setName(spec.name);
   }
 }
 } // namespace forest

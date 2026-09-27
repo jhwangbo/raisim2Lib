@@ -12,7 +12,7 @@ In addition to visualizing a ``raisim::World``, ``raisim::RaisimServer`` can vis
 The legacy visual-object showcase is displayed as follows; use the current
 examples index for runnable source targets:
 
-.. image:: ../image/visuals.gif
+.. image:: ../../rsc/docs/image/visuals.gif
 
 Typical usage
 =========================

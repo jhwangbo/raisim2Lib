@@ -178,12 +178,9 @@ create_executable(mjcf_gymnasium_walker2d src/server/mjcf/mjcf_gymnasium_walker2
 create_executable(mjcf_gymnasium_humanoid src/server/mjcf/mjcf_gymnasium_humanoid.cpp)
 
 # World and terrain scenes.
-create_executable(mountain1_heightmap src/worlds/mountain1_heightmap.cpp)
 create_executable(office1_scene src/worlds/office1_scene.cpp)
-create_executable(lake1_heightmap src/worlds/lake1_heightmap.cpp)
 create_executable(atlas src/worlds/atlas.cpp)
 create_executable(anymal_pair src/worlds/anymal_pair.cpp)
-create_executable(hill1_heightmap src/worlds/hill1_heightmap.cpp)
 create_executable(kinova_arm src/worlds/kinova_arm.cpp)
 
 # rayrai examples
@@ -211,18 +208,9 @@ create_rayrai_executable(rayrai_pbr_material_grid src/rayrai/materials/rayrai_pb
 create_rayrai_executable(rayrai_pbr_texture_maps src/rayrai/materials/rayrai_pbr_texture_maps.cpp)
 create_rayrai_executable(rayrai_quality_lighting src/rayrai/materials/rayrai_quality_lighting.cpp)
 create_rayrai_executable(rayrai_nested_glass src/rayrai/materials/rayrai_nested_glass.cpp)
-option(RAISIM_NESTED_GLASS_GPU_TESTS "Register the nested-glass render smoke test (needs OpenGL)" OFF)
-if(RAISIM_NESTED_GLASS_GPU_TESTS)
-    enable_testing()
-    find_package(Python3 COMPONENTS Interpreter REQUIRED)
-    add_test(NAME rayrai_nested_glass_smoke COMMAND ${Python3_EXECUTABLE}
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_rayrai_nested_glass.py
-        $<TARGET_FILE:rayrai_nested_glass>)
-    set_tests_properties(rayrai_nested_glass_smoke PROPERTIES RUN_SERIAL TRUE TIMEOUT 120
-        ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1;MKL_NUM_THREADS=1")
-endif()
 create_rayrai_executable(rayrai_coacd_mesh_approximation src/rayrai/assets/rayrai_coacd_mesh_approximation.cpp)
 create_rayrai_executable(rayrai_visual_asset_support src/rayrai/assets/rayrai_visual_asset_support.cpp)
+create_rayrai_executable(rayrai_blue_wall_scene src/rayrai/assets/rayrai_blue_wall_scene.cpp)
 
 # Runtime scene editing and collision detection.
 create_rayrai_executable(rayrai_runtime_scene_editing src/rayrai/runtime/rayrai_runtime_scene_editing.cpp)
@@ -278,47 +266,12 @@ endif()
 create_rayrai_executable(rayrai_forest src/rayrai/worlds/rayrai_forest.cpp)
 target_compile_features(rayrai_forest PRIVATE cxx_std_20)
 target_compile_definitions(rayrai_forest PRIVATE
-    FOREST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/rsc/forest")
-option(RAISIM_FOREST_EXAMPLE_TESTS "Build forest placement and physics checks" OFF)
-if(RAISIM_FOREST_EXAMPLE_TESTS)
-    enable_testing()
-    create_executable(forest_scene_test tests/test_forest.cpp)
-    target_compile_features(forest_scene_test PRIVATE cxx_std_20)
-    target_include_directories(forest_scene_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/rayrai/worlds)
-    add_test(NAME forest_terrain_placement_physics COMMAND forest_scene_test)
-    create_rayrai_executable(forest_loading_test tests/test_forest_loading.cpp)
-    target_compile_features(forest_loading_test PRIVATE cxx_std_20)
-    target_include_directories(forest_loading_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/rayrai/worlds)
-    add_test(NAME forest_loading_progress COMMAND forest_loading_test)
-endif()
-
-if(RAISIM_FOREST_EXAMPLE_TESTS)
-    find_package(Python3 COMPONENTS Interpreter REQUIRED)
-    add_test(NAME forest_asset_integrity COMMAND ${Python3_EXECUTABLE}
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_forest_assets.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/rsc/forest)
-endif()
-option(RAISIM_FOREST_GPU_TESTS "Register the forest smoke test (needs a display and OpenGL)" OFF)
-if(RAISIM_FOREST_GPU_TESTS)
-    enable_testing()
-    create_rayrai_executable(forest_render_test tests/test_forest_render.cpp)
-    target_compile_features(forest_render_test PRIVATE cxx_std_20)
-    target_include_directories(forest_render_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/rayrai/worlds)
-    target_compile_definitions(forest_render_test PRIVATE
-        FOREST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/rsc/forest")
-    add_test(NAME forest_render_smoke COMMAND forest_render_test --frames 3)
-    set_tests_properties(forest_render_smoke PROPERTIES RUN_SERIAL TRUE TIMEOUT 240
-        ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1;MKL_NUM_THREADS=1")
-endif()
-
-if(RAISIM_FOREST_GPU_TESTS)
-    create_rayrai_executable(forest_shadow_test tests/test_forest_render.cpp)
-    target_compile_features(forest_shadow_test PRIVATE cxx_std_20)
-    target_include_directories(forest_shadow_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/rayrai/worlds)
-    target_include_directories(forest_shadow_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
-    target_compile_definitions(forest_shadow_test PRIVATE FOREST_VERIFY_SHADOWS
-        FOREST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/rsc/forest")
-    add_test(NAME forest_foliage_shadows COMMAND forest_shadow_test --hidden --frames 3)
-    set_tests_properties(forest_foliage_shadows PROPERTIES RUN_SERIAL TRUE TIMEOUT 240
-        ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1;MKL_NUM_THREADS=1")
+    FOREST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../rsc/forest")
+option(RAISIM_FOREST_COLLISION_BENCHMARK "Build the forest collision benchmark" OFF)
+if(RAISIM_FOREST_COLLISION_BENCHMARK)
+    create_executable(forest_collision_benchmark tools/benchmark_forest_collision.cpp)
+    target_compile_features(forest_collision_benchmark PRIVATE cxx_std_20)
+    target_include_directories(forest_collision_benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/rayrai/worlds)
+    target_compile_definitions(forest_collision_benchmark PRIVATE
+        FOREST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../rsc/forest")
 endif()

@@ -16,7 +16,7 @@ inspect applications that publish a
 ``raisim::World`` through ``raisim::RaisimServer``. RaisimUnity and RaisimUnreal
 are no longer supported.
 
-.. image:: ../image/examples_overview.png
+.. image:: ../../rsc/docs/image/examples_overview.png
    :alt: Overview of RaiSim and rayrai examples
    :width: 100%
 
@@ -176,7 +176,7 @@ Some targets depend on bundled assets or platform runtime packages:
 * Poly Haven and PBR asset examples require the corresponding assets under
   ``rsc``. CMake copies ``rsc`` next to the executables
   (``build-examples/examples/rsc``, or ``build-examples/bin/rsc`` on Windows).
-* ``rayrai_forest`` reads its assets from ``examples/rsc/forest`` in the
+* ``rayrai_forest`` reads its assets from ``rsc/forest`` in the
   configured checkout and writes regenerable ``rayrai_cache_*.lods`` files
   beside them.
 * ``rayrai_coacd_mesh_approximation`` writes ``raisim_coacd_*`` cache files
@@ -285,10 +285,7 @@ Server Examples
    examples/server/ycb_objects
    examples/worlds/anymal_pair
    examples/worlds/atlas
-   examples/worlds/hill1_heightmap
    examples/worlds/kinova_arm
-   examples/worlds/lake1_heightmap
-   examples/worlds/mountain1_heightmap
    examples/worlds/office1_scene
 
 XML Examples

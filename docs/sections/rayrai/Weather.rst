@@ -42,21 +42,21 @@ normalized in ``[0, 1]``, and ``wetnessAccumulationRate`` /
 
    * - Clear
      - Overcast
-   * - .. image:: ../../image/rayrai/rayrai_weather_clear.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/rayrai_weather_clear.png
           :alt: Clear weather preset
-     - .. image:: ../../image/rayrai/rayrai_weather_overcast.png
+     - .. image:: ../../../rsc/docs/image/rayrai/rayrai_weather_overcast.png
           :alt: Overcast weather preset
    * - Rain
      - Snow
-   * - .. image:: ../../image/rayrai/rayrai_weather_rain.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/rayrai_weather_rain.png
           :alt: Rain weather preset
-     - .. image:: ../../image/rayrai/rayrai_weather_snow.png
+     - .. image:: ../../../rsc/docs/image/rayrai/rayrai_weather_snow.png
           :alt: Snow weather preset
    * - Storm
      - NightClear
-   * - .. image:: ../../image/rayrai/rayrai_weather_storm.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/rayrai_weather_storm.png
           :alt: Storm weather preset
-     - .. image:: ../../image/rayrai/rayrai_weather_night_clear.png
+     - .. image:: ../../../rsc/docs/image/rayrai/rayrai_weather_night_clear.png
           :alt: NightClear weather preset
 
 The grid is produced by ``doc_image_weather_presets`` in
@@ -280,7 +280,7 @@ metre. ``weatherDiagnostics()`` reports ``heightFogActive``,
     weather.fogColor = glm::vec3(0.65f, 0.70f, 0.75f);  // cool grey haze
     viewer.setWeatherSettings(weather);
 
-.. image:: ../../image/rayrai/rayrai_volumetric_fog.png
+.. image:: ../../../rsc/docs/image/rayrai/rayrai_volumetric_fog.png
    :alt: Pillars slicing the main light into volumetric shafts
    :width: 100%
 
@@ -290,21 +290,21 @@ metre. ``weatherDiagnostics()`` reports ``heightFogActive``,
 
    * - Sky and height fog
      - Volumetric fog + light shafts
-   * - .. image:: ../../image/rayrai/showcase/13_sky_height_fog.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/13_sky_height_fog.png
           :alt: Procedural sky with height fog
-     - .. image:: ../../image/rayrai/showcase/16_volumetric_fog_lighting.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/16_volumetric_fog_lighting.png
           :alt: Volumetric fog and scattering
    * - Cloud shadows
      - Aerial perspective
-   * - .. image:: ../../image/rayrai/showcase/28_weather_cloud_shadows.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/28_weather_cloud_shadows.png
           :alt: Procedural cloud shadow projection
-     - .. image:: ../../image/rayrai/showcase/60_aerial_perspective.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/60_aerial_perspective.png
           :alt: Distance-based atmospheric tinting
    * - Local fog volumes
      - Light shafts (god rays)
-   * - .. image:: ../../image/rayrai/showcase/29_weather_fog_local_volumes.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/29_weather_fog_local_volumes.png
           :alt: Spherical local fog volumes
-     - .. image:: ../../image/rayrai/showcase/65_light_shafts.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/65_light_shafts.png
           :alt: Screen-space light shafts
 
 Foliage wind
@@ -366,21 +366,21 @@ per-instance scale and rotation driving subtle variation.
 
    * - Foliage wind (poster frame)
      - Leaf two-sided lighting
-   * - .. image:: ../../image/rayrai/showcase/43_foliage_wind_poster.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/43_foliage_wind_poster.png
           :alt: Trees and grass deform under foliageWindEnabled
-     - .. image:: ../../image/rayrai/showcase/44_foliage_leaf_lighting.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/44_foliage_leaf_lighting.png
           :alt: Translucent leaf shading
    * - Dense grass patch
      - Foliage weather response
-   * - .. image:: ../../image/rayrai/showcase/45_foliage_grass_patch.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/45_foliage_grass_patch.png
           :alt: Instanced grass patches
-     - .. image:: ../../image/rayrai/showcase/46_foliage_weather_response.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/46_foliage_weather_response.png
           :alt: Foliage tinting under weather
    * - Dense foliage instancing
      - Poly Haven foliage import
-   * - .. image:: ../../image/rayrai/showcase/88_dense_foliage_instances.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/88_dense_foliage_instances.png
           :alt: Many thousands of instanced grass blades
-     - .. image:: ../../image/rayrai/showcase/53_polyhaven_foliage.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/53_polyhaven_foliage.png
           :alt: Authored foliage from a Poly Haven scene
 
 Weather wet and snow material response
@@ -438,7 +438,7 @@ controlled by ``wetnessAccumulationRate`` and ``wetnessDryingRate``.
     weather.wetnessDryingRate = 0.10f;         // per second
     viewer.setWeatherSettings(weather);
 
-.. image:: ../../image/rayrai/rayrai_wet_material.png
+.. image:: ../../../rsc/docs/image/rayrai/rayrai_wet_material.png
    :alt: Wet material response: darker albedo, lower roughness, rain ripples
    :width: 100%
 
@@ -448,15 +448,15 @@ controlled by ``wetnessAccumulationRate`` and ``wetnessDryingRate``.
 
    * - Wet material response
      - Snow material response
-   * - .. image:: ../../image/rayrai/showcase/30_weather_wet_materials.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/30_weather_wet_materials.png
           :alt: Wet darkening, roughness drop, rain ripples
-     - .. image:: ../../image/rayrai/showcase/31_weather_snow_materials.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/31_weather_snow_materials.png
           :alt: Snow albedo blend on upward faces
    * - Wetness accumulation
      - Snow melt transition
-   * - .. image:: ../../image/rayrai/showcase/41_weather_wetness_accumulation.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/41_weather_wetness_accumulation.png
           :alt: Wetness ramp during rain
-     - .. image:: ../../image/rayrai/showcase/40_weather_snow_melt_transition.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/40_weather_snow_melt_transition.png
           :alt: Snow melting between presets
 
 Rain splashes, snow flurries, lens droplets, and storm lightning
@@ -504,19 +504,19 @@ accordingly throughout ``timeOfDayHours``, which is civil time at
 
    * - Rain splashes
      - Lens droplets
-   * - .. image:: ../../image/rayrai/showcase/34_weather_rain_splashes_poster.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/34_weather_rain_splashes_poster.png
           :alt: Rain impact splash particles
-     - .. image:: ../../image/rayrai/showcase/35_weather_lens_droplets_poster.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/35_weather_lens_droplets_poster.png
           :alt: Lens droplet post-process
    * - Snow particles
      - Storm lightning
-   * - .. image:: ../../image/rayrai/showcase/32_weather_snow_particles_poster.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/32_weather_snow_particles_poster.png
           :alt: Snow particle accumulation
-     - .. image:: ../../image/rayrai/showcase/33_weather_storm_lightning.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/33_weather_storm_lightning.png
           :alt: Stochastic lightning during storm preset
    * - Rain occlusion
      - Solar position over time of day
-   * - .. image:: ../../image/rayrai/showcase/42_weather_rain_occlusion.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/42_weather_rain_occlusion.png
           :alt: Rain density modulated by overhangs
-     - .. image:: ../../image/rayrai/showcase/38_weather_solar_position.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/38_weather_solar_position.png
           :alt: Sun position from latitude/longitude/date

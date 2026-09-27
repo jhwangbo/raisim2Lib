@@ -150,7 +150,7 @@ grain + lens flare + a slight letterbox for a film-shot look:
 
     viewer.setRenderQualitySettings(quality);
 
-.. image:: ../../image/rayrai/rayrai_cinematic.png
+.. image:: ../../../rsc/docs/image/rayrai/rayrai_cinematic.png
    :alt: Three props at different depths with DoF, bloom, vignette, lens flare, letterbox
    :width: 100%
 
@@ -235,7 +235,7 @@ map misses; ``Length``, ``Strength``, and ``Thickness`` are in metres.
 
     viewer.setRenderQualitySettings(quality);
 
-.. image:: ../../image/rayrai/rayrai_ssr_ssao.png
+.. image:: ../../../rsc/docs/image/rayrai/rayrai_ssr_ssao.png
    :alt: Glossy floor with SSR, SSAO, and contact shadows enabled
    :width: 100%
 
@@ -245,15 +245,15 @@ map misses; ``Length``, ``Strength``, and ``Thickness`` are in metres.
 
    * - Screen-space reflections (SSR)
      - Screen-space indirect lighting (SSIL)
-   * - .. image:: ../../image/rayrai/showcase/72_ssr.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/72_ssr.png
           :alt: SSR on glossy floor and puddles
-     - .. image:: ../../image/rayrai/showcase/71_screen_space_indirect_lighting.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/71_screen_space_indirect_lighting.png
           :alt: SSIL adds coloured bounce light
    * - Contact shadows
      - Screen-space refraction
-   * - .. image:: ../../image/rayrai/showcase/69_contact_shadows.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/69_contact_shadows.png
           :alt: Short-range raymarched contact shadows
-     - .. image:: ../../image/rayrai/showcase/21_screen_space_refraction.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/21_screen_space_refraction.png
           :alt: IOR-driven refraction
 
 Depth of field, lens flares, and lens character
@@ -311,15 +311,15 @@ distortion centred at ``lensDistortionCenter``.
 
    * - Depth of field
      - Hex bokeh detail
-   * - .. image:: ../../image/rayrai/showcase/02_depth_of_field.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/02_depth_of_field.png
           :alt: Focus distance with depth-of-field blur
-     - .. image:: ../../image/rayrai/showcase/68_hex_bokeh.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/68_hex_bokeh.png
           :alt: Hex aperture bokeh on highlights
    * - Lens flare
      - Lens character (vignette + grain + CA)
-   * - .. image:: ../../image/rayrai/showcase/67_lens_flare.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/67_lens_flare.png
           :alt: Lens flare ghost and streak
-     - .. image:: ../../image/rayrai/showcase/63_lens_character.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/63_lens_character.png
           :alt: Vignette + chromatic aberration + film grain
 
 Motion blur and atmospheric effects
@@ -370,15 +370,15 @@ adds animated caustic patterns, and attenuates by depth.
 
    * - Motion blur
      - Heat haze
-   * - .. image:: ../../image/rayrai/showcase/70_motion_blur.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/70_motion_blur.png
           :alt: Directional motion blur
-     - .. image:: ../../image/rayrai/showcase/73_heat_haze.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/73_heat_haze.png
           :alt: Heat haze UV displacement
    * - Underwater
      - Detail normals
-   * - .. image:: ../../image/rayrai/showcase/78_underwater.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/78_underwater.png
           :alt: Underwater tint, caustics, extinction
-     - .. image:: ../../image/rayrai/showcase/64_detail_normal.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/64_detail_normal.png
           :alt: High-frequency detail normal layer
 
 Stylized and diagnostic looks
@@ -425,15 +425,15 @@ looks; the calibration reference is intended to drive
 
    * - Thermal
      - Night vision
-   * - .. image:: ../../image/rayrai/showcase/84_thermal.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/84_thermal.png
           :alt: Thermal LUT
-     - .. image:: ../../image/rayrai/showcase/80_night_vision.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/80_night_vision.png
           :alt: Night vision gain
    * - Auto exposure
      - Calibration reference
-   * - .. image:: ../../image/rayrai/showcase/62_auto_exposure.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/62_auto_exposure.png
           :alt: Auto exposure key/speed driving the loop
-     - .. image:: ../../image/rayrai/showcase/48_calibration_reference.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/48_calibration_reference.png
           :alt: Calibration patches for output transform tuning
 
 Linear HDR rendering

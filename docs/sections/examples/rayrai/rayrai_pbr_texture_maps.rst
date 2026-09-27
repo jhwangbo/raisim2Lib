@@ -11,7 +11,7 @@ The sample assets are CC0 and free for commercial use.
 
 Screenshot
 ==========
-.. image:: ../../../image/rayrai_pbr_texture_maps.png
+.. image:: ../../../../rsc/docs/image/rayrai_pbr_texture_maps.png
    :alt: rayrai_pbr_texture_maps example
    :width: 100%
 

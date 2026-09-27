@@ -101,7 +101,7 @@ PY
 # dock showing a generic placeholder. Without ImageMagick we fall back to an
 # absolute Icon= path, which GNOME scales itself.
 install_icon() {
-  local logo="$REPO/docs/image/logo.png" magick=""
+  local logo="$REPO/rsc/docs/image/logo.png" magick=""
   [ -f "$logo" ] || { echo "install_rayrai_viewer_launcher: no logo at $logo" >&2; return 1; }
   if command -v magick >/dev/null 2>&1; then magick=magick
   elif command -v convert >/dev/null 2>&1; then magick=convert

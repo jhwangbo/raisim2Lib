@@ -8,7 +8,7 @@ Loads the bundled mountain1 heightmap assets and drops an Aliengo robot on it wi
 
 Screenshot
 ==========
-.. image:: ../../../image/map_mountain1.png
+.. image:: ../../../../rsc/docs/image/map_mountain1.png
 
 Source Status
 =============

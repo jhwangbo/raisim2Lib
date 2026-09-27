@@ -8,7 +8,7 @@ Loads the hill1 heightmap and drops Aliengo high above the terrain to demonstrat
 
 Screenshot
 ==========
-.. image:: ../../../image/map_hill1.png
+.. image:: ../../../../rsc/docs/image/map_hill1.png
 
 Source Status
 =============

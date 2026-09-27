@@ -1,5 +1,7 @@
 #pragma once
+#include <array>
 #include <filesystem>
+#include "raisim/Rasset.hpp"
 #include <memory>
 #include "rayrai/example_common.hpp"
 #include "rayrai/Visuals.hpp"
@@ -11,15 +13,31 @@ struct ForestViewer {
   std::shared_ptr<raisim::World> world = std::make_shared<raisim::World>();
   std::shared_ptr<Viewer> viewer;
   std::vector<std::shared_ptr<raisin::InstancedVisuals>> foliage, rockVisuals;
+  size_t collisionProxyCount = 0;
   ForestViewer(const std::filesystem::path& assets, int width, int height) {
     namespace fs = std::filesystem;
     const char* names[] = {"pine_sapling_small", "fir_sapling", "tree_small_02",
       "grass_bermuda_01", "grass_medium_01", "grass_medium_02",
       "fern_02", "dandelion_01", "nettle_plant", "periwinkle_plant"};
-    for (const auto* name : names)
-      if (!fs::exists(assets/name/"model.gltf")) throw std::runtime_error("Missing forest asset: " + (assets/name).string());
+    std::array<raisim::Rasset, 3> treeAssets;
+    std::array<raisim::Rasset, 6> rockAssets;
+    for (int type = 0; type < 10; ++type) {
+      if (type < 3) treeAssets[type] = raisim::Rasset::load(assets/names[type]/"model.rasset");
+      else if (!fs::exists(assets/names[type]/"model.gltf"))
+        throw std::runtime_error("Missing forest asset: " + (assets/names[type]).string());
+    }
+    for (int type = 0; type < 6; ++type)
+      rockAssets[type] = raisim::Rasset::load(assets/("rock_moss_" + std::to_string(type))/"model.rasset");
     auto* terrain = forest::addTerrain(*world);
-    forest::addObjects(*world, *terrain);
+    const auto plants = forest::scatter(*terrain);
+    forest::addObjects(*world, *terrain, plants);
+    const auto rocks = forest::scatterRocks(*terrain, plants);
+    for (const auto& p : plants) if (p.type < 3)
+      collisionProxyCount += treeAssets[p.type].addStaticColliders(
+        *world, {p.x, p.y, p.z}, p.yaw, p.scale).size();
+    for (const auto& p : rocks)
+      collisionProxyCount += rockAssets[p.type].addStaticColliders(
+        *world, {p.x, p.y, p.z}, p.yaw, p.scale).size();
     viewer = std::make_shared<Viewer>(world,width,height);
     viewer->setAsyncMeshLoadingEnabled(true);
     auto quality = Viewer::defaultRenderQualitySettings(Viewer::RenderQualityPreset::High);
@@ -63,10 +81,9 @@ struct ForestViewer {
     viewer->setHeightmapPatternResourcePath((assets/"ground/mud_forest_diff_1k.jpg").string());
     viewer->setHeightmapNormalResourcePath((assets/"ground/mud_forest_nor_gl_1k.jpg").string());
     viewer->setHeightmapTerrainMaterialParameters(.45f,.98f,0.f,false);
-    const auto plants = forest::scatter(*terrain);
     for (int type = 0; type < 10; ++type) {
       auto visual = viewer->addInstancedVisuals(names[type],raisim::Shape::Mesh,glm::vec3(1),
-        glm::vec4(1),glm::vec4(.85f,.92f,.75f,1),(assets/names[type]/"model.gltf").string(),true);
+        glm::vec4(1),glm::vec4(.85f,.92f,.75f,1),(type < 3 ? treeAssets[type].visualMesh : assets/names[type]/"model.gltf").string(),true);
       std::vector<raisin::InstancedVisuals::InstanceSpec> instances;
       for (const auto& p : plants) if (p.type == type) {
         raisin::InstancedVisuals::InstanceSpec instance;
@@ -86,11 +103,9 @@ struct ForestViewer {
       visual->configureFoliageWind(0,type < 3 ? 1.3f : .5f,type < 3 ? .025f : .09f,.7f,.2f);
       visual->setFoliageImpostorPolicy(false);
     }
-    const auto rocks = forest::scatterRocks(*terrain,plants);
     for (int type=0;type<6;++type) {
       const auto name = "rock_moss_" + std::to_string(type);
-      const auto file = assets/name/"model.gltf";
-      if (!fs::exists(file)) throw std::runtime_error("Missing rock asset: " + file.string());
+      const auto& file = rockAssets[type].visualMesh;
       auto visual = viewer->addInstancedVisuals(name,raisim::Shape::Mesh,glm::vec3(1),
         glm::vec4(1),glm::vec4(1),file.string(),true);
       std::vector<raisin::InstancedVisuals::InstanceSpec> instances;

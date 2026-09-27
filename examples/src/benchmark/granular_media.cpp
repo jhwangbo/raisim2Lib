@@ -182,7 +182,7 @@ void addPhysicalContainer(raisim::World& world, double bedLength, double bedWidt
 int run_granular_media_example(int argc, char** argv) {
   const int serverPort = parseServerPort(argc, argv);
   int steps = 240;
-  int resolution = 7;
+  int resolution = 12;
   int layers = 7;
   int substeps = 8;
   int settleSteps = 500;

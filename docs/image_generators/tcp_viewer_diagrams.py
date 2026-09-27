@@ -22,7 +22,7 @@ import os
 from PIL import ImageFont
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                   "..", "image", "rayrai", "tcp_viewer")
+                   "..", "..", "rsc", "docs", "image", "rayrai", "tcp_viewer")
 LATO = "/usr/share/fonts/truetype/lato/Lato-Regular.ttf"
 LATO_BOLD = "/usr/share/fonts/truetype/lato/Lato-Bold.ttf"
 MONO = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"

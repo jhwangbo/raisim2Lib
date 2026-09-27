@@ -8,7 +8,7 @@ Comprehensive rayrai showcase with a sensored ANYmal (spinning LiDAR and front R
 
 Screenshot
 ==========
-.. image:: ../../../image/rayrai_complete_showcase.png
+.. image:: ../../../../rsc/docs/image/rayrai_complete_showcase.png
    :alt: rayrai_complete_showcase example
    :width: 100%
 
@@ -74,5 +74,5 @@ back. Frames are written as binary PPM, which ``ffmpeg`` reads directly.
      -filter_complex "[0:v] scale=954:540:flags=lanczos,split [a][b];\
                       [a] palettegen=stats_mode=diff [p];\
                       [b][p] paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
-     -loop 0 docs/image/rayrai_complete_showcase.gif
+     -loop 0 rsc/docs/image/rayrai_complete_showcase.gif
 

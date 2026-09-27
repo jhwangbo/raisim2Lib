@@ -23,7 +23,7 @@ the examples CMake project. Running ``linux_install.sh``, ``mac_install.sh``,
 or ``win_install.ps1`` refreshes those sources from the matching release; build
 the ``rayrai_tcp_viewer`` target again afterward.
 
-.. figure:: ../image/rayrai/tcp_viewer/tcp_viewer_data_flow.svg
+.. figure:: ../../rsc/docs/image/rayrai/tcp_viewer/tcp_viewer_data_flow.svg
    :width: 100%
    :alt: TCP viewer connection, scene update, sensor, and control data flow
 
@@ -31,7 +31,7 @@ the ``rayrai_tcp_viewer`` target again afterward.
    RGB/depth sensor requests. UDP beacons are only used to discover compatible
    servers; a direct host and port always works without discovery.
 
-.. figure:: ../image/rayrai/tcp_viewer/tcp_viewer_primitives.png
+.. figure:: ../../rsc/docs/image/rayrai/tcp_viewer/tcp_viewer_primitives.png
    :width: 100%
    :alt: rayrai TCP viewer connected to primitive_grid
 
@@ -369,7 +369,7 @@ divides a terminal. Each pane is a complete viewer session — its own renderer,
 camera, TCP connection and control panels — so one window can watch several
 simulations at once, or the same simulation from several angles.
 
-.. figure:: ../image/rayrai/tcp_viewer/tcp_viewer_split_panes.png
+.. figure:: ../../rsc/docs/image/rayrai/tcp_viewer/tcp_viewer_split_panes.png
    :width: 100%
    :alt: the viewer split into two panes, one attached to a server and one idle
 
@@ -517,7 +517,7 @@ window size.
 
 UI layout
 =========
-.. figure:: ../image/rayrai/tcp_viewer/tcp_viewer_overview.png
+.. figure:: ../../rsc/docs/image/rayrai/tcp_viewer/tcp_viewer_overview.png
    :width: 100%
    :alt: rayrai TCP viewer with the Connection tab expanded
 
@@ -550,7 +550,7 @@ inspector has a ``-`` / ``+`` button that folds it to a narrow strip. Pass
 
 Connection tab — widget reference
 ---------------------------------
-.. figure:: ../image/rayrai/tcp_viewer/tcp_viewer_control_panel.png
+.. figure:: ../../rsc/docs/image/rayrai/tcp_viewer/tcp_viewer_control_panel.png
    :width: 60%
    :alt: detail of the Connection tab
 
@@ -653,7 +653,7 @@ folder browser on all platforms.
 
 Connect prompt — a pane with no session
 ---------------------------------------
-.. figure:: ../image/rayrai/tcp_viewer/tcp_viewer_connect_prompt.png
+.. figure:: ../../rsc/docs/image/rayrai/tcp_viewer/tcp_viewer_connect_prompt.png
    :width: 80%
    :alt: the connect prompt listing one discovered RaiSim server
 
@@ -883,7 +883,7 @@ range (see `RGB/depth sensor round trip`_).
 
 Sim control workflow
 ====================
-.. figure:: ../image/rayrai/tcp_viewer/tcp_viewer_anymal.png
+.. figure:: ../../rsc/docs/image/rayrai/tcp_viewer/tcp_viewer_anymal.png
    :width: 100%
    :alt: rayrai TCP viewer with sim_control_demo
 
@@ -970,7 +970,7 @@ The TCP viewer can service ``MeasurementSource::MANUAL`` RGB and depth cameras
 owned by an articulated system. This is a request/response path, not a passive
 preview of a server-side image:
 
-.. figure:: ../image/rayrai/tcp_viewer/tcp_viewer_sensor_round_trip.svg
+.. figure:: ../../rsc/docs/image/rayrai/tcp_viewer/tcp_viewer_sensor_round_trip.svg
    :width: 100%
    :alt: RGB and depth camera request and response sequence
 

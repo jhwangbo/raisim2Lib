@@ -8,7 +8,7 @@ Uses the lake1 heightmap image and spawns Aliengo to walk on the terrain. This e
 
 Screenshot
 ==========
-.. image:: ../../../image/map_lake1.png
+.. image:: ../../../../rsc/docs/image/map_lake1.png
 
 Source Status
 =============

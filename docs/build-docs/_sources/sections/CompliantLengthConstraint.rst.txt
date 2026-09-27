@@ -1,6 +1,0 @@
-CompliantLengthConstraint migration
-===================================
-
-This class has been removed. Use a two-site tendon with stiffness and a spring rest interval.
-See :doc:`Constraints` for the migration table and
-:doc:`tendons/CodeExamples` for complete, compiled examples.

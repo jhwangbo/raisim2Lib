@@ -2,7 +2,7 @@
 Rayrai Example: Forest
 ######################
 
-.. image:: ../../../../examples/images/forest.png
+.. image:: ../../../../rsc/docs/image/forest.png
    :alt: rayrai_forest example
    :width: 100%
 
@@ -33,7 +33,7 @@ Run the build-tree executable:
    ./build-examples/examples/rayrai_forest --assets /path/to/forest
 
 On Windows, run ``rayrai_forest.exe`` instead. The asset directory defaults to
-``examples/rsc/forest`` in the checkout used to configure the build. Copy that
+``rsc/forest`` in the checkout used to configure the build. Copy that
 directory and pass ``--assets`` when you move the executable.
 
 Loading and caches
@@ -67,5 +67,5 @@ loading-overlay, and asset-integrity checks; the asset check needs Python 3.
 foliage-shadow check; both need a display and OpenGL.
 
 The assets are from Poly Haven under CC0; see
-``examples/rsc/forest/ATTRIBUTION.md``. ``examples/src/rayrai/worlds/FOREST.md``
+``rsc/forest/ATTRIBUTION.md``. ``examples/src/rayrai/worlds/FOREST.md``
 documents asset preparation, the benchmark scripts, and measured loading times.

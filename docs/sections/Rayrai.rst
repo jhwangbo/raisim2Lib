@@ -54,6 +54,8 @@ Vulkan is optional. A rayrai build with Vulkan support (Linux and Windows only)
 loads the Vulkan runtime the first time geometry-traced glass renders and falls
 back to OpenGL tracing when hardware ray queries are unavailable. Set
 ``RAYRAI_DISABLE_VULKAN_RAY_QUERY=1`` to force the OpenGL path.
+For source-build prerequisites and driver checks, see
+:ref:`rayrai-vulkan-ray-query-troubleshooting`.
 
 .. _rayrai-platform-support:
 
@@ -147,7 +149,7 @@ The typical workflow is:
       }
     }
 
-.. image:: ../image/rayrai/rayrai_minimal_usage.png
+.. image:: ../../rsc/docs/image/rayrai/rayrai_minimal_usage.png
    :alt: Minimal usage output — a red sphere above a ground plane
    :width: 100%
 
@@ -257,7 +259,7 @@ APIs such as ``setBackgroundColorRgb255`` or ``setBackgroundColorLinear``.
       }
     }
 
-.. image:: ../image/rayrai/rayrai_custom_visuals.png
+.. image:: ../../rsc/docs/image/rayrai/rayrai_custom_visuals.png
    :alt: Marker prop on a tinted background
    :width: 100%
 

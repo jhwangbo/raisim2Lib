@@ -36,9 +36,11 @@ shutil.copy2(ROOT/'assets/sources.json',OUT/'sources.json')
 shutil.copytree(ROOT/'assets/ground',OUT/'ground',dirs_exist_ok=True)
 # Keep licensing alongside regenerated resources.
 for notice in ['LICENSE-CC0-1.0.txt','ATTRIBUTION.md']:
- shutil.copyfile(pathlib.Path(__file__).resolve().parents[1]/'rsc/forest'/notice,OUT/notice)
+ shutil.copyfile(pathlib.Path(__file__).resolve().parents[2]/'rsc/forest'/notice,OUT/notice)
 from prepare_forest_rocks import prepare_rocks
 rocks = prepare_rocks(ROOT/'assets/rock_moss_set_01', OUT)
+from generate_forest_rassets import generate
+generate(OUT, OUT)
 files=[dict(path=str(p.relative_to(OUT)),bytes=p.stat().st_size,sha256=hashlib.sha256(p.read_bytes()).hexdigest())
        for p in sorted(OUT.rglob('*')) if p.is_file() and p.name!='manifest.json']
 (OUT/'manifest.json').write_text(json.dumps(dict(license='CC0-1.0',license_url='https://polyhaven.com/license',

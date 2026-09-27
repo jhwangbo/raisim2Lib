@@ -1,7 +1,7 @@
 rayrai_coacd_mesh_approximation
 ===============================
 
-.. image:: ../../../image/rayrai_coacd_mesh_approximation.png
+.. image:: ../../../../rsc/docs/image/rayrai_coacd_mesh_approximation.png
    :alt: rayrai_coacd_mesh_approximation example
    :width: 100%
 

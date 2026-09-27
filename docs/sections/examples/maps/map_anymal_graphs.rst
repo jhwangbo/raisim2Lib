@@ -8,7 +8,7 @@ Runs two ANYmal variants (B and C) with PD control on a map and streams joint po
 
 Screenshot
 ==========
-.. image:: ../../../image/map_anymal_graphs.png
+.. image:: ../../../../rsc/docs/image/map_anymal_graphs.png
 
 Source Status
 =============

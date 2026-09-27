@@ -149,7 +149,7 @@ add_custom_target(doxygen_output ALL
 # Optional: build and run small C++ programs that produce the rayrai
 # documentation images. Controlled by RAISIM_DOCS_BUILD_RAYRAI_IMAGES (ON by
 # default when rayrai and SDL2 are available). The image generators write
-# PNGs into docs/image/rayrai/ and the Sphinx target depends on them so a
+# PNGs into rsc/docs/image/rayrai/ and the Sphinx target depends on them so a
 # `make Sphinx` rebuild refreshes the images first.
 option(RAISIM_DOCS_BUILD_RAYRAI_IMAGES
     "Build and run the rayrai documentation image generators before Sphinx"

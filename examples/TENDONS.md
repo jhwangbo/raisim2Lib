@@ -98,19 +98,18 @@ OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
 ./rayrai_tendons --hidden --frames 90 --screenshot /tmp/tendons.png
 ```
 
-Enable `RAISIM_TENDON_EXAMPLE_TESTS=ON` at configure time to register the headless,
+Enable `RAISIM_TENDON_EXAMPLE_TESTS=ON` in the adjacent Raisim root build to register the headless,
 CLI/export, XML trajectory round-trip, coupled spatial-route/force checks,
 and local/TCP Rayrai checks. Optionally set
 `RAISIM_EXAMPLE_ACTIVATION_KEY=/path/to/activation.raisim` for the test commands.
-For a build configured from the repository root:
+For a build configured from the adjacent Raisim repository root:
 
 ```sh
 cmake --build BUILD --target tendon_example_export_check \
   tendon_example_coupling_check tendon_example_coupling_tcp_check
-ctest --test-dir BUILD/examples -j 12 --output-on-failure -R tendon_example
+ctest --test-dir BUILD -j 12 --output-on-failure -R tendon_example
 ```
 
-For a standalone `cmake -S examples -B BUILD` build, use `--test-dir BUILD`.
 On Windows, also pass `-C Release`. The `gpu` tests skip with exit code 77 if
 SDL cannot create a graphics context. All generated test XML and captures use
 temporary directories or explicit output paths.

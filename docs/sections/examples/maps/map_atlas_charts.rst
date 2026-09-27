@@ -8,7 +8,7 @@ Spawns Atlas on a map and demonstrates RaisimServer charting with time-series pl
 
 Screenshot
 ==========
-.. image:: ../../../image/map_atlas_chart.png
+.. image:: ../../../../rsc/docs/image/map_atlas_chart.png
 
 Source Status
 =============

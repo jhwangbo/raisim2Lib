@@ -2,7 +2,7 @@
 Rayrai Example: Aruco Marker
 ############################
 
-.. image:: ../../../image/rayrai_aruco_marker.png
+.. image:: ../../../../rsc/docs/image/rayrai_aruco_marker.png
    :alt: rayrai_aruco_marker example
    :width: 100%
 

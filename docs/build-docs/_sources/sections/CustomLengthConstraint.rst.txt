@@ -1,6 +1,0 @@
-CustomLengthConstraint migration
-================================
-
-This class has been removed. Use a two-site tendon and call ``setTension`` or ``setActuationForce``.
-See :doc:`Constraints` for the migration table and
-:doc:`tendons/CodeExamples` for complete, compiled examples.

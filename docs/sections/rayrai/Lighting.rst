@@ -94,7 +94,7 @@ is assigned to additional lights.
 
     viewer.clearAdditionalLights();
 
-.. image:: ../../image/rayrai/rayrai_lights.png
+.. image:: ../../../rsc/docs/image/rayrai/rayrai_lights.png
    :alt: Warm spot from the left, cool point fill from the right, soft area light from above
    :width: 100%
 
@@ -394,15 +394,15 @@ macOS or other GPUs limited to 16 fragment texture units; see
 
    * - Reflection probe
      - Projected decals
-   * - .. image:: ../../image/rayrai/showcase/12_reflection_probe_room.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/12_reflection_probe_room.png
           :alt: Room with reflection probe applied to glossy surfaces
-     - .. image:: ../../image/rayrai/showcase/91_projected_decals.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/91_projected_decals.png
           :alt: Decals projected onto multiple surfaces
    * - Irradiance volumes
      - Lightmap GI
-   * - .. image:: ../../image/rayrai/showcase/93_irradiance_volumes.png
+   * - .. image:: ../../../rsc/docs/image/rayrai/showcase/93_irradiance_volumes.png
           :alt: Authored irradiance volumes filling indirect light
-     - .. image:: ../../image/rayrai/showcase/92_lightmap_gi.png
+     - .. image:: ../../../rsc/docs/image/rayrai/showcase/92_lightmap_gi.png
           :alt: Lightmap-driven GI on authored scenes
 
 Sky visibility and baked diffuse light

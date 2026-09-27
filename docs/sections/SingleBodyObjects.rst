@@ -10,7 +10,7 @@ Primitives
 =========================
 The following five primitive shapes are supported in RaiSim.
 
-.. image:: ../image/SingleBodyObjects.png
+.. image:: ../../rsc/docs/image/SingleBodyObjects.png
 
 
 Compound
@@ -40,7 +40,7 @@ The ``mass``, ``COM``, and ``inertia`` arguments specify the dynamical propertie
 
 Mesh
 ===================================
-.. image:: ../image/mesh.png
+.. image:: ../../rsc/docs/image/mesh.png
   :alt: mesh
   :width: 300
 

@@ -105,9 +105,30 @@ TCP viewer.
   collision parts through `World::addMesh`.
 - `rayrai_visual_asset_support`: inspect realistic textured URDF assets while
   keeping visual and collision geometry separate.
+- `rayrai_blue_wall_scene`: explore the furnished Poly Haven Blue Wall scene
+  with imported lights and HDR environment lighting.
 - `rayrai_runtime_scene_editing`: stable ids, snapshots, collision filters,
   cloning, and removal.
 - `rayrai_swept_ccd`: swept CCD settings for a fast falling sphere.
 
 Some targets are guarded by installed RaiSim API availability. If CMake prints a
 `Skipping ...` message, install a newer RaiSim/rayrai package and reconfigure.
+
+## Blue Wall RayRai scene
+
+![Blue Wall scene from the example's initial camera](../../rsc/docs/image/rayrai_blue_wall_scene.png)
+
+The initial camera faces the blue wall, painting, dresser, bookshelf, and chair.
+The example reads the packaged `blue_wall.rscene` for its camera, environment,
+and mesh path. Its lossless glTF payload, light metadata, and HDR map are under
+`rsc/rayrai/blue_wall`. From the `raisim2Lib` root, build and run:
+
+```sh
+cmake --build build-examples --target rayrai_blue_wall_scene -j12
+./build-examples/examples/rayrai_blue_wall_scene
+```
+
+Use `--screenshot output.png` to save this view. The adjacent Raisim test build
+registers the asset check; `RAISIM_EXAMPLE_GPU_TESTS=ON` there also registers
+camera and image-quality checks against the original GLB render;
+`--benchmark-frames N` measures N rendered frames.
