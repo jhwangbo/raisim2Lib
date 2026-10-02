@@ -158,6 +158,10 @@ Start with these targets when learning a specific feature:
    * - ``rayrai_tendons``
      - Automatic tendon rendering with scene selection, pause/step/reset,
        and live transmission values. See :doc:`Tendons`.
+   * - ``rayrai_motor_operating_region``
+     - Actuators with motor operating regions (EM-MOR), linked from the URDF
+       as actuator files, with live torque-speed plots of twelve randomly
+       actuated motors. See :doc:`examples/rayrai/rayrai_motor_operating_region`.
    * - ``rayrai_forest``
      - Dense instanced vegetation on a heightmap with automatic mesh LOD,
        foliage wind and shadows, and asynchronous loading. Requires the
@@ -245,6 +249,7 @@ Rayrai Tools And Examples
    examples/rayrai/rayrai_coacd_mesh_approximation
    examples/rayrai/rayrai_runtime_scene_editing
    examples/rayrai/rayrai_rolling_spinning_friction
+   examples/rayrai/rayrai_motor_operating_region
    examples/rayrai/rayrai_swept_ccd
    examples/rayrai/rayrai_forest_from_rscene
    examples/rayrai/rayrai_tcp_viewer

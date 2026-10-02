@@ -153,7 +153,12 @@ create_executable(length_constraints_newtons_cradle src/server/dynamics/length_c
 create_executable(spring_damper_joints src/server/dynamics/spring_damper_joints.cpp)
 create_executable(kinematic_platform src/server/dynamics/kinematic_platform.cpp)
 create_executable(dzhanibekov_effect src/server/dynamics/dzhanibekov_effect.cpp)
-include(cmake/tendon_examples.cmake)
+create_executable(tendon_elastic src/server/dynamics/tendon_elastic.cpp)
+create_executable(tendon_pulleys src/server/dynamics/tendon_pulleys.cpp)
+create_executable(tendon_coupling src/server/dynamics/tendon_coupling.cpp)
+set_target_properties(tendon_elastic tendon_pulleys tendon_coupling PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON)
 
 # Visualization.
 create_executable(visual_objects_showcase src/server/visualization/visual_objects_showcase.cpp)
@@ -202,6 +207,11 @@ create_rayrai_executable(rayrai_pointcloud_animation src/rayrai/visuals/rayrai_p
 
 # Dynamics.
 create_rayrai_executable(rayrai_rolling_spinning_friction src/rayrai/dynamics/rayrai_rolling_spinning_friction.cpp)
+create_rayrai_executable(rayrai_motor_operating_region src/rayrai/dynamics/rayrai_motor_operating_region.cpp)
+create_rayrai_executable(rayrai_tendons src/rayrai/dynamics/rayrai_tendons.cpp)
+set_target_properties(rayrai_tendons PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON)
 
 # Materials and assets.
 create_rayrai_executable(rayrai_pbr_material_grid src/rayrai/materials/rayrai_pbr_material_grid.cpp)

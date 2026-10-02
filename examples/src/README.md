@@ -89,6 +89,10 @@ without arguments.
 - `rayrai_rgb_camera`: in-process rayrai RGB capture.
 - `rayrai_rolling_spinning_friction`: rolling and spinning friction on a grid
   of spheres and cylinders.
+- `rayrai_motor_operating_region`: torque-speed plots of twelve randomly
+  actuated motors whose operating regions (bus voltage and peak torque) come
+  from actuator files linked in the URDF, including KAIST-Hound-style coupled
+  hip/knee actuators.
 - `tendon_elastic`, `tendon_pulleys`, and `tendon_coupling`: procedural tendon
   simulations streamed to the TCP viewer.
 - `rayrai_tendons`: the same tendon scenes with automatic local drawing and
