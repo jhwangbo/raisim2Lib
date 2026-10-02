@@ -5,8 +5,6 @@
 #include "raisim/World.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-
   raisim::World world;
   world.setTimeStep(0.005);
 

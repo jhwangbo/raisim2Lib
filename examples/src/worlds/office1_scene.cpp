@@ -4,13 +4,13 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  raisim::World::setActivationKey(binaryPath.getDirectory() + "\\rsc\\activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   /// create raisim world
-  raisim::World world(binaryPath.getDirectory() + "\\rsc\\maps\\office1.xml");
+  raisim::World world(exampleRscPath(argv[0], "maps/office1.xml"));
   world.setTimeStep(0.001);
 
 
@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
   ball->setPosition(0, 0, 2);
   ball->setLinearVelocity(raisim::Vec<3>{1,1,0});
 
-  auto aliengo = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\aliengo\\aliengo.urdf");
+  auto aliengo = world.addArticulatedSystem(exampleRscPath(argv[0], "aliengo/aliengo.urdf"));
 
   /// aliengo joint PD controller
   Eigen::VectorXd jointNominalConfig(aliengo->getGeneralizedCoordinateDim()), jointVelocityTarget(aliengo->getDOF());

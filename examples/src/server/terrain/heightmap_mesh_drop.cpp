@@ -8,10 +8,9 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-
-    auto binaryPath = raisim::Path::setFromArgv(argv[0]);
 
     constexpr size_t X_SAMPLES = 120;
     constexpr size_t Y_SAMPLES = 120;
@@ -51,9 +50,7 @@ int main(int argc, char* argv[]) {
     terrain->setColor(terrainColors);
 
     /// the meshes that are dropped on the terrain
-    const std::string sep = raisim::Path::separator();
-    std::string meshPath = binaryPath.getDirectory().getString() + sep + "rsc" + sep + "monkey" + sep + "monkey.obj";
-    raisim::Path::replaceAntiSeparatorWithSeparator(meshPath);
+    const std::string meshPath = exampleRscPath(argv[0], "monkey/monkey.obj");
 
     raisim::RaisimServer server(&world);
     server.launchServer();

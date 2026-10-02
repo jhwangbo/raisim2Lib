@@ -8,6 +8,7 @@
 #include <array>
 #include <stdexcept>
 #include <string>
+#include "example_resources.hpp"
 
 namespace {
 
@@ -19,29 +20,27 @@ struct UsdRobot {
 
 const std::array<UsdRobot, 3> robotAssets = {{
     {"iRobot Create 3",
-     "/isaac/Robots/iRobot/Create3/create_3.usd",
+     "isaac/Robots/iRobot/Create3/create_3.usd",
      {-1.4, 0.0, 0.18}},
     {"AWS Robomaker Jetbot",
-     "/isaac/Robots/NVIDIA/Robomaker/aws_robomaker_jetbot.usd",
+     "isaac/Robots/NVIDIA/Robomaker/aws_robomaker_jetbot.usd",
      {0.0, 0.0, 0.12}},
     {"Isaac Sim Ant",
-     "/isaac/Robots/IsaacSim/Ant/ant.usd",
+     "isaac/Robots/IsaacSim/Ant/ant.usd",
      {1.6, 0.0, 0.55}},
 }};
 
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  const auto rscPath = (binaryPath.getDirectory() + "/rsc").getString();
-  raisim::World::setActivationKey(rscPath + "/activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   raisim::World world;
   world.setTimeStep(1.0 / 500.0);
 
   raisim::ArticulatedSystem* firstRobot = nullptr;
   for (const auto& robotAsset : robotAssets) {
-    auto* robot = world.addUsdArticulatedSystem(rscPath + robotAsset.path);
+    auto* robot = world.addUsdArticulatedSystem(exampleRscPath(argv[0], robotAsset.path));
     if (robot == nullptr) {
       throw std::runtime_error(std::string("Failed to import ") + robotAsset.name +
                                " from " + robotAsset.path);

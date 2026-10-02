@@ -10,40 +10,16 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "example_resources.hpp"
 
 namespace {
-
-raisim::Path findRscDir(const raisim::Path& binaryDir) {
-  // CMake copies `rsc/` next to the examples binaries on Windows.
-  // On other platforms, output directory layouts can vary (depending on the parent build).
-  const std::vector<std::string> suffixes = {
-      "/rsc",
-      "/../rsc",
-      "/../../rsc",
-      "/../../../rsc",
-  };
-
-  for (const auto& s : suffixes) {
-    raisim::Path candidate(binaryDir.getString() + s);
-    if (candidate.directoryExists()) return candidate;
-  }
-
-  std::cerr << "[articulated_system_benchmark] Could not find `rsc` directory. Tried:";
-  for (const auto& s : suffixes) std::cerr << " " << (binaryDir.getString() + s);
-  std::cerr << std::endl;
-  return raisim::Path("");
-}
 
 }  // namespace
 
 int main(int argc, char* argv[]) {
   (void)argc;
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  const raisim::Path binaryDir = binaryPath.getDirectory();
-  const raisim::Path rscDir = findRscDir(binaryDir);
-  if (rscDir.getString().empty()) return 1;
 
-  raisim::World::setActivationKey(rscDir.getString() + "/activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   int loopN = 1000000;
   std::chrono::steady_clock::time_point begin, end;
@@ -68,7 +44,7 @@ int main(int argc, char* argv[]) {
       0.8, -0.03, -0.4, 0.8;
   jointVel.setZero();
 
-  auto anymal = world.addArticulatedSystem(rscDir.getString() + "/anymal/urdf/anymal.urdf");
+  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
   anymal->setState(jointConfig, jointVel);
   anymal->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
   anymal->setPdGains(jointPgain, jointDgain);
@@ -104,7 +80,7 @@ int main(int argc, char* argv[]) {
 
   /// create objects
   auto* ground2 = world2.addGround();
-  auto atlas = world2.addArticulatedSystem(rscDir.getString() + "/atlas/robot.urdf");
+  auto atlas = world2.addArticulatedSystem(exampleRscPath(argv[0], "atlas/robot.urdf"));
   atlas->setGeneralizedCoordinate({0, 0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
@@ -143,7 +119,7 @@ int main(int argc, char* argv[]) {
   loopN = 100000;
 
   /// create objects
-  world3.addArticulatedSystem(rscDir.getString() + "/chain/robot_springed_10.urdf");
+  world3.addArticulatedSystem(exampleRscPath(argv[0], "chain/robot_springed_10.urdf"));
 
   begin = std::chrono::steady_clock::now();
 
@@ -159,7 +135,7 @@ int main(int argc, char* argv[]) {
   loopN = 100000;
 
   /// create objects
-  world4.addArticulatedSystem(rscDir.getString() + "/chain/robot_springed_20.urdf");
+  world4.addArticulatedSystem(exampleRscPath(argv[0], "chain/robot_springed_20.urdf"));
 
   begin = std::chrono::steady_clock::now();
 

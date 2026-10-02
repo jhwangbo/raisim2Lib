@@ -4,9 +4,9 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
 
   raisim::World world;
   world.setTimeStep(0.001);
@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
   terrainProperties.fractalGain = 0.25;
 
   auto hm = world.addHeightMap(0.0, 0.0, terrainProperties);
-  auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "/rsc/husky/husky.urdf");
+  auto robot = world.addArticulatedSystem(exampleRscPath(argv[0], "husky/husky.urdf"));
   robot->setName("smb");
   hm->setAppearance("soil2");
   Eigen::VectorXd gc(robot->getGeneralizedCoordinateDim()), gv(robot->getDOF()), damping(robot->getDOF());

@@ -4,9 +4,9 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
 
   raisim::World world;
   world.setTimeStep(0.002);
@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
   auto ground = world.addGround();
   ground->setAppearance("0.55,0.55,0.55,1.0");
 
-  auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "/rsc/megabot/smb.urdf");
+  auto robot = world.addArticulatedSystem(exampleRscPath(argv[0], "megabot/smb.urdf"));
 
   robot->setName("smb");
   Eigen::VectorXd gc(robot->getGeneralizedCoordinateDim()), gv(robot->getDOF());

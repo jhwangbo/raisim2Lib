@@ -4,9 +4,9 @@
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
 #include "raisim/RaisimServer.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
 
   /// create raisim world
   raisim::World world;
@@ -26,8 +26,8 @@ int main(int argc, char* argv[]) {
   raisim::Mat<3, 3> inertia;
   inertia.setIdentity();
   const raisim::Vec<3> com = {0, 0, 0};
-  auto mesh = world.addMesh(binaryPath.getDirectory() + "/rsc/monkey/monkey.obj", 1, inertia, com);
-  auto visMesh = server.addVisualMesh("v_mesh", binaryPath.getDirectory() + "/rsc/monkey/monkey.obj");
+  auto mesh = world.addMesh(exampleRscPath(argv[0], "monkey/monkey.obj"), 1, inertia, com);
+  auto visMesh = server.addVisualMesh("v_mesh", exampleRscPath(argv[0], "monkey/monkey.obj"));
   auto varrow_x = server.addVisualArrow("v_arrow_x", 1, 2, 1, 0, 0, 1);
   auto varrow_y = server.addVisualArrow("v_arrow_y", 1, 2, 0, 1, 0, 1);
   auto varrow_z = server.addVisualArrow("v_arrow_z", 1, 2, 0, 0, 1, 1);
@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
   varrow_y->setOrientation(yDir);
 
   /// articulated systems
-  auto anymalB = server.addVisualArticulatedSystem("v_anymal", binaryPath.getDirectory() + "/rsc/anymal/urdf/anymal.urdf");
+  auto anymalB = server.addVisualArticulatedSystem("v_anymal", exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
   anymalB->color = {0.5, 0.0, 0.0, 0.5};
   Eigen::VectorXd gc(19);
   gc << 0, 0, 5.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;

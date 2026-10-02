@@ -36,6 +36,13 @@ On Windows, run ``rayrai_forest.exe`` instead. The asset directory defaults to
 ``rsc/forest`` in the checkout used to configure the build. Copy that
 directory and pass ``--assets`` when you move the executable.
 
+Loading the forest from a scene file
+====================================
+The same world is saved as ``rsc/forest/rayrai_forest.rscene``.
+:doc:`rayrai_forest_from_rscene` builds it from that file with
+``raisim::World(path)`` and ``raisin::applyRscene`` instead of placing it in
+C++, and simulates identically.
+
 Loading and caches
 ==================
 Meshes load asynchronously while a progress bar across the top of the window

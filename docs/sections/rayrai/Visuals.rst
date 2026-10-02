@@ -81,6 +81,8 @@ Quick map to the current rayrai-related targets:
 * ``rayrai_forest``: a physics heightmap covered with instanced plants and
   rocks, loaded asynchronously behind a progress overlay; see
   :doc:`../examples/rayrai/rayrai_forest` and `Dense foliage`_ below.
+  :doc:`../examples/rayrai/rayrai_forest_from_rscene` loads the same world
+  from its ``.rscene`` file.
 * OpenUSD visual meshes can be loaded through ``RayraiWindow::addVisualMesh``;
   see :doc:`../OpenUSD` for importer scope and runtime layout.
 

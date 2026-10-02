@@ -7,7 +7,7 @@ objects within a single World instance can collide with one another unless their
 collision group and mask settings disable that pair. See :doc:`Contact` and
 :doc:`CollisionDetection` for contact and collision details.
 
-A ``raisim::World`` can be instantiated in three ways:
+A ``raisim::World`` can be instantiated in four ways:
 
 #. **From a USD scene file (recommended default).** Pass a ``.usd``, ``.usda``,
    ``.usdc``, or ``.usdz`` path to the constructor. RaiSim opens the USD
@@ -27,6 +27,31 @@ A ``raisim::World`` can be instantiated in three ways:
    (``<raisim>`` or ``<mujoco>``) selects the loader. Use this when the
    scene is hand-edited, template-driven, or already lives in one of those
    formats. See :doc:`WorldConfigurationFile` for the XML schema.
+
+#. **From a RaiSim Engine scene file.** Pass a ``.rscene`` path to the same
+   constructor. RaiSim reads the solver settings, sampled terrain, primitive
+   bodies and ``.rasset`` collision bodies. The parsed scene stays available
+   through ``World::getRscene()``, so rayrai can apply its render settings,
+   sky, sun, instanced visuals and camera in one call:
+
+   .. code-block:: cpp
+
+     auto world = std::make_shared<raisim::World>("forest.rscene");
+     raisin::RayraiWindow viewer(world, 1280, 800);
+     raisin::applyRscene(*world->getRscene(), viewer);
+
+   Change the file's render settings in C++ before applying them:
+
+   .. code-block:: cpp
+
+     auto render = raisin::rsceneRenderSettings(*world->getRscene());
+     render.quality.viewerMsaaSamples = 8;
+     raisin::applyRscene(*world->getRscene(), viewer, render);
+
+   Content the reader cannot reproduce exactly, such as articulated systems,
+   parented nodes or non-directional lights, is a fatal error naming the
+   line rather than being dropped. See
+   :doc:`examples/rayrai/rayrai_forest_from_rscene` for a complete example.
 
 #. **Programmatically.** Default-construct an empty world and add objects
    in code:

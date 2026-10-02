@@ -4,17 +4,17 @@
 #include <raisim/World.hpp>
 #include "rayrai_tcp_viewer_hint.hpp"
 #include <raisim/RaisimServer.hpp>
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
 
   /// create raisim world
   raisim::World world;
   world.setTimeStep(0.001);
 
   /// create objects
-  auto heightMap = world.addHeightMap(binaryPath.getDirectory() + "\\rsc\\xmlScripts\\heightMaps\\zurichHeightMap.png", 0, 0, 500, 500, 0.005, -10);
-  auto anymal = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\anymal\\urdf\\anymal.urdf");
+  auto heightMap = world.addHeightMap(exampleRscPath(argv[0], "xmlScripts/heightMaps/zurichHeightMap.png"), 0, 0, 500, 500, 0.005, -10);
+  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
   anymal->setGeneralizedCoordinate({0, 0, 10.8, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8});
   anymal->setName("anymal");
   heightMap->setAppearance("soil1");

@@ -19,6 +19,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include "example_resources.hpp"
 
 namespace {
 
@@ -283,12 +284,7 @@ int run_granular_media_example(int argc, char** argv) {
     }
   }
 
-  const std::filesystem::path binaryDir = std::filesystem::absolute(argv[0]).parent_path();
-  const std::filesystem::path rscDir = std::filesystem::exists(binaryDir / "rsc")
-                                          ? (binaryDir / "rsc")
-                                          : (binaryDir / "../../rsc");
-  const std::string rscPath = std::filesystem::weakly_canonical(rscDir).string();
-  raisim::World::setActivationKey(rscPath + "/activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   raisim::World world;
   world.setSleepingEnabled(false);
@@ -327,7 +323,7 @@ int run_granular_media_example(int argc, char** argv) {
     world.integrate();
   }
 
-  auto* anymal = world.addArticulatedSystem(rscPath + "/anymal/urdf/anymal.urdf");
+  auto* anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
   Eigen::VectorXd gc, gv, pgain, dgain, velTarget;
   buildAnymalDefaults(anymal, gc, gv, pgain, dgain, velTarget);
   const double bedSurface = computeTopSurface(grains);

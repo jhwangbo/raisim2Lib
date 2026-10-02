@@ -2,7 +2,7 @@
 #include <memory>
 
 #include "rayrai/example_common.hpp"
-#include "rayrai_example_resources.hpp"
+#include "example_resources.hpp"
 #include "rayrai_example_compat.hpp"
 #include "raisim/World.hpp"
 
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
 
   // Khronos glTF Sample Assets: MetalRoughSpheres.
   // The model contains a grid of spheres spanning metallic and roughness values.
-  const std::string spheresPath = rayraiRscPath(argv[0], "rayrai/pbr/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf");
+  const std::string spheresPath = exampleRscPath(argv[0], "rayrai/pbr/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf");
   auto spheres = viewer->addVisualMesh("metal_rough_spheres", spheresPath,
     0.75, 0.75, 0.75, 1.0f, 1.0f, 1.0f, 1.0f);
   spheres->setPosition(0.0, 0.0, 1.0);

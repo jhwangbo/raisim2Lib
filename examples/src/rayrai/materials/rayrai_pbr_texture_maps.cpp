@@ -20,7 +20,7 @@
 #include "stb/stb_image_write.h"
 
 #include "rayrai/example_common.hpp"
-#include "rayrai_example_resources.hpp"
+#include "example_resources.hpp"
 #include "rayrai_example_compat.hpp"
 #include "rayrai/Visuals.hpp"
 #include "raisim/math.hpp"
@@ -49,25 +49,6 @@ void saveFinalTexturePng(raisin::Camera& camera, const std::filesystem::path& pa
   flipRows(rgba, camera.rtWidth(), camera.rtHeight());
   stbi_write_png(path.string().c_str(), camera.rtWidth(), camera.rtHeight(), 4,
     rgba.data(), camera.rtWidth() * 4);
-}
-
-std::string optionalRayraiRscPath(char* argv0, const std::string& relative) {
-  const auto binaryPath = std::filesystem::path(argv0).parent_path();
-  const std::vector<std::filesystem::path> candidates = {
-    binaryPath / "rsc" / relative,
-    binaryPath / ".." / "rsc" / relative,
-    binaryPath / ".." / ".." / "rsc" / relative,
-    std::filesystem::path("rsc") / relative,
-    std::filesystem::path("..") / "rsc" / relative,
-    std::filesystem::path("..") / ".." / "rsc" / relative,
-  };
-
-  for (const auto& candidate : candidates) {
-    if (std::filesystem::exists(candidate)) {
-      return candidate.lexically_normal().string();
-    }
-  }
-  return {};
 }
 
 int wrapPixelX(int x, int width) {
@@ -257,7 +238,7 @@ int main(int argc, char* argv[]) {
   unsigned int prefiltered = 0;
   unsigned int brdf = 0;
   const std::string hdrPath =
-    optionalRayraiRscPath(argv[0], "rayrai/hdr/polyhaven/potsdamer_platz_1k.hdr");
+    exampleRscPath(argv[0], "rayrai/hdr/polyhaven/potsdamer_platz_1k.hdr");
   if (std::filesystem::exists(hdrPath)) {
     environment = raisin::RayraiWindow::loadHdrEquirectangularCubemap(hdrPath.c_str(), 128, true);
     irradiance = raisin::RayraiWindow::createHdrIrradianceCubemap(hdrPath.c_str(), 32, 64);
@@ -331,7 +312,7 @@ int main(int argc, char* argv[]) {
   visuals.reserve(assets.size());
   for (size_t i = 0; i < assets.size(); ++i) {
     const auto& asset = assets[i];
-    const std::string meshPath = rayraiRscPath(argv[0], asset.path);
+    const std::string meshPath = exampleRscPath(argv[0], asset.path);
     auto visual = viewer->addVisualMesh(asset.name, meshPath,
       asset.scale, asset.scale, asset.scale, 1.0f, 1.0f, 1.0f, 1.0f);
     setAssetPose(visual, asset, previewCenters[i], asset.yaw);

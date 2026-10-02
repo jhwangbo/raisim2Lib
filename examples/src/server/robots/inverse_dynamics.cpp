@@ -4,14 +4,14 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
 
   raisim::World world;
   world.setTimeStep(0.001);
 
-  auto ANYmal = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\anymal_c\\urdf\\anymal_c_nolimit.urdf");
+  auto ANYmal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal_c/urdf/anymal_c_nolimit.urdf"));
   auto ground = world.addGround();
 
   /// anymalC joint PD controller

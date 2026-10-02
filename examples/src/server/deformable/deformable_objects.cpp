@@ -21,6 +21,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include "example_resources.hpp"
 
 namespace {
 
@@ -301,8 +302,7 @@ bool writeObjMesh(const std::string& path,
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  raisim::World::setActivationKey(binaryPath.getDirectory() + "/rsc/activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   raisim::World world;
   world.setTimeStep(0.001);

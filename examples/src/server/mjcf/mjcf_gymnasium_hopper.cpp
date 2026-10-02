@@ -5,13 +5,12 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  const std::filesystem::path binaryDir = std::filesystem::absolute(argv[0]).parent_path();
-  const std::string rscPath = (binaryDir / "rsc").string();
-  raisim::World::setActivationKey(rscPath + "/activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
-  raisim::World world(rscPath + "/mjcf/gymnasium/hopper.xml");
+  raisim::World world(exampleRscPath(argv[0], "mjcf/gymnasium/hopper.xml"));
 
   auto* object = world.getObject("torso");
   auto* hopper = dynamic_cast<raisim::ArticulatedSystem*>(object);

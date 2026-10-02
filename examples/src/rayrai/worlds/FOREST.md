@@ -78,9 +78,10 @@ the sampled terrain, exact deterministic plant and rock transforms, 2,068
 hidden `.rasset` collision objects, 16 instanced visual batches, and the
 100 dynamic primitives. Its roughly 15 MiB of scene text references the asset
 files in this directory without copying meshes or textures. A matching copy in the adjacent Raisim checkout
-is `raisim_engine2/examples/rayrai_forest.rscene`; its references point back
-to these assets. The `rayrai_forest_rscene` executable in that checkout loads
-the saved scene through Engine2 so it can be compared with this native viewer.
+is the Engine2 project `raisim_engine2/examples/rayrai_forest/`, whose default
+scene and asset directory point back to these assets. The `rayrai_forest_rscene`
+executable in that checkout opens the project through Engine2 so it can be
+compared with this native viewer.
 Open either scene in Engine2 to edit collision assets and visual batches.
 Neither viewer needs runtime Python. A small
 [loading overlay](forest_loading.hpp)
@@ -129,7 +130,7 @@ With the Raisim checkout beside `raisim2Lib`, build its
 `rayrai_forest_rscene` target and run it to view the saved scene. The
 `rayrai_forest_rscene_export` target regenerates both `.rscene` files from
 this example's `forest_scene.hpp`; see
-`raisim_engine2/examples/rayrai_forest.md` in that checkout for commands.
+`raisim_engine2/examples/rayrai_forest/README.md` in that checkout for commands.
 
 The asset path defaults to this checkout's `../../../../rsc/forest`. To relocate
 an executable, copy that directory and pass `--assets /path/to/forest`.
@@ -189,6 +190,49 @@ The supplied preview shows the scene shortly after the objects drop. The example
 renders interactively and has no capture, frame limit, hidden mode, or timing
 code. Bounded rendering and benchmarks use the separate `forest_render_test`
 runner, sharing the same scene setup.
+
+## Loading the forest from `rayrai_forest.rscene`
+
+`rayrai_forest` places every tree, plant and rock in C++. The
+[`rayrai_forest_from_rscene`](rayrai_forest_from_rscene.cpp) example builds the
+same world from the saved
+[`rayrai_forest.rscene`](../../../../rsc/forest/rayrai_forest.rscene)
+in a few lines, without RaiSim Engine:
+
+```cpp
+auto world = std::make_shared<raisim::World>("rayrai_forest.rscene");
+raisin::RayraiWindow viewer(world, 1280, 800);
+raisin::applyRscene(*world->getRscene(), viewer);
+```
+
+`raisim::World(path)` creates the terrain, the 2,068 hidden `.rasset` tree
+and rock bodies and the 100 props. `raisin::applyRscene` applies the render
+settings, sky, sun, terrain texture, 16 instanced batches and saved camera.
+The example takes no command-line arguments; like the other Rayrai examples,
+it finds `rsc/forest/rayrai_forest.rscene` with `exampleRscPath`. The file's
+render settings can be changed in C++ first:
+
+```cpp
+auto render = raisin::rsceneRenderSettings(*world->getRscene());
+render.quality.viewerMsaaSamples = 8;
+raisin::applyRscene(*world->getRscene(), viewer, render);
+```
+
+The scene stores `raisim::World`'s default solver settings (ERP 1.5, 150
+iterations, fixed iteration order, and the default contact material), so the
+props fall exactly as in the native example. The Raisim checkout's
+`forest_rscene_reader` test compares terrain samples, bodies, every instance
+transform and the props' positions after 400 steps against the C++ forest
+and requires them to match. Renders match Engine2's `rayrai_forest_rscene`
+viewer pixel for pixel once Engine2's float rounding of the sun direction is
+applied. Engine2 stores the direction as a quaternion, which changes its last
+bit.
+
+`World(path)` takes 277 ms for this scene (146 ms parsing the 15 MiB file,
+111 ms creating bodies; `benchmarks --bench rscene_import`, single thread,
+median of 5). Content the reader cannot reproduce exactly, such as
+articulated systems, parented nodes or non-directional lights, is a fatal
+error naming the line. See `docs/rscene.md` in the Raisim checkout.
 
 ## Latest renderer depth optimization
 

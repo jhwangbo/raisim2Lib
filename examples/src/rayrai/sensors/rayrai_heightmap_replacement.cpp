@@ -13,7 +13,7 @@
 #include "rayrai/Camera.hpp"
 #include "rayrai/CameraFrustum.hpp"
 #include "rayrai_example_compat.hpp"
-#include "rayrai_example_resources.hpp"
+#include "example_resources.hpp"
 #include "raisim/World.hpp"
 
 namespace
@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
   world->setTimeStep(0.002);
 
   const std::string anymalUrdf =
-    rayraiRscPath(argv[0], "anymal_c/urdf/anymal_sensored.urdf");
+    exampleRscPath(argv[0], "anymal_c/urdf/anymal_sensored.urdf");
   auto* anymal = world->addArticulatedSystem(anymalUrdf);
 
   Eigen::VectorXd jointTarget(anymal->getGeneralizedCoordinateDim());

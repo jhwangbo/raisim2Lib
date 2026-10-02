@@ -3,10 +3,10 @@
 
 #include "raisim/RaisimServer.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  raisim::World::setActivationKey(binaryPath.getDirectory() + "\\rsc\\activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
   raisim::RaiSimMsg::setFatalCallback([](){throw;});
 
   /// create raisim world
@@ -16,8 +16,8 @@ int main(int argc, char* argv[]) {
   /// create objects
   auto ground = world.addGround(0, "gnd");
   ground->setAppearance("checkerboard");
-  auto anymalB = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\anymal\\urdf\\anymal.urdf");
-  auto anymalC = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\anymal_c\\urdf\\anymal.urdf");
+  auto anymalB = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
+  auto anymalC = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal_c/urdf/anymal.urdf"));
 
   /// anymalC joint PD controller
   Eigen::VectorXd jointNominalConfig(anymalC->getGeneralizedCoordinateDim()), jointVelocityTarget(anymalC->getDOF());

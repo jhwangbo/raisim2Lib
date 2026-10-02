@@ -4,7 +4,7 @@
 
 #include "rayrai/example_common.hpp"
 #include "rayrai/Camera.hpp"
-#include "rayrai_example_resources.hpp"
+#include "example_resources.hpp"
 #include "rayrai_example_compat.hpp"
 #include "raisim/World.hpp"
 
@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
   }
 
   const std::string markerMesh =
-    rayraiRscPath(argv[0], "aruco_marker/aruco_marker.dae");
+    exampleRscPath(argv[0], "aruco_marker/aruco_marker.dae");
   auto marker = viewer->addVisualMesh("aruco_marker", markerMesh, 1.0, 1.0, 1.0);
   if (!marker) {
     std::cerr << "[rayrai_aruco_marker] Failed to load marker mesh: " << markerMesh << std::endl;

@@ -4,6 +4,7 @@
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
 #include "raisim/RaisimServer.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char **argv) {
   auto binaryPath = raisim::Path::setFromArgv(argv[0]);
@@ -50,8 +51,8 @@ int main(int argc, char **argv) {
   pin7->setPosition(-4., 0.0, 7.0);
   pin7->setBodyType(raisim::BodyType::STATIC);
 
-  auto anymalC = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\anymal_c\\urdf\\anymal.urdf");
-  auto anymalB = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\anymal\\urdf\\anymal.urdf");
+  auto anymalC = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal_c/urdf/anymal.urdf"));
+  auto anymalB = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
 
   /// anymalC joint PD controller
   Eigen::VectorXd jointNominalConfig(anymalC->getGeneralizedCoordinateDim()), jointVelocityTarget(anymalC->getDOF());

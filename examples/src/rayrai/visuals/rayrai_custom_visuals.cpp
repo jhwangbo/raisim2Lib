@@ -3,7 +3,7 @@
 #include <string>
 
 #include "rayrai/example_common.hpp"
-#include "rayrai_example_resources.hpp"
+#include "example_resources.hpp"
 #include "rayrai_example_compat.hpp"
 #include "raisim/World.hpp"
 
@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
   camera.position = {2.8f, 2.2f, 1.6f};
   camera.yaw = -140.0f;
   camera.pitch = -22.0f;
-  // viewer->setGroundPatternResourcePath(rayraiRscPath(argv[0], "minitaur/vision/checker_blue.png"));
+  // viewer->setGroundPatternResourcePath(exampleRscPath(argv[0], "minitaur/vision/checker_blue.png"));
 
   auto vizSphere = viewer->addVisualSphere("viz_sphere", 0.25, 0.2f, 0.8f, 0.3f, 0.9f);
   vizSphere->setPosition(0.0, -2.0, 0.6);
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
   auto vizCapsule = viewer->addVisualCapsule("viz_capsule", 0.2, 0.2, 0.7f, 0.4f, 0.9f, 0.7f);
   vizCapsule->setPosition(0.0, 1.5, 0.3);
 
-  const std::string monkeyFile = rayraiRscPath(argv[0], "monkey/monkey.obj");
+  const std::string monkeyFile = exampleRscPath(argv[0], "monkey/monkey.obj");
   auto vizMesh =
     viewer->addVisualMesh("viz_mesh", monkeyFile, 0.5, 0.5, 0.5, 0.8f, 0.8f, 0.9f, 1.0f);
   vizMesh->setPosition(1.5, 1.0, 0.4);

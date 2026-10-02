@@ -5,9 +5,9 @@
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
 #include <mutex>
+#include "example_resources.hpp"
 
 int main(int argc, char **argv) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
   const int loopN = 200000000;
   raisim::RaiSimMsg::setFatalCallback([](){throw;});
 
@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
       0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
   jointVel << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
 
-  auto anymal = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\anymal_c\\urdf\\anymal_sensored.urdf");
+  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal_c/urdf/anymal_sensored.urdf"));
   anymal->setState(jointConfig, jointVel);
   anymal->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
   anymal->setPdGains(jointPgain, jointDgain);

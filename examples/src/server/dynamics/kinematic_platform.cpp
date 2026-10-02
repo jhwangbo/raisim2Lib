@@ -3,9 +3,9 @@
 
 #include "raisim/RaisimServer.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
 
   /// create raisim world
   raisim::World world;
@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
   movingGround->setBodyType(raisim::BodyType::KINEMATIC); // kinematic objects have infinite mass
   movingGround->setPosition(0,0,-0.5);
   movingGround->setAppearance("red");
-  auto anymalB = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\anymal\\urdf\\anymal.urdf");
+  auto anymalB = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
 
   /// anymalC joint PD controller
   Eigen::VectorXd jointNominalConfig(anymalB->getGeneralizedCoordinateDim()), jointVelocityTarget(anymalB->getDOF());

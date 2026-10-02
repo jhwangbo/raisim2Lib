@@ -9,10 +9,9 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-
   raisim::World world;
   world.setTimeStep(0.002);
   world.setERP(0.0, 0.0);
@@ -48,10 +47,7 @@ int main(int argc, char* argv[]) {
   heightMap->setAppearance("soil1");
 
   /// monkey mesh used for one fifth of the dropped bodies
-  const std::string sep = raisim::Path::separator();
-  std::string monkeyPath = binaryPath.getDirectory().getString() + sep + "rsc" +
-                           sep + "monkey" + sep + "monkey.obj";
-  raisim::Path::replaceAntiSeparatorWithSeparator(monkeyPath);
+  const std::string monkeyPath = exampleRscPath(argv[0], "monkey/monkey.obj");
 
   /// drop 900 bodies (30x30 grid) above the tiles: box, sphere, capsule,
   /// cylinder, and monkey mesh, 180 of each. The compact, centered layout keeps

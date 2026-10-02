@@ -4,9 +4,9 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
 
   /// create raisim world
   double dt = 0.003;
@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
   for (size_t i = 0; i < N; i++) {
     for (size_t j = 0; j < N; j++) {
       anymals.push_back(world.addArticulatedSystem(
-          binaryPath.getDirectory() + "\\rsc\\anymal\\urdf\\anymal.urdf"));
+          exampleRscPath(argv[0], "anymal/urdf/anymal.urdf")));
       anymals.back()->setGeneralizedCoordinate(
           {double(2 * i), double(j), 0.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8,
            -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8});

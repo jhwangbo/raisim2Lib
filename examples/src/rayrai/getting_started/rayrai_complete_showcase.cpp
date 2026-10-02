@@ -16,7 +16,7 @@
 
 #include "rayrai/Camera.hpp"
 #include "rayrai/CameraFrustum.hpp"
-#include "rayrai_example_resources.hpp"
+#include "example_resources.hpp"
 #include "rayrai_example_compat.hpp"
 #include "raisim/World.hpp"
 
@@ -119,7 +119,7 @@ int main(int argc, char* argv[]) {
   auto world = std::make_shared<raisim::World>();
 
   const std::string sep = raisim::Path::separator();
-  const std::string anymalUrdf = rayraiRscPath(argv[0], "anymal_c/urdf/anymal_sensored.urdf");
+  const std::string anymalUrdf = exampleRscPath(argv[0], "anymal_c/urdf/anymal_sensored.urdf");
   auto anymal = world->addArticulatedSystem(anymalUrdf);
 
   Eigen::VectorXd jointNominalConfig(anymal->getGeneralizedCoordinateDim());
@@ -182,7 +182,7 @@ int main(int argc, char* argv[]) {
   box->setPosition(-3, -3, 2.0);
   box->setAppearance("1,1,1,0.3");
 
-  std::string monkeyFile = rayraiRscPath(argv[0], "monkey/monkey.obj");
+  std::string monkeyFile = exampleRscPath(argv[0], "monkey/monkey.obj");
   raisim::Mat<3, 3> inertia;
   inertia.setIdentity();
   const raisim::Vec<3> com = {0, 0, 0};
@@ -192,7 +192,7 @@ int main(int argc, char* argv[]) {
   monkey->setAppearance("1,1,1,0.3");
   monkey->setBodyType(raisim::BodyType::STATIC);
 
-  const std::string basePath = rayraiRscPath(argv[0], "ycb") + sep;
+  const std::string basePath = exampleRscPath(argv[0], "ycb") + sep;
 
   // Store just the filenames
   const std::vector<std::string> filenames = {"002_master_chef_can.urdf", "007_tuna_fish_can.urdf",

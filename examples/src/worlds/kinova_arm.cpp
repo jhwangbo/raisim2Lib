@@ -4,10 +4,10 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  raisim::World::setActivationKey(binaryPath.getDirectory() + "\\rsc\\activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   /// create raisim world
   raisim::World world;
@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 
   /// create objects
   world.addGround();
-  auto kinova = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\kinova\\urdf\\kinova.urdf");
+  auto kinova = world.addArticulatedSystem(exampleRscPath(argv[0], "kinova/urdf/kinova.urdf"));
 
   /// kinova joint PD controller
   Eigen::VectorXd jointNominalConfig(kinova->getGeneralizedCoordinateDim()), jointVelocityTarget(kinova->getDOF());

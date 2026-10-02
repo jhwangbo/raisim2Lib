@@ -162,6 +162,10 @@ Start with these targets when learning a specific feature:
      - Dense instanced vegetation on a heightmap with automatic mesh LOD,
        foliage wind and shadows, and asynchronous loading. Requires the
        upcoming rayrai release; see :doc:`examples/rayrai/rayrai_forest`.
+   * - ``rayrai_forest_from_rscene``
+     - The same forest built from its saved RaiSim Engine ``.rscene`` file
+       with ``raisim::World(path)`` and ``raisin::applyRscene``; see
+       :doc:`examples/rayrai/rayrai_forest_from_rscene`.
 
 Runtime assets
 ==============
@@ -178,7 +182,9 @@ Some targets depend on bundled assets or platform runtime packages:
   (``build-examples/examples/rsc``, or ``build-examples/bin/rsc`` on Windows).
 * ``rayrai_forest`` reads its assets from ``rsc/forest`` in the
   configured checkout and writes regenerable ``rayrai_cache_*.lods`` files
-  beside them.
+  beside them. ``rayrai_forest_from_rscene`` reads
+  ``rsc/forest/rayrai_forest.rscene`` from the ``rsc`` copy next to the
+  executables, and the scene references the same assets.
 * ``rayrai_coacd_mesh_approximation`` writes ``raisim_coacd_*`` cache files
   beside the YCB meshes in the build tree's ``rsc`` copy.
 
@@ -240,7 +246,7 @@ Rayrai Tools And Examples
    examples/rayrai/rayrai_runtime_scene_editing
    examples/rayrai/rayrai_rolling_spinning_friction
    examples/rayrai/rayrai_swept_ccd
-   examples/rayrai/rayrai_forest
+   examples/rayrai/rayrai_forest_from_rscene
    examples/rayrai/rayrai_tcp_viewer
 
 Server Examples

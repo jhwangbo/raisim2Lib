@@ -43,6 +43,9 @@ Quick map to the current rayrai-related targets:
 * ``rayrai_forest``: dense instanced vegetation on a heightmap with automatic
   mesh LOD, foliage wind and shadows, and asynchronous loading; see
   :doc:`../examples/rayrai/rayrai_forest`.
+* ``rayrai_forest_from_rscene``: the same forest loaded from its ``.rscene``
+  file with ``raisim::World(path)`` and ``raisin::applyRscene``; see
+  :doc:`../examples/rayrai/rayrai_forest_from_rscene`.
 * glTF/GLB scene import with authored lights and reflection-probe sidecars is
   described in :doc:`../examples/rayrai/rayrai_blender_scene_import`.
 * OpenUSD visual meshes can be loaded through ``RayraiWindow::addVisualMesh``;

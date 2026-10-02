@@ -4,9 +4,9 @@
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
 #include "raisim/RaisimServer.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
 
   /// create raisim world
   raisim::World world;
@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
   auto ground = world.addGround();
 
   std::string monkeyFile =
-      binaryPath.getDirectory() + "\\rsc\\monkey\\monkey.obj";
+      exampleRscPath(argv[0], "monkey/monkey.obj");
 
   raisim::Mat<3, 3> inertia;
   inertia.setIdentity();

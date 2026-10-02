@@ -16,15 +16,9 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  // Resolve the binary directory directly from argv to avoid setFromArgv mangling
-  // paths containing digits.
-  std::string argv0 = argv[0];
-  const auto separator = argv0.find_last_of("/\\");
-  const std::string binaryDir =
-      separator == std::string::npos ? "." : argv0.substr(0, separator);
 
   raisim::World world;
   world.setTimeStep(0.003);
@@ -32,7 +26,7 @@ int main(int argc, char* argv[]) {
 
   // A simple PD-controlled ANYmal so CR_SET_GC has something interesting to drive.
   auto anymal = world.addArticulatedSystem(
-      binaryDir + "/rsc/anymal/urdf/anymal.urdf");
+      exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
   Eigen::VectorXd nominal(anymal->getGeneralizedCoordinateDim()),
       target(anymal->getDOF());
   nominal << 0, 0, 0.54, 1, 0, 0, 0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03,

@@ -32,6 +32,12 @@ another terminal to visualize them.
 Most `rayrai/*` examples create an in-process rayrai window and do not need the
 TCP viewer.
 
+Examples find their models, maps and textures with
+`exampleRscPath(argv[0], "relative/path")` from
+`examples/include/example_resources.hpp`. It looks for the `rsc` folder CMake
+copies next to the executables, so examples run from any working directory
+without arguments.
+
 ## Directory groups
 
 - `server/basics`: primitive objects, dense sphere-drop scenes, mesh objects,
@@ -65,6 +71,8 @@ TCP viewer.
 - `rayrai/collision`: collision detection examples such as swept continuous
   collision detection.
 - `rayrai/tools`: standalone rayrai tools such as the TCP viewer.
+- `rayrai/worlds`: large rayrai worlds such as the instanced forest and its
+  `.rscene` version.
 - `worlds`: larger packaged scene examples.
 - `xml`: XML world loading and templated XML world examples.
 
@@ -107,6 +115,9 @@ TCP viewer.
   keeping visual and collision geometry separate.
 - `rayrai_blue_wall_scene`: explore the furnished Poly Haven Blue Wall scene
   with imported lights and HDR environment lighting.
+- `rayrai_forest_from_rscene`: build the `rayrai_forest` world from its saved
+  RaiSim Engine `.rscene` file with `raisim::World(path)` and
+  `raisin::applyRscene`.
 - `rayrai_runtime_scene_editing`: stable ids, snapshots, collision filters,
   cloning, and removal.
 - `rayrai_swept_ccd`: swept CCD settings for a fast falling sphere.

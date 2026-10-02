@@ -267,6 +267,9 @@ create_rayrai_executable(rayrai_forest src/rayrai/worlds/rayrai_forest.cpp)
 target_compile_features(rayrai_forest PRIVATE cxx_std_20)
 target_compile_definitions(rayrai_forest PRIVATE
     FOREST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../rsc/forest")
+# The same forest built by raisim::World from its .rscene file.
+create_rayrai_executable(rayrai_forest_from_rscene src/rayrai/worlds/rayrai_forest_from_rscene.cpp)
+target_compile_features(rayrai_forest_from_rscene PRIVATE cxx_std_20)
 option(RAISIM_FOREST_COLLISION_BENCHMARK "Build the forest collision benchmark" OFF)
 if(RAISIM_FOREST_COLLISION_BENCHMARK)
     create_executable(forest_collision_benchmark tools/benchmark_forest_collision.cpp)

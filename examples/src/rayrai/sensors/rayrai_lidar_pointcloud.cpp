@@ -6,7 +6,7 @@
 #include <glm/glm.hpp>
 
 #include "rayrai/example_common.hpp"
-#include "rayrai_example_resources.hpp"
+#include "example_resources.hpp"
 #include "rayrai_example_compat.hpp"
 #include "raisim/World.hpp"
 
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
   world->addGround();
 
   const std::string sep = raisim::Path::separator();
-  const std::string go1Dir = rayraiRscPath(argv[0], "go1");
+  const std::string go1Dir = exampleRscPath(argv[0], "go1");
   std::vector<std::string> modules = {"livox_lidar"};
   auto go1 = world->addArticulatedSystem(go1Dir + sep + "go1.urdf", modules, go1Dir);
   go1->setGeneralizedCoordinate({0, 0, 0.32, 1.0, 0.0, 0.0, 0.0, 0, 0.67, -1.3, 0, 0.67, -1.3, 0,
@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
   capsule->setPosition(-1.6, -1.3, 0.45);
   capsule->setAppearance("0.9,0.8,0.2,1.0");
 
-  std::string monkeyFile = rayraiRscPath(argv[0], "monkey/monkey.obj");
+  std::string monkeyFile = exampleRscPath(argv[0], "monkey/monkey.obj");
   raisim::Mat<3, 3> inertia;
   inertia.setIdentity();
   const raisim::Vec<3> com = {0, 0, 0};

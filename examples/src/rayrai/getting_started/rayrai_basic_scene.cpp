@@ -2,7 +2,7 @@
 #include <string>
 
 #include "rayrai/example_common.hpp"
-#include "rayrai_example_resources.hpp"
+#include "example_resources.hpp"
 #include "rayrai_example_compat.hpp"
 #include "raisim/World.hpp"
 
@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
   auto world = std::make_shared<raisim::World>();
   world->addGround();
 
-  const std::string urdfPath = rayraiRscPath(argv[0], "go1/go1.urdf");
+  const std::string urdfPath = exampleRscPath(argv[0], "go1/go1.urdf");
   auto robot = world->addArticulatedSystem(urdfPath);
   if (robot) {
     robot->setGeneralizedCoordinate({0, 0, 0.32, 1.0, 0.0, 0.0, 0.0, 0, 0.67, -1.3, 0, 0.67, -1.3, 0,
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {30, 30, 40, 255});
   viewer->setGroundPatternResourcePath(
-    rayraiRscPath(argv[0], "minitaur/vision/checker_blue.png"));
+    exampleRscPath(argv[0], "minitaur/vision/checker_blue.png"));
 
   raisim_examples::addRayraiBasicSceneLights(*viewer);
 

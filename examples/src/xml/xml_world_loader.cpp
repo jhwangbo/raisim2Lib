@@ -4,13 +4,13 @@
 #include "raisim/World.hpp"
 #include "raisim/RaisimServer.hpp"
 #include <iostream>
+#include "example_resources.hpp"
 #if WIN32
 #include <timeapi.h>
 #endif
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  raisim::World::setActivationKey(binaryPath.getDirectory() + "/rsc/activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   if (argc > 1 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "-h")) {
     std::cout << "Usage: " << argv[0] << " [XML_WORLD]\n"
@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
   const std::string xmlScript = argc > 1 ? argv[1] : "objects/SingleBodies.xml";
   raisim::Path xmlPath(xmlScript);
   if (!xmlPath.fileExists()) {
-    xmlPath = binaryPath.getDirectory() + "/rsc/xmlScripts/" + xmlScript;
+    xmlPath = exampleRscPath(argv[0], "xmlScripts/" + xmlScript);
   }
   if (!xmlPath.fileExists()) {
     std::cerr << "Could not find XML world: " << xmlScript << std::endl;

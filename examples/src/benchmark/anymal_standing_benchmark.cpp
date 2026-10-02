@@ -14,27 +14,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "example_resources.hpp"
 
 namespace {
-
-raisim::Path findRscDir(const raisim::Path& binaryDir) {
-  const std::vector<std::string> suffixes = {
-      "/rsc",
-      "/../rsc",
-      "/../../rsc",
-      "/../../../rsc",
-  };
-
-  for (const auto& suffix : suffixes) {
-    raisim::Path candidate(binaryDir.getString() + suffix);
-    if (candidate.directoryExists()) return candidate;
-  }
-
-  std::cerr << "[anymal_standing_benchmark] Could not find `rsc` directory. Tried:";
-  for (const auto& suffix : suffixes) std::cerr << " " << (binaryDir.getString() + suffix);
-  std::cerr << std::endl;
-  return raisim::Path("");
-}
 
 int parseStepsArg(int argc, char** argv, int defaultSteps) {
   int steps = defaultSteps;
@@ -111,12 +93,8 @@ void buildAnymalDefaults(raisim::ArticulatedSystem* anymal,
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  const raisim::Path binaryDir = binaryPath.getDirectory();
-  const raisim::Path rscDir = findRscDir(binaryDir);
-  if (rscDir.getString().empty()) return 1;
 
-  raisim::World::setActivationKey(rscDir.getString() + "/activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   const char* anymalStepsEnv = std::getenv("ANYMAL_STEPS");
   int steps = anymalStepsEnv ? std::atoi(anymalStepsEnv) : 1000000;
@@ -135,7 +113,7 @@ int main(int argc, char* argv[]) {
   world.setTimeStep(0.002);
   world.addGround();
 
-  auto anymal = world.addArticulatedSystem(rscDir.getString() + "/anymal/urdf/anymal.urdf");
+  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
   Eigen::VectorXd jointConfig, jointVel, jointPgain, jointDgain, jointVelocityTarget;
   buildAnymalDefaults(anymal, jointConfig, jointVel, jointPgain, jointDgain, jointVelocityTarget);
   anymal->setState(jointConfig, jointVel);

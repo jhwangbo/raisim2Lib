@@ -4,11 +4,10 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  const std::string rscPath = (binaryPath.getDirectory() + "/../../rsc").getString();
-  raisim::World::setActivationKey(rscPath + "/activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   /// create raisim world
   raisim::World world;
@@ -16,7 +15,7 @@ int main(int argc, char* argv[]) {
 
   /// create objects
   world.addGround();
-  auto minitaur = world.addArticulatedSystem(rscPath + "/minitaur/minitaur.urdf");
+  auto minitaur = world.addArticulatedSystem(exampleRscPath(argv[0], "minitaur/minitaur.urdf"));
   minitaur->setName("minitaur");
 
 /// anymalC joint PD controller

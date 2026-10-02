@@ -5,12 +5,18 @@
 
 #include "raisim/Path.hpp"
 
-inline std::string rayraiRscPath(char* argv0, const std::string& relative) {
-  auto binaryPath = raisim::Path::setFromArgv(argv0);
+/// Path of rsc/<relative>, a file or folder in the examples' resource
+/// directory. CMake copies rsc next to the example executables (bin/rsc on
+/// Windows), or into examples/rsc when the examples folder is configured on
+/// its own. It is also found one or two folders above the executables, or
+/// relative to the working directory. Returns the first candidate when none
+/// exists, so the caller's error names it.
+inline std::string exampleRscPath(char* argv0, const std::string& relative) {
   const std::string sep = raisim::Path::separator();
-  const std::string binaryDir = binaryPath.getDirectory().getString();
+  const std::string binaryDir = raisim::Path::setFromArgv(argv0).getDirectory().getString();
   const std::vector<std::string> candidates = {
     binaryDir + sep + "rsc" + sep + relative,
+    binaryDir + sep + "examples" + sep + "rsc" + sep + relative,
     binaryDir + sep + ".." + sep + "rsc" + sep + relative,
     binaryDir + sep + ".." + sep + ".." + sep + "rsc" + sep + relative,
     std::string("rsc") + sep + relative,

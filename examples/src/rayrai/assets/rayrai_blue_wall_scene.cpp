@@ -23,7 +23,7 @@
 
 #include "rayrai/example_common.hpp"
 #include "rayrai/Visuals.hpp"
-#include "rayrai_example_resources.hpp"
+#include "example_resources.hpp"
 #include "raisim/World.hpp"
 
 namespace {
@@ -238,14 +238,8 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  std::filesystem::path scenePath =
-      rayraiRscPath(argv[0], "rayrai/blue_wall/blue_wall.rscene");
-  if (!std::filesystem::is_regular_file(scenePath)) {
-    // When examples/ is configured directly, CMake copies rsc into build/examples/.
-    const auto binaryDir = std::filesystem::absolute(argv[0]).parent_path();
-    scenePath = binaryDir / "examples" / "rsc" / "rayrai" / "blue_wall" /
-                "blue_wall.rscene";
-  }
+  const std::filesystem::path scenePath =
+      exampleRscPath(argv[0], "rayrai/blue_wall/blue_wall.rscene");
   SceneDescription description;
   std::string sceneError;
   if (!loadSceneDescription(scenePath, description, sceneError)) {

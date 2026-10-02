@@ -4,9 +4,9 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
 
   /// create raisim world
   raisim::World world;
@@ -14,8 +14,8 @@ int main(int argc, char* argv[]) {
 
   /// create objects
   world.addGround();
-  auto revAndPrisSpringAndDamper = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\springDamper\\cartpole.urdf");
-  auto ballSpringAndDamper = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\springDamper\\chainSpringed.urdf");
+  auto revAndPrisSpringAndDamper = world.addArticulatedSystem(exampleRscPath(argv[0], "springDamper/cartpole.urdf"));
+  auto ballSpringAndDamper = world.addArticulatedSystem(exampleRscPath(argv[0], "springDamper/chainSpringed.urdf"));
 
   revAndPrisSpringAndDamper->setName("rev_pris_joint");
   ballSpringAndDamper->setName("ball_joint");

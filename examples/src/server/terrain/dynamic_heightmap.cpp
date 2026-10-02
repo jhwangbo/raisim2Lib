@@ -6,7 +6,7 @@
 #include "rayrai_tcp_viewer_hint.hpp"
 
 int main(int argc, char *argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
+
   raisim::World world;
   world.setTimeStep(0.01);
   std::vector<double> height(10000, 0.);

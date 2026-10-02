@@ -3,10 +3,10 @@
 
 #include "raisim/World.hpp"
 #include "raisim/RaisimServer.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  raisim::World::setActivationKey(binaryPath.getDirectory() + "/rsc/activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
   raisim::RaiSimMsg::setFatalCallback([](){throw;});
 
   std::vector<raisim::World::ParameterContainer> params;
@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
   params.push_back({"laikago_start_y", "0"});
   params.push_back({"floor_height", "-1"});
 
-  raisim::World world(binaryPath.getDirectory() + "/rsc/xmlScripts/templatedWorld/templatedWorld.xml", params);
+  raisim::World world(exampleRscPath(argv[0], "xmlScripts/templatedWorld/templatedWorld.xml"), params);
   raisim::RaisimServer server(&world);
   server.launchServer();
   for (int i=0; i<10000000; i++) {

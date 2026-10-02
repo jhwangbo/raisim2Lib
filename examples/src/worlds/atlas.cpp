@@ -4,10 +4,10 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  raisim::World::setActivationKey(binaryPath.getDirectory() + "\\rsc\\activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   /// create raisim world
   raisim::World world;
@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
   for (size_t i = 0; i < N; i++) {
     for (size_t j = 0; j < N; j++) {
       atlas.push_back(world.addArticulatedSystem(
-          binaryPath.getDirectory() + "\\rsc\\atlas\\robot.urdf"));
+          exampleRscPath(argv[0], "atlas/robot.urdf")));
       atlas.back()->setGeneralizedCoordinate(
           {double(2 * i), double(j), 2.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
            0.0,           0.0,       0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,

@@ -17,7 +17,7 @@ CMake target: ``rayrai_tcp_viewer``.
 
 Source
 ======
-The public example entry point is ``examples/src/rayrai/rayrai_tcp_viewer.cpp``.
+The public example entry point is ``examples/src/rayrai/tools/rayrai_tcp_viewer.cpp``.
 It is a compatibility wrapper for older local build scripts; the maintained
 implementation lives in ``examples/src/rayrai/tools/rayrai_tcp_viewer.cpp`` and
 is the file used by ``examples/CMakeLists.txt``.

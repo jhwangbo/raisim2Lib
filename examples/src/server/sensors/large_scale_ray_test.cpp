@@ -91,8 +91,6 @@ void addArena(raisim::World& world) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  raisim::Path::setFromArgv(argv[0]);
-
   raisim::World world;
   world.setTimeStep(0.002);
   addArena(world);

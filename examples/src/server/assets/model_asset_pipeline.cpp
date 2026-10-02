@@ -5,12 +5,10 @@
 #include "raisim/Path.hpp"
 #include "raisim/World.hpp"
 #include "raisim/object/singleBodies/Mesh.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  const std::string rscPath =
-      (binaryPath.getDirectory() + "/rsc").getString();
-  raisim::World::setActivationKey(rscPath + "/activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   const std::filesystem::path outputDir =
       std::filesystem::temp_directory_path() / "raisim_model_asset_pipeline_example";

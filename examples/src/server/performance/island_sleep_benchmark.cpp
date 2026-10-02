@@ -10,6 +10,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include "example_resources.hpp"
 
 namespace {
 
@@ -116,9 +117,7 @@ void runBench(int steps, int hitStep) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  const std::string rscPath = (binaryPath.getDirectory() + "/../../rsc").getString();
-  raisim::World::setActivationKey(rscPath + "/activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   const int steps = getIntFlag(argc, argv, "--steps=", 12000);
   const int defaultHitStep = 2500;  // 5s at 0.002s timestep.

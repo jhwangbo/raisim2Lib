@@ -9,18 +9,17 @@
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
 #include "raisim/World.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
   ExampleApp app;
   if (!app.init("rayrai_visual_asset_support", 1280, 720))
     return -1;
 
-  const std::filesystem::path binaryDir = std::filesystem::absolute(argv[0]).parent_path();
-  const std::filesystem::path rscDir = binaryDir / "rsc";
-  const std::filesystem::path anymalUrdf = rscDir / "anymal_c" / "urdf" / "anymal.urdf";
-  const std::filesystem::path ycbDir = rscDir / "ycb";
+  const std::filesystem::path anymalUrdf = exampleRscPath(argv[0], "anymal_c/urdf/anymal.urdf");
+  const std::filesystem::path ycbDir = exampleRscPath(argv[0], "ycb");
 
-  raisim::World::setActivationKey((rscDir / "activation.raisim").string());
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   auto world = std::make_shared<raisim::World>();
   world->setTimeStep(0.002);

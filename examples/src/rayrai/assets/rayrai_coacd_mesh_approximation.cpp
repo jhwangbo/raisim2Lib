@@ -4,7 +4,7 @@
 
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
-#include "rayrai_example_resources.hpp"
+#include "example_resources.hpp"
 #include "raisim/World.hpp"
 
 int main(int argc, char* argv[]) {
@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
   std::cout << "Generating CoACD collision parts; the first run can take a few minutes..."
             << std::endl;
   for (size_t row = 0; row < meshFiles.size(); ++row) {
-    const std::string path = rayraiRscPath(argv[0], meshFiles[row]);
+    const std::string path = exampleRscPath(argv[0], meshFiles[row]);
     const double y = startY - static_cast<double>(row) * rowSpacing;
 
     auto* original = world->addMesh(path, 1.0, meshScale, "",

@@ -4,9 +4,9 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
+#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
 
   /// create raisim world
   raisim::World world;
@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
   /// option 1: use cpp api to define the materials
 //  world.setMaterialPairProp("steel", "brass", 0.2, 0., 0., 0.95, 0.01);
   /// option 2: use the material xml file
-  world.updateMaterialProp(raisim::MaterialManager(binaryPath.getDirectory() + "\\rsc\\testMaterials.xml"));
+  world.updateMaterialProp(raisim::MaterialManager(exampleRscPath(argv[0], "testMaterials.xml")));
 
   /// launch raisim server
   raisim::RaisimServer server(&world);

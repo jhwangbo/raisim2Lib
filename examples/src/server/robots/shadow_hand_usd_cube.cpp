@@ -10,6 +10,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include "example_resources.hpp"
 
 namespace {
 
@@ -51,12 +52,10 @@ void setNominalPdControl(raisim::ArticulatedSystem* hand) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-  const auto rscPath = (binaryPath.getDirectory() + "/rsc").getString();
-  raisim::World::setActivationKey(rscPath + "/activation.raisim");
+  raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   const auto shadowHandUsd =
-      rscPath + "/isaac/Robots/ShadowRobot/ShadowHand/shadow_hand.usd";
+      exampleRscPath(argv[0], "isaac/Robots/ShadowRobot/ShadowHand/shadow_hand.usd");
 
   raisim::World world(shadowHandUsd);
   world.setTimeStep(1.0 / 500.0);

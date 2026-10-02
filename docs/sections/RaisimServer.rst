@@ -218,8 +218,8 @@ when the pause / step state allows the tick to advance:
 The callback overload preserves all the pause / step / force / pose behavior
 of the no-arg version — the viewer can still drive the simulation even when
 the example mutates the world each tick. See
-``examples/src/server/dynamic_object_addition.cpp`` and
-``examples/src/server/dynamic_heightmap.cpp`` for working uses, and
+``examples/src/server/basics/dynamic_object_addition.cpp`` and
+``examples/src/server/terrain/dynamic_heightmap.cpp`` for working uses, and
 ``examples/src/server/sim_control_demo.cpp`` for a minimal demo of the
 viewer-facing controls.
 

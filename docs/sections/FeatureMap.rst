@@ -124,6 +124,10 @@ Visualization and tools
      - ``InstancedVisuals`` automatic mesh LOD, foliage wind, and shadow LOD;
        ``rayrai_forest``
      - :doc:`rayrai/Visuals`, :doc:`examples/rayrai/rayrai_forest`
+   * - Load a RaiSim Engine ``.rscene`` scene
+     - ``raisim::World(path)``, ``raisin::applyRscene``,
+       ``raisin::rsceneRenderSettings``; ``rayrai_forest_from_rscene``
+     - :doc:`WorldSystem`, :doc:`examples/rayrai/rayrai_forest_from_rscene`
    * - Render glass
      - ``Material::glass``, ``RenderQualitySettings::screenSpaceRefraction``,
        ``RenderQualitySettings::geometryRefraction``
