@@ -26,6 +26,10 @@ World and bodies
    * - Add a robot from URDF or MJCF
      - ``World::addArticulatedSystem``
      - :doc:`ArticulatedSystem`
+   * - Limit robot joint torques to motor operating regions, add joint friction and damping
+     - URDF ``<actuator>`` and ``<dynamics damping friction>``,
+       ``ArticulatedSystem::setBusVoltage``
+     - :doc:`Actuators`, :doc:`articulated_system/JointDampingAndFriction`
    * - Add mesh collision geometry
      - ``World::addMesh``, mesh preprocessing options, mesh collision modes
      - :doc:`SingleBodyObjects`, :doc:`Examples`
@@ -42,7 +46,7 @@ World and bodies
    * - Add length constraints, tendons, or pins
      - ``addSpatialTendon``, ``addFixedTendon``, ``addTendonCoupling``,
        articulated-system pin constraints
-     - :doc:`Constraints`, :doc:`ArticulatedSystem`
+     - :doc:`Constraints`, :doc:`articulated_system/ClosedLoopSystems`
 
    * - Route cables or couple joint transmissions
      - ``World::addSpatialTendon``, ``addFixedTendon``, ``addTendonCoupling``

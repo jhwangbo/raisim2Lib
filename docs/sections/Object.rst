@@ -65,18 +65,14 @@ Types
 
 The common base class is ``raisim::Object``. Concrete object families include:
 
-* ``SingleBodyObject``: primitive and mesh rigid bodies with one body index.
-* ``ArticulatedSystem``: URDF/MJCF-style multi-body robots and mechanisms.
-* ``DeformableObject``: XPBD/PBD cloth, shell, and coarse soft-body objects.
-* ``GranularSystem``: many spherical grains stored and stepped as one object.
-
-.. toctree::
-   :maxdepth: 2
-
-   ArticulatedSystem
-   SingleBodyObjects
-   DeformableObject
-   GranularMedia
+* ``ArticulatedSystem``: URDF/MJCF-style multi-body robots and mechanisms
+  (:doc:`ArticulatedSystem`).
+* ``SingleBodyObject``: primitive and mesh rigid bodies with one body index
+  (:doc:`SingleBodyObjects`).
+* ``DeformableObject``: XPBD/PBD cloth, shell, and coarse soft-body objects
+  (:doc:`DeformableObject`).
+* ``GranularSystem``: many spherical grains stored and stepped as one object
+  (:doc:`GranularMedia`).
 
 Contacts And External Forces
 ============================

@@ -99,6 +99,10 @@ Use this documentation in this order if you are new to RaiSim:
    sections/OpenUSD
    sections/RaisimServer
    sections/Object
+   sections/ArticulatedSystem
+   sections/SingleBodyObjects
+   sections/DeformableObject
+   sections/GranularMedia
    sections/Contact
    sections/CollisionDetection
    sections/MaterialSystem
@@ -106,7 +110,6 @@ Use this documentation in this order if you are new to RaiSim:
    sections/Constraints
    sections/Tendons
    sections/RayTest
-   sections/Sensors
 
 .. toctree::
    :maxdepth: 1

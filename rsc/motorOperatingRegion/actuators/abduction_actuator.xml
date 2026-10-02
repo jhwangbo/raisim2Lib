@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<!--
+  Hip abduction actuator: one DC motor behind a 6:1 reducer.
+  Motor side, SI units: R = 0.4 Ohm, Kt = 0.1 Nm/A, Kv = 10 rad/s/V, peak torque 3 Nm.
+  With the 24 V bus: 6 Nm stall torque, 240 rad/s no-load speed, 120 rad/s corner speed.
+  Losses measured at the output (the joint): 0.01 Nm s/rad viscous damping, 0.2 Nm Coulomb friction.
+  They add to the joint's own <dynamics damping friction>.
+-->
+<motor_group name="abduction_6to1" gear_ratio="6" bus_voltage="24">
+  <motor resistance="0.4" torque_constant="0.1" velocity_constant="10" peak_torque="3"
+         output_damping="0.01" output_friction="0.2"/>
+</motor_group>
