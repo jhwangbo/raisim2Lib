@@ -53,7 +53,8 @@ directory.
 
    3. <child> (optional) ``gravity``
 
-      1. <attribute> ``value`` [Vec<3>]: default = ``0, 0, -9.81``
+      1. <attribute> ``value`` [Vec<3>]: default = ``0, 0, -9.81``, or the
+         gravity of an included file
 
    4. <child> (optional) ``timeStep``. Only this camelCase tag name is read.
 
@@ -375,7 +376,33 @@ and the ``xml_templated_world`` example, which loads it.
 
 **Includes.** ``<include value="[THIS_DIR]/terrain.xml"/>`` loads another world
 file into the same world before the including file's own content. Use it to
-combine sub-worlds.
+combine sub-worlds. Included files load in document order, and the settings of
+the including file (``material``, ``gravity``, ``timeStep``, ``erp``,
+``simulation``) override theirs; a setting it does not name keeps the included
+file's value. The ``value`` may contain ``@@`` parameters.
+
+An include whose path ends in ``.rscene`` (in any letter case) builds a RaiSim
+Engine scene into the world, as ``World("scene.rscene")`` does, so a robot and
+the scene it runs in can live in separate files:
+
+.. code-block:: xml
+
+   <raisim>
+       <include value="[THIS_DIR]/../city/rayrai_city.rscene"/>
+       <objects>
+           <articulated_system name="anymal" urdf_path="[THIS_DIR]/../anymal_c/urdf/anymal.urdf">
+               <state qpos="..." qvel="..."/>
+           </articulated_system>
+       </objects>
+   </raisim>
+
+The scene sets its solver settings and contact materials, and adds its terrain,
+bodies and wires, before the robot. ``World::getRscene()`` returns the scene,
+so a rayrai ``RayraiWindow`` and the TCP viewer show its lights, sky, foliage
+and visual-only objects. A world holds at most one scene: a second ``.rscene``
+include, also through an included XML file, is a fatal error. See
+:ref:`sections/RsceneFile:A robot in a scene` and
+`anymal_in_city.xml <https://github.com/raisimTech/raisim2Lib/blob/main/rsc/xmlScripts/rscene/anymal_in_city.xml>`__.
 
 **Parameters.** A token ``@@name`` is replaced by the value of the parameter
 ``name``. Define values in the file:

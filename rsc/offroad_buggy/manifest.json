@@ -1,0 +1,1350 @@
+{
+  "license": "CC-BY-4.0 and CC0-1.0, see ATTRIBUTION.md",
+  "files": [
+    {
+      "path": "ATTRIBUTION.md",
+      "bytes": 8928,
+      "sha256": "b3fcba4e1329b922fbe76058c08d03e6e93e04e9d12b2bf8746d63c498b7d366"
+    },
+    {
+      "path": "LICENSE-CC0-1.0.txt",
+      "bytes": 7048,
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+    },
+    {
+      "path": "buggy.urdf",
+      "bytes": 26813,
+      "sha256": "a60b92c1c0e367b5bb8788521ee64c2411bece386575d395859358e477561f02"
+    },
+    {
+      "path": "meshes/chassis.bin",
+      "bytes": 4074068,
+      "sha256": "4818782746ea98a92345b039065bf8ae55df85513ffcb4c532858b8a625bd623"
+    },
+    {
+      "path": "meshes/chassis.gltf",
+      "bytes": 19541,
+      "sha256": "f9ef0ea6a647cfc365c31e374b07972dcc0696ef415c60dfc02207bd167796cd"
+    },
+    {
+      "path": "meshes/coilover_body.bin",
+      "bytes": 187184,
+      "sha256": "0691995e73af821aa04eacdf659d20b3b100954ee37737fd78c5130b75818a42"
+    },
+    {
+      "path": "meshes/coilover_body.gltf",
+      "bytes": 1538,
+      "sha256": "a7a3e36532049756f62b0504ab15cd5e2c1d37b9d66f16dcc4deac4fe24e8acf"
+    },
+    {
+      "path": "meshes/coilover_rod.bin",
+      "bytes": 115416,
+      "sha256": "bc39616e3723c514b4888cd61886e5eac7f3584565deddb25f4977d5a89e689d"
+    },
+    {
+      "path": "meshes/coilover_rod.gltf",
+      "bytes": 1528,
+      "sha256": "f2f0952e634d38505b8b275d1393dd71cfd1a6a7caf292bf37a2b9319951cdf4"
+    },
+    {
+      "path": "meshes/fl_disc.bin",
+      "bytes": 11616,
+      "sha256": "79337baef352e60b7d8a8d96efd139c8b0fd677021ff39cf4f1ea77771f7544d"
+    },
+    {
+      "path": "meshes/fl_disc.gltf",
+      "bytes": 1733,
+      "sha256": "7177f6cc6aa767bd992125d021ed4568a538059ed97be9e61ee1db3270d11ff2"
+    },
+    {
+      "path": "meshes/fl_fender.bin",
+      "bytes": 58176,
+      "sha256": "c45f2d35d72545ad784f52a340ed435e7d2e1133a30783a35a66c0dee05cfa7f"
+    },
+    {
+      "path": "meshes/fl_fender.gltf",
+      "bytes": 2514,
+      "sha256": "4fe1e1704d86928fe4c3123f58263e275519fca96312ee9a7f5e3a839221f457"
+    },
+    {
+      "path": "meshes/fl_lower_arm.bin",
+      "bytes": 33192,
+      "sha256": "827496e2a522049c67a386c644c226f955f458682e94ad2785d09fedde4f601e"
+    },
+    {
+      "path": "meshes/fl_lower_arm.gltf",
+      "bytes": 1753,
+      "sha256": "4184d533a3e20aebf6b11262e6246307fb8772d88282ff910aa13e9e0eb896b0"
+    },
+    {
+      "path": "meshes/fl_tie_rod.bin",
+      "bytes": 20496,
+      "sha256": "d5fb7884108828adea20a78b443937cda96050e4dcb517ba41314686f15a3b2e"
+    },
+    {
+      "path": "meshes/fl_tie_rod.gltf",
+      "bytes": 1750,
+      "sha256": "3159d7cd86f5dcf6e0bec502d3299415688f01557eae0a401aeda06b2a518122"
+    },
+    {
+      "path": "meshes/fl_upper_arm.bin",
+      "bytes": 28824,
+      "sha256": "f098402c3ae4073e3bfaf10ccbdb49eb9df9181834903d34bc45a52cb1a48e08"
+    },
+    {
+      "path": "meshes/fl_upper_arm.gltf",
+      "bytes": 1751,
+      "sha256": "73e5b3fcaa3164a35ddb92ff5641daecb89101fd431c3a34c4e476d91381d6f5"
+    },
+    {
+      "path": "meshes/fl_upright.bin",
+      "bytes": 34944,
+      "sha256": "0e44af24b0343912eef5d44df7e0d7819786f83b9695c7710120bd64b84abb7f"
+    },
+    {
+      "path": "meshes/fl_upright.gltf",
+      "bytes": 2473,
+      "sha256": "309299c20cc2e685af4dcdb01786676f7be2c657a4810eac15bc4578d62d4696"
+    },
+    {
+      "path": "meshes/fl_wheel.bin",
+      "bytes": 273744,
+      "sha256": "53da88c7f56755a66b70557a0387d1703bccf86ce53a4e70f30197824c7d90f6"
+    },
+    {
+      "path": "meshes/fl_wheel.gltf",
+      "bytes": 2950,
+      "sha256": "3621273cf07a492624c27a457a9d9706cf02b13c80c1a4272896e9bf51ab3575"
+    },
+    {
+      "path": "meshes/fr_disc.bin",
+      "bytes": 11616,
+      "sha256": "26d255c99e8636d3bea5f751364384bf613039a23f8e50ecacfb7503b19460d1"
+    },
+    {
+      "path": "meshes/fr_disc.gltf",
+      "bytes": 1729,
+      "sha256": "7827f1a3a0547aaffd9142b61a2789e9f861c64a763612d30e8df81c88aa1f56"
+    },
+    {
+      "path": "meshes/fr_fender.bin",
+      "bytes": 58176,
+      "sha256": "afbeceff194548bb3558fbeb688526cdadc3c50a9181ac4446830f1a7c30c841"
+    },
+    {
+      "path": "meshes/fr_fender.gltf",
+      "bytes": 2512,
+      "sha256": "1ed98ebaff33022478496c78b41acb2a89630174d9159e795d7125db7a0ad84e"
+    },
+    {
+      "path": "meshes/fr_lower_arm.bin",
+      "bytes": 33192,
+      "sha256": "d8068da650c1d9ac88627cfb28efc7b3d0caa87ab33cc2e6dd825378055f197b"
+    },
+    {
+      "path": "meshes/fr_lower_arm.gltf",
+      "bytes": 1753,
+      "sha256": "2a539e32c3af31fdf9fbaab948ec12cde1e210a5f069038c2d89d070b880e9de"
+    },
+    {
+      "path": "meshes/fr_tie_rod.bin",
+      "bytes": 20496,
+      "sha256": "11ccbf039e4cf1a038cde8a4e37cf2365e088c410954d81ff58138e24b664d86"
+    },
+    {
+      "path": "meshes/fr_tie_rod.gltf",
+      "bytes": 1752,
+      "sha256": "c3646a105109320082d34b7f8a0286f2674073684850f3c04382200bd1984aa7"
+    },
+    {
+      "path": "meshes/fr_upper_arm.bin",
+      "bytes": 28824,
+      "sha256": "15760c6aedc8692fd294584a42b59e2c7f3ad60124a77c436428ad261a06015c"
+    },
+    {
+      "path": "meshes/fr_upper_arm.gltf",
+      "bytes": 1751,
+      "sha256": "e1dd0fc6cfcb1c65e69be2f7fdd0bd8969b2abba396e817590b5e8bd3832421f"
+    },
+    {
+      "path": "meshes/fr_upright.bin",
+      "bytes": 34944,
+      "sha256": "06713204fc2f7bd2ccff67f825b9bd47f7f0ca33c56d36a3652f3ad2c6150825"
+    },
+    {
+      "path": "meshes/fr_upright.gltf",
+      "bytes": 2475,
+      "sha256": "41b21915b39116e6ad8f941386cb73a28b618559ee1db215b85bb896d70bb084"
+    },
+    {
+      "path": "meshes/fr_wheel.bin",
+      "bytes": 274064,
+      "sha256": "6ee5682ed66e36bcad238b77df7a98ccb8b8d420681ebd3d2613b443804b0f23"
+    },
+    {
+      "path": "meshes/fr_wheel.gltf",
+      "bytes": 2953,
+      "sha256": "cac1f967a93a55e4e3e5d899bced998b50a3ffec1ede640f5027c5c97bbf30af"
+    },
+    {
+      "path": "meshes/license_coilover.txt",
+      "bytes": 786,
+      "sha256": "53480fb0918610c5dbf03fd8c38df36c4ee55918bfa2f23bd1e862c4fd53c276"
+    },
+    {
+      "path": "meshes/license_sci_fi_buggy.txt",
+      "bytes": 676,
+      "sha256": "533bd9fdf1edbab4d33a4051578eddbd11ec403358b2fc2bae46ac8138f8bf65"
+    },
+    {
+      "path": "meshes/rl_disc.bin",
+      "bytes": 11616,
+      "sha256": "79337baef352e60b7d8a8d96efd139c8b0fd677021ff39cf4f1ea77771f7544d"
+    },
+    {
+      "path": "meshes/rl_disc.gltf",
+      "bytes": 1733,
+      "sha256": "6b8719ea975984a9de75fe749d85b1920d4b82422a30b0374379fa3041b0bf06"
+    },
+    {
+      "path": "meshes/rl_lower_arm.bin",
+      "bytes": 33192,
+      "sha256": "ec9a7e0470fced1882699fa7a83b475c4e658ab111ca3a6a3d7fbbf2721127d1"
+    },
+    {
+      "path": "meshes/rl_lower_arm.gltf",
+      "bytes": 1753,
+      "sha256": "9fdab939712834bfba5bf05355056f7b73a774de90c8a5606d37df6dd2f5bf1f"
+    },
+    {
+      "path": "meshes/rl_tie_rod.bin",
+      "bytes": 20496,
+      "sha256": "8e895fe5289ec48b5e62641a0f914f9acb7e4347bac7f52eed5ac2db004cb82d"
+    },
+    {
+      "path": "meshes/rl_tie_rod.gltf",
+      "bytes": 1749,
+      "sha256": "86df79bb57405265bc583bfc1010d64af00a7b337c379fe57d7712cb857c820e"
+    },
+    {
+      "path": "meshes/rl_upper_arm.bin",
+      "bytes": 28824,
+      "sha256": "f96561c3524c5e98ef8acaec82f350caa64f853b46c171600f551f5ddf66c81d"
+    },
+    {
+      "path": "meshes/rl_upper_arm.gltf",
+      "bytes": 1751,
+      "sha256": "1c543b12562f16db0f59bf6097af5f14a46e4236214253a8645f47267d375f95"
+    },
+    {
+      "path": "meshes/rl_upright.bin",
+      "bytes": 34944,
+      "sha256": "d13986f1bcfd117c7aab49d5e77e874dd405e55dc0502b3da616bba7bd0545ee"
+    },
+    {
+      "path": "meshes/rl_upright.gltf",
+      "bytes": 2472,
+      "sha256": "229af2e44345fb79c7c32431ee87338b1c8fb9771d842e56a5afca97b0facc7b"
+    },
+    {
+      "path": "meshes/rl_wheel.bin",
+      "bytes": 273808,
+      "sha256": "952724d60a03b030fe587cfc4fa67afebe1d7f2f1af47afebc126ed1067ebcdc"
+    },
+    {
+      "path": "meshes/rl_wheel.gltf",
+      "bytes": 2952,
+      "sha256": "41af744fd0bc6834934c0c5e2c9906abc5287304203fd64728b8df54e6d82bd2"
+    },
+    {
+      "path": "meshes/rr_disc.bin",
+      "bytes": 11616,
+      "sha256": "26d255c99e8636d3bea5f751364384bf613039a23f8e50ecacfb7503b19460d1"
+    },
+    {
+      "path": "meshes/rr_disc.gltf",
+      "bytes": 1729,
+      "sha256": "1b7341ec00c9185cab73528850233fc0ea1d3875cf4565631dfea7988f015125"
+    },
+    {
+      "path": "meshes/rr_lower_arm.bin",
+      "bytes": 33192,
+      "sha256": "d1f154d719195f0b2a17e4fa3940bb6a1dfd053d65abc9079896d1946d980d90"
+    },
+    {
+      "path": "meshes/rr_lower_arm.gltf",
+      "bytes": 1753,
+      "sha256": "00744ce50cae2d812e6f4a852c03f58efd02f5898d2c2e1d09473f87873289dd"
+    },
+    {
+      "path": "meshes/rr_tie_rod.bin",
+      "bytes": 20496,
+      "sha256": "6409bef8a8f7b3de416c21304eaf91d1ce1722c4d6df41412b357f06aff18ce1"
+    },
+    {
+      "path": "meshes/rr_tie_rod.gltf",
+      "bytes": 1751,
+      "sha256": "3dcd9b67176b49dc4d2c1113a3b2409787d261cc033cb9c06e67329651702450"
+    },
+    {
+      "path": "meshes/rr_upper_arm.bin",
+      "bytes": 28824,
+      "sha256": "a2aae20087ed36ce37da497961e8bbd15dca7a311d0e87fc19f352efef8f0ef9"
+    },
+    {
+      "path": "meshes/rr_upper_arm.gltf",
+      "bytes": 1751,
+      "sha256": "b7e2bcbb9943b826d15257659aa2d63d89e76e3280f6dc1f6e92c30b1c6dc932"
+    },
+    {
+      "path": "meshes/rr_upright.bin",
+      "bytes": 34944,
+      "sha256": "6c943735e41f5511edf346994084917c8773ff18063dfffed18bdbbfa6e7dd8c"
+    },
+    {
+      "path": "meshes/rr_upright.gltf",
+      "bytes": 2474,
+      "sha256": "7a46a39ff2c91a6a228543c894d72ee27f025b60ec45299e7e8eb32b5be1e2d0"
+    },
+    {
+      "path": "meshes/rr_wheel.bin",
+      "bytes": 273936,
+      "sha256": "a86288a5f12b618676a41793e41d9f93a5360ad333529936f1dfa917fdb629f1"
+    },
+    {
+      "path": "meshes/rr_wheel.gltf",
+      "bytes": 2952,
+      "sha256": "decd26f40ad49dc1c53cd8131ec7849d4729fd490cbf3cd1465904eb08bcdd3b"
+    },
+    {
+      "path": "meshes/steering_rack.bin",
+      "bytes": 2928,
+      "sha256": "aded95117149a4b3ea250ecfb0a93e6448191ac5f3d4edae4a352d76019d7c42"
+    },
+    {
+      "path": "meshes/steering_rack.gltf",
+      "bytes": 1022,
+      "sha256": "10944d68e63f56638aa8d09d890970ac423540e3502367ae5f11155ece5ff458"
+    },
+    {
+      "path": "meshes/steering_rack_housing.bin",
+      "bytes": 11712,
+      "sha256": "2aefd2e8bc90ab36a6b2c76f81895ff4977bd42f477e52a78615716bdcacfa92"
+    },
+    {
+      "path": "meshes/steering_rack_housing.gltf",
+      "bytes": 1777,
+      "sha256": "13169e2e0735af5d658c799e14ed71ca4d0e7f06bfeee9a51e4983df3691c0bf"
+    },
+    {
+      "path": "meshes/steering_wheel.bin",
+      "bytes": 141024,
+      "sha256": "07d712018e07c289f6b0706416a9c9a2e1b3b29b45f97487f06f0517221c0e31"
+    },
+    {
+      "path": "meshes/steering_wheel.gltf",
+      "bytes": 1584,
+      "sha256": "a77672b43bb9d8d7c1babceec923fd7ef281971b5a1301a80364dc6bc70fffc8"
+    },
+    {
+      "path": "meshes/textures/Atlas_metallicRoughness.jpg",
+      "bytes": 162932,
+      "sha256": "902e2164c3dd2bcbf86f2f810a670c79419eb8d7eb48816ed2ba4f34fa017222"
+    },
+    {
+      "path": "meshes/textures/Atlas_normal.jpg",
+      "bytes": 197973,
+      "sha256": "fab545810bf4473bea5f4106b2ccdf6e096818e8f555226c084c3284fd6c4229"
+    },
+    {
+      "path": "meshes/textures/Material.007_baseColor.jpg",
+      "bytes": 53463,
+      "sha256": "ffd018188a077513e50a1c448457b9ebe2a6e155fad4922c069b0b2c7b228bfe"
+    },
+    {
+      "path": "meshes/textures/Material.007_clearcoat.jpg",
+      "bytes": 17014,
+      "sha256": "c261a8c9436b85b23c7b3a42c035e3ad849e4f673e8f515b8cb88a35a02ccf9f"
+    },
+    {
+      "path": "meshes/textures/Material.007_metallicRoughness.jpg",
+      "bytes": 76608,
+      "sha256": "cc0c3234c61d7cf246678e6b161a09c81c6e4e6585ffd208b387c03be03a12bc"
+    },
+    {
+      "path": "meshes/textures/Material.007_normal.jpg",
+      "bytes": 140080,
+      "sha256": "8bf09094716b4aeb13c20989061a0e423544c15cb53b02bdcea9a6c2ac328e78"
+    },
+    {
+      "path": "meshes/textures/armrest_baseColor.jpg",
+      "bytes": 152426,
+      "sha256": "963065d5bfe7b98e464ef6633cfaf23913f90c29ec0ab254e99f409179aa03e3"
+    },
+    {
+      "path": "meshes/textures/armrest_metallicRoughness.jpg",
+      "bytes": 239474,
+      "sha256": "0f81efef771c03102db909dfcee36ca6d4cd69b4cc6cc86c975907bddce7273e"
+    },
+    {
+      "path": "meshes/textures/armrest_normal.jpg",
+      "bytes": 1637829,
+      "sha256": "49833efa68c69e42ed1de905111bc6621ea4996f96850d11c1f92cf6faa26dd4"
+    },
+    {
+      "path": "meshes/textures/battery_baseColor.jpg",
+      "bytes": 74523,
+      "sha256": "7738c3e8cdd89cb06e963c0f5695067ae2f6afa92a1fc309f3d3c21d282d0ad7"
+    },
+    {
+      "path": "meshes/textures/battery_metallicRoughness.jpg",
+      "bytes": 119944,
+      "sha256": "31a8132c8ed978e9f0f124632e973d019bce4605cccd0de59615cdc6dfacb256"
+    },
+    {
+      "path": "meshes/textures/carbon.005_baseColor.jpg",
+      "bytes": 52183,
+      "sha256": "9f497be1c0dbbc348f5a2a77c1506dcad01406503bd99bd824e6c9cd9bda786d"
+    },
+    {
+      "path": "meshes/textures/console_baseColor.jpg",
+      "bytes": 969712,
+      "sha256": "a09db1c092284396a476acf04533b7f9c941e98fdcfe21b8df36c56c875085ee"
+    },
+    {
+      "path": "meshes/textures/console_metallicRoughness.jpg",
+      "bytes": 186522,
+      "sha256": "9eda71b724063f8064ba3007a81a81c17024984fc305f4f8266cdbd8fbb0d891"
+    },
+    {
+      "path": "meshes/textures/frame_baseColor.jpg",
+      "bytes": 394285,
+      "sha256": "620061aa70e033507792ad12e28055cd5338155d56ced781c9c7b88b0e726bcf"
+    },
+    {
+      "path": "meshes/textures/frame_metallicRoughness.jpg",
+      "bytes": 372751,
+      "sha256": "6ac73eb50faaf8477641f83f336fd46be6b4b50cd00bbad181f6112bf69c91fe"
+    },
+    {
+      "path": "meshes/textures/main_body_metallicRoughness.jpg",
+      "bytes": 177777,
+      "sha256": "e1966bfc53f37654429230aa461dd4b39f857e55e381d6c779f96e597834bf31"
+    },
+    {
+      "path": "meshes/textures/rims_baseColor.jpg",
+      "bytes": 102770,
+      "sha256": "0f7407db57317beac299f595906303e216941433be81e20a3eba2a713e6d907e"
+    },
+    {
+      "path": "meshes/textures/rims_metallicRoughness.jpg",
+      "bytes": 70300,
+      "sha256": "63f2f5a37c336f5a51a8d3d689f999a24f2044725d096ac5abd34d8afffe347c"
+    },
+    {
+      "path": "meshes/textures/seat_baseColor.jpg",
+      "bytes": 495477,
+      "sha256": "db1decd0c6f6f5ad7cf47785711cd972c31b3c55fa6cb308ee3e5ac17b692433"
+    },
+    {
+      "path": "meshes/textures/seat_metallicRoughness.jpg",
+      "bytes": 315209,
+      "sha256": "4d4f53ec1d25d9946d4d7ac4f3e9451b37b4163f0ca6a9fa8ae06eb1215ae076"
+    },
+    {
+      "path": "meshes/textures/steering_console_baseColor.jpg",
+      "bytes": 194442,
+      "sha256": "48e50ed2be14b70f5349d4b032aa4e1e472814eaf4b6c08021474d9a38b315fb"
+    },
+    {
+      "path": "meshes/textures/steering_console_metallicRoughness.jpg",
+      "bytes": 287919,
+      "sha256": "30be61eafe21d29a9016c88fb678c0df7c9c3589d27bd12282e14926e705c28d"
+    },
+    {
+      "path": "meshes/textures/steering_console_normal.jpg",
+      "bytes": 940299,
+      "sha256": "a946107ddaad2a2a7555c887412ecf52406537e52b26cc9113e3e68dc94cf866"
+    },
+    {
+      "path": "meshes/textures/steering_wheel_baseColor.jpg",
+      "bytes": 270630,
+      "sha256": "c46e342297323cefc705af1e8b356b27ae3c02b6b9eeaee73ecc60b9e3e75593"
+    },
+    {
+      "path": "meshes/textures/steering_wheel_metallicRoughness.jpg",
+      "bytes": 228883,
+      "sha256": "639907856db5bc37500ad60b29c9c25a64ba82118f2ee54aa4779a552c43ba73"
+    },
+    {
+      "path": "meshes/textures/steering_wheel_normal.jpg",
+      "bytes": 379190,
+      "sha256": "79a0f5bf978c7dbcafbe11e81033a90250dd35cd780f2f9ba32b49e97e64002d"
+    },
+    {
+      "path": "meshes/textures/test_baseColor.jpg",
+      "bytes": 80763,
+      "sha256": "6a5040ebc99444649d4bdbb743e82b884070d2f99bdbf5bf7341f66cfa22fb4f"
+    },
+    {
+      "path": "meshes/textures/test_metallicRoughness.jpg",
+      "bytes": 135753,
+      "sha256": "0ddcb399e079b7f50767190ebb9e5d859a611811ce1ee8abea570e7a823a1f31"
+    },
+    {
+      "path": "meshes/textures/test_normal.jpg",
+      "bytes": 142857,
+      "sha256": "68f8110de89d60eca37d9c4f1f85b0eac15053efa9d4961b7e2f9c41fd79cb79"
+    },
+    {
+      "path": "props/bleacher/license.txt",
+      "bytes": 652,
+      "sha256": "ab7a3c84976d1820a1b307024d679aa9d2ce83de351b5eb02d448429171f8fd1"
+    },
+    {
+      "path": "props/bleacher/model.bin",
+      "bytes": 65952,
+      "sha256": "7842880c64ce58843274f05e602cc237fbcdf49330cce86e2a0983f2633e14e9"
+    },
+    {
+      "path": "props/bleacher/model.gltf",
+      "bytes": 2527,
+      "sha256": "fdb9213f8678e854774d0cdef970b54293f816f0c56315983046617f420af426"
+    },
+    {
+      "path": "props/bleacher/model.rasset",
+      "bytes": 133,
+      "sha256": "a9c7dbc05172b1035ef40e36b7cd15976c494e471971b917bf2a71d8d1abd15d"
+    },
+    {
+      "path": "props/bleacher/textures/Metal_baseColor.jpg",
+      "bytes": 422441,
+      "sha256": "46644874d6472f33206d2c73925580b1f999c3856bab0f7534ade264d0c0495a"
+    },
+    {
+      "path": "props/bleacher/textures/Metal_metallicRoughness.jpg",
+      "bytes": 88693,
+      "sha256": "65e36eb67aae5a86f49bd0f700045a7210dacb0369960492846b132bd968bd22"
+    },
+    {
+      "path": "props/bleacher/textures/Metal_normal.jpg",
+      "bytes": 77626,
+      "sha256": "fcdf1a4af4a096f00e3b7ccaab3d3ffce4cb152b09c43b6f963475691c3c83af"
+    },
+    {
+      "path": "props/bleacher/textures/Wood_baseColor.jpg",
+      "bytes": 210234,
+      "sha256": "bcbb23e7119617ceef43e6d1c14aac564ebe0b8c2d9c93d1fd5f4698fb48cb29"
+    },
+    {
+      "path": "props/bleacher/textures/Wood_metallicRoughness.jpg",
+      "bytes": 142322,
+      "sha256": "90bae19b0b08ba562384475dca81326b8d84fa6537d225157982af1723593c45"
+    },
+    {
+      "path": "props/bleacher/textures/Wood_normal.jpg",
+      "bytes": 233106,
+      "sha256": "ab2802a6012d09c87a912fc4a438a836d38592746f8bb16b188ead38e796a1a2"
+    },
+    {
+      "path": "props/boulder_01/collision.obj",
+      "bytes": 2729,
+      "sha256": "77338f2693075aa02de2b99f39393f68aed8d9063c6f8d20a145e823964492ae"
+    },
+    {
+      "path": "props/boulder_01/model.bin",
+      "bytes": 606856,
+      "sha256": "384dec70236285463073e1f458ca3305c7fad897c85082711972d4d95140ade8"
+    },
+    {
+      "path": "props/boulder_01/model.gltf",
+      "bytes": 1634,
+      "sha256": "2172512789d398b71135b402ddaebed41ad795d3c99ae3ae57351ad51ca79c2d"
+    },
+    {
+      "path": "props/boulder_01/model.rasset",
+      "bytes": 116,
+      "sha256": "3d532c0e8d6a8368db3fc05bdf909038b7e1ecfcdb3b60aaa989c833422a192f"
+    },
+    {
+      "path": "props/boulder_01/textures/boulder_01_arm_1k.jpg",
+      "bytes": 659386,
+      "sha256": "c57187c5746b6be913fa53846cb44ff78743e7ca5000f131c9627b99563c2b87"
+    },
+    {
+      "path": "props/boulder_01/textures/boulder_01_diff_1k.jpg",
+      "bytes": 987467,
+      "sha256": "c38f0e918f6dc16b8d386ba3cdd89805c78320c119a1ceec85856f82b09a65b8"
+    },
+    {
+      "path": "props/boulder_01/textures/boulder_01_nor_gl_1k.jpg",
+      "bytes": 1183552,
+      "sha256": "0810cf6e89d89bb6eb065b4d2e2855288f5dcbd2c15c6e40ab90d462021b50aa"
+    },
+    {
+      "path": "props/canopy/blue.bin",
+      "bytes": 11872,
+      "sha256": "7aa61d0b2aeaeb9df28b068080240487fb0671b10d24062c38af67ae0ed183bc"
+    },
+    {
+      "path": "props/canopy/blue.gltf",
+      "bytes": 2717,
+      "sha256": "05dc40c222ce92f450368e8a8878dda8d923dffad7727b8957f3610d898cf769"
+    },
+    {
+      "path": "props/canopy/blue.rasset",
+      "bytes": 392,
+      "sha256": "7b20501261d3a19735241991d8978b17e36ac9d869ab496c65a4252f01dc06bb"
+    },
+    {
+      "path": "props/canopy/red.bin",
+      "bytes": 11872,
+      "sha256": "7aa61d0b2aeaeb9df28b068080240487fb0671b10d24062c38af67ae0ed183bc"
+    },
+    {
+      "path": "props/canopy/red.gltf",
+      "bytes": 2711,
+      "sha256": "e2d955d04b39292b90918c5ad9bc0dbdd0f1b4b82965b5d710e41ca126841fb7"
+    },
+    {
+      "path": "props/canopy/red.rasset",
+      "bytes": 391,
+      "sha256": "ab4f48b1011e0e64c1d3925abfa06ebc4a51e257d146fd8fb019a93be685be81"
+    },
+    {
+      "path": "props/canopy/textures/blue.jpg",
+      "bytes": 7884,
+      "sha256": "899aabf6418423f9bd253911091c80cba2a8dca292193012e3c9e8ca3c1d8dfc"
+    },
+    {
+      "path": "props/canopy/textures/red.jpg",
+      "bytes": 8031,
+      "sha256": "1abb0c93fb4b7baa540849da34f0e196d61270a951d281cf6561365c3639da2e"
+    },
+    {
+      "path": "props/canopy/textures/white.jpg",
+      "bytes": 7390,
+      "sha256": "2795eadf0bbb9289886a9e580be71c19f65fd6ac2df351b51db697a5973da382"
+    },
+    {
+      "path": "props/canopy/white.bin",
+      "bytes": 11872,
+      "sha256": "7aa61d0b2aeaeb9df28b068080240487fb0671b10d24062c38af67ae0ed183bc"
+    },
+    {
+      "path": "props/canopy/white.gltf",
+      "bytes": 2722,
+      "sha256": "81fdecaf9a9bac22435112d3d69b99b7e563bbb1c592c3b2f07ab2cb60429f5f"
+    },
+    {
+      "path": "props/canopy/white.rasset",
+      "bytes": 393,
+      "sha256": "beb5b9dcfa9b1a6e59b290dade8c7693fd02a88454c297a9fed7a6e3e47ec69d"
+    },
+    {
+      "path": "props/chainlink_fence/model.bin",
+      "bytes": 168624,
+      "sha256": "4fc3cfbe30ece574b8a9212cc699dbb9ef89d421ac26c99e05aaca2d26cfa6a2"
+    },
+    {
+      "path": "props/chainlink_fence/model.gltf",
+      "bytes": 3630,
+      "sha256": "ad293a59a9284bc8a949308a3272ba9a93fd941ba4bd3716520dfbddce063962"
+    },
+    {
+      "path": "props/chainlink_fence/model.rasset",
+      "bytes": 124,
+      "sha256": "4250bfb36dca17326f961b750d67b484b33cffed3a64f668759b4c3d818bd781"
+    },
+    {
+      "path": "props/chainlink_fence/textures/modular_chainlink_fence_posts_arm_1k.jpg",
+      "bytes": 839858,
+      "sha256": "1694ecc2746ddaa93951ea5d2f2b830f544adf929f7ac9fae855f8b8fdfbad50"
+    },
+    {
+      "path": "props/chainlink_fence/textures/modular_chainlink_fence_posts_diff_1k.jpg",
+      "bytes": 707116,
+      "sha256": "ec273fedef04fbcac26460b996beeeceeff3f91c1bea73ed2c6db1d0fdb30b73"
+    },
+    {
+      "path": "props/chainlink_fence/textures/modular_chainlink_fence_posts_nor_gl_1k.jpg",
+      "bytes": 505743,
+      "sha256": "b43b8214c90a55bb84222d2a27430b31080d68dc14879632b86dbd316cb5f060"
+    },
+    {
+      "path": "props/chainlink_fence/textures/modular_chainlink_fence_wire_arm_1k.jpg",
+      "bytes": 694743,
+      "sha256": "88af8364890b0645cd730eca11b30e6cd1c7578ad3aa1f012bb84915b9be5a03"
+    },
+    {
+      "path": "props/chainlink_fence/textures/modular_chainlink_fence_wire_diff_alpha_1k.png",
+      "bytes": 1299550,
+      "sha256": "ac82517531f5c38392bc5bb2b6e65c26eca4a4acd8dec413afd6a63c534a4110"
+    },
+    {
+      "path": "props/chainlink_fence/textures/modular_chainlink_fence_wire_nor_gl_1k.jpg",
+      "bytes": 664165,
+      "sha256": "5cbf280f80e948de2422f0bb2fe2223a3b6f8e6fc75f54b00cd8d3e070938230"
+    },
+    {
+      "path": "props/dead_tree_trunk_02/model.bin",
+      "bytes": 276416,
+      "sha256": "5040c3fee7d750fc76cc4b66b0f19d8cf5fbb22c3392e8278243c39a5adfac50"
+    },
+    {
+      "path": "props/dead_tree_trunk_02/model.gltf",
+      "bytes": 1682,
+      "sha256": "eba478be88288965467337edc8fcd691e6c6bb6a2840d0899dd08f20e1adbbff"
+    },
+    {
+      "path": "props/dead_tree_trunk_02/model.rasset",
+      "bytes": 205,
+      "sha256": "0c5e13a5a1f45d8760b5b5b173bb22ecdcb33c583449ac9822c717c4e0f690e9"
+    },
+    {
+      "path": "props/dead_tree_trunk_02/textures/dead_tree_trunk_02_arm_1k.jpg",
+      "bytes": 805609,
+      "sha256": "ea15561ce36572ebd0db3c997f70d68a76d4bcbfef7efb4f91c8fd3b5f766e62"
+    },
+    {
+      "path": "props/dead_tree_trunk_02/textures/dead_tree_trunk_02_diff_1k.jpg",
+      "bytes": 932059,
+      "sha256": "fac23e81ab5639dcde93db605e5dd94c65e0aa2b1fb4a303f37de9afbb9af5b4"
+    },
+    {
+      "path": "props/dead_tree_trunk_02/textures/dead_tree_trunk_02_nor_gl_1k.jpg",
+      "bytes": 1192056,
+      "sha256": "9b26c29b89afced0ddb91dbe6f917e59038bed5ba6076dfceb8d1b4b00ca04f7"
+    },
+    {
+      "path": "props/feather_flag/blue.bin",
+      "bytes": 19600,
+      "sha256": "46e8fbc08f1aebc58b59d2ddb991e1ffe719a3c2bf00145f1765eb4d8e0664d2"
+    },
+    {
+      "path": "props/feather_flag/blue.gltf",
+      "bytes": 1965,
+      "sha256": "ad35bf6373fd309ea41a2cfc23da050624887cae7c87c76060630cc8a36ccd69"
+    },
+    {
+      "path": "props/feather_flag/orange.bin",
+      "bytes": 19600,
+      "sha256": "46e8fbc08f1aebc58b59d2ddb991e1ffe719a3c2bf00145f1765eb4d8e0664d2"
+    },
+    {
+      "path": "props/feather_flag/orange.gltf",
+      "bytes": 1975,
+      "sha256": "8a42faf62d0dc2d8e8cbd5ba933e3a12f42f49e335fcc26d38ee89f5482c6d4f"
+    },
+    {
+      "path": "props/feather_flag/textures/blue.jpg",
+      "bytes": 21230,
+      "sha256": "2d2241261485504b48bc7361fd2af5e26a703ca00668a31c038fd48d448e4e9a"
+    },
+    {
+      "path": "props/feather_flag/textures/orange.jpg",
+      "bytes": 21260,
+      "sha256": "536209099d4e325755130aa57a19091e2f111165f773f50ee43336bdc0369140"
+    },
+    {
+      "path": "props/hay_bales/license.txt",
+      "bytes": 668,
+      "sha256": "3351797080aed9d821a91b73fb9a09fd281bbf56ef66834ff7b395ec109a9d56"
+    },
+    {
+      "path": "props/hay_bales/round.bin",
+      "bytes": 82960,
+      "sha256": "76022d1670f4dc9d81749e2d264271f1f169ecc75fda9578873275e90017fe66"
+    },
+    {
+      "path": "props/hay_bales/round.gltf",
+      "bytes": 1454,
+      "sha256": "e19436249d6c4a485fed51aaa70f0beb30cb5c8d47fba9879059445912c0d829"
+    },
+    {
+      "path": "props/hay_bales/round.rasset",
+      "bytes": 133,
+      "sha256": "ce50dc96dc61634a71c30253117018454a8dd774e2aba557acb84b4867b76896"
+    },
+    {
+      "path": "props/hay_bales/square.bin",
+      "bytes": 27664,
+      "sha256": "7bbaed5fd595c68030510d76b616b99613e436c9e5a475083844c6bf7b474178"
+    },
+    {
+      "path": "props/hay_bales/square.gltf",
+      "bytes": 1451,
+      "sha256": "1411093def7c06d8e38c6a3f60875d33d4f43603c012f0954165fbc8751718fc"
+    },
+    {
+      "path": "props/hay_bales/square.rasset",
+      "bytes": 133,
+      "sha256": "f867fb392c66b0257bb7ad4bd0c162382886cb76a139023141026cdbbfb1492a"
+    },
+    {
+      "path": "props/hay_bales/textures/Material.001_baseColor.jpg",
+      "bytes": 588926,
+      "sha256": "c1b69ca9f2e7d63246f805f618003a3d8f97455b5d9c6be57abccc5240c9ba2a"
+    },
+    {
+      "path": "props/hay_bales/textures/Material.001_metallicRoughness.jpg",
+      "bytes": 558674,
+      "sha256": "64268496c6a26b80d8744b1e464920862a251bcfb906d302794c6442808b5ae4"
+    },
+    {
+      "path": "props/marker_post/collision.obj",
+      "bytes": 865,
+      "sha256": "50eb24737603e5f535ed4b78527afc82bce5664a44ac35c57d3bcb4da6f726a1"
+    },
+    {
+      "path": "props/marker_post/model.bin",
+      "bytes": 5888,
+      "sha256": "876bae27082d4a7f9dbc5c2b1a9c2e636e836394c293647a888ca4fe4298960d"
+    },
+    {
+      "path": "props/marker_post/model.gltf",
+      "bytes": 1267,
+      "sha256": "81877570732e83a3d7200876d8c88f6d9f13d699e07eb6f25c6ad950155f912c"
+    },
+    {
+      "path": "props/marker_post/textures/marker.jpg",
+      "bytes": 1918,
+      "sha256": "522950b290508680cfb2f77f3cb9776283a0b1270e065886c6c691f8fb39e1bc"
+    },
+    {
+      "path": "props/metal_jerrycan/model.bin",
+      "bytes": 69848,
+      "sha256": "3ddd459788f4b1b8338ca6e5e4d23d5a335f02a96f791a25d679f172f6be1dca"
+    },
+    {
+      "path": "props/metal_jerrycan/model.gltf",
+      "bytes": 1654,
+      "sha256": "ad67409371336b5d4e4d3fd9a6b0f5869db1f27b4335caa0626ba82aa46f402e"
+    },
+    {
+      "path": "props/metal_jerrycan/textures/metal_jerrycan_arm_1k.jpg",
+      "bytes": 988166,
+      "sha256": "fda20dd47d809fd5bd4cd29cd11e77fc2de97bd35569a7efb51fbf78705e659c"
+    },
+    {
+      "path": "props/metal_jerrycan/textures/metal_jerrycan_diff_1k.jpg",
+      "bytes": 673499,
+      "sha256": "64781939c4b3f739c52c335d26473def75d736173f3cc11a50ac2876d511d123"
+    },
+    {
+      "path": "props/metal_jerrycan/textures/metal_jerrycan_nor_gl_1k.jpg",
+      "bytes": 885424,
+      "sha256": "88dd8f6566cc5faa8fee658777115b518642508f23ffa1917128dba9539ae14d"
+    },
+    {
+      "path": "props/namaqualand_boulder_02/collision.obj",
+      "bytes": 2624,
+      "sha256": "4b79aa142bf3e5496e000ad5cc473109fdc13192b6048662e79e6d2cf1d979c5"
+    },
+    {
+      "path": "props/namaqualand_boulder_02/model.bin",
+      "bytes": 322736,
+      "sha256": "6b13a1f8073b1edccfb336998cad99be86d0708484b7f956b7263d72a067a4ff"
+    },
+    {
+      "path": "props/namaqualand_boulder_02/model.gltf",
+      "bytes": 1643,
+      "sha256": "01c590c0303fc5672a72986c434504811da7438c89d45573ec5d93a30373ecbe"
+    },
+    {
+      "path": "props/namaqualand_boulder_02/model.rasset",
+      "bytes": 116,
+      "sha256": "3d532c0e8d6a8368db3fc05bdf909038b7e1ecfcdb3b60aaa989c833422a192f"
+    },
+    {
+      "path": "props/namaqualand_boulder_02/textures/namaqualand_boulder_02_arm_1k.jpg",
+      "bytes": 796910,
+      "sha256": "e67643f5de3e2bfdd07fae1137eff0b9d86745a8c60ccac7e64b62e85ae9cee0"
+    },
+    {
+      "path": "props/namaqualand_boulder_02/textures/namaqualand_boulder_02_diff_1k.jpg",
+      "bytes": 1010348,
+      "sha256": "e567620fa04906e023e3d3b49860dd32db39b368d72ecfc10ad005945fd4034d"
+    },
+    {
+      "path": "props/namaqualand_boulder_02/textures/namaqualand_boulder_02_nor_gl_1k.jpg",
+      "bytes": 1031460,
+      "sha256": "2407a9915ea0cf42b164d42f548618145da892b948327fff67bef6123790a5d7"
+    },
+    {
+      "path": "props/plastic_crate_03/model.bin",
+      "bytes": 567504,
+      "sha256": "f3fbca8717fcffbc5c91c77f3056051d8b81db3b41654bc1641b0192a0bc9d55"
+    },
+    {
+      "path": "props/plastic_crate_03/model.gltf",
+      "bytes": 1679,
+      "sha256": "c957063dae1d012cf6f0971ac3fc4b17a4f602d5c794a2cb06d0ec5aaa07b00f"
+    },
+    {
+      "path": "props/plastic_crate_03/textures/plastic_crate_03_arm_1k.jpg",
+      "bytes": 937207,
+      "sha256": "b102504f012af9f5b8d3e229a106f6cd74df485f3650558e03fad22b33147452"
+    },
+    {
+      "path": "props/plastic_crate_03/textures/plastic_crate_03_diff_1k.jpg",
+      "bytes": 730169,
+      "sha256": "fb7f0b70da651e260aec7ee3506ecdc8aad62e65d2bf9341609e2a18749591bd"
+    },
+    {
+      "path": "props/plastic_crate_03/textures/plastic_crate_03_nor_gl_1k.jpg",
+      "bytes": 772566,
+      "sha256": "a7d01166ab720a51036e9390cb6aa2f8ef057b9d976062bf78205a089100e087"
+    },
+    {
+      "path": "props/plastic_monobloc_chair_01/model.bin",
+      "bytes": 144944,
+      "sha256": "cbfa2935ec129f8e12a4ba8c97d757bb9448a6995cbaac95339c59c720eb1ce8"
+    },
+    {
+      "path": "props/plastic_monobloc_chair_01/model.gltf",
+      "bytes": 1727,
+      "sha256": "e4015182c4b6944c130b14867088755dae3878ef1ddb836e618b659c2df85943"
+    },
+    {
+      "path": "props/plastic_monobloc_chair_01/textures/plastic_monobloc_chair_01_arm_1k.jpg",
+      "bytes": 634320,
+      "sha256": "78a67659a19a9df9efc0ef71789de0c949a727db62ade4c4c8887cd2c803c1a2"
+    },
+    {
+      "path": "props/plastic_monobloc_chair_01/textures/plastic_monobloc_chair_01_diff_1k.jpg",
+      "bytes": 560823,
+      "sha256": "fdd1255a02bf684cfcff2eae75c0e3eea0db1fb5ecbfbd8c4f9beab8fd83ff6c"
+    },
+    {
+      "path": "props/plastic_monobloc_chair_01/textures/plastic_monobloc_chair_01_nor_gl_1k.jpg",
+      "bytes": 630024,
+      "sha256": "9ffa876b37d72ae1c0aed84d4dc1f62c956c844b3efec1f786f9080c10f63c9e"
+    },
+    {
+      "path": "props/porta_potty/license.txt",
+      "bytes": 664,
+      "sha256": "0f4e3ef4312cb5ac1b63f6ac78c35eea27c83e6d235f40b49f81e3a7514e0048"
+    },
+    {
+      "path": "props/porta_potty/model.bin",
+      "bytes": 91564,
+      "sha256": "87f3ec075c6904fe6408338978db77a1ac32df07a69e2ea2702fc5ece9c25240"
+    },
+    {
+      "path": "props/porta_potty/model.gltf",
+      "bytes": 1481,
+      "sha256": "2d7a6b65273075b70e0277cfe559d5dac06c257b7465c5478eff5ec772fd827d"
+    },
+    {
+      "path": "props/porta_potty/model.rasset",
+      "bytes": 126,
+      "sha256": "2a9ea30e8c7c13619bf361087020dbff9ac9214810cc5170f2d9838b2848acfb"
+    },
+    {
+      "path": "props/porta_potty/textures/lambert1_baseColor.jpg",
+      "bytes": 180418,
+      "sha256": "e7dfa47c764fbf5caf064b8cdc665f3e376c9896e07012ecd7c6aa917e944778"
+    },
+    {
+      "path": "props/porta_potty/textures/lambert1_metallicRoughness.jpg",
+      "bytes": 266213,
+      "sha256": "e332b1f3565292af56eb8b0608e3e4c769ab05f6a798e0bc737ad2ceadd237bf"
+    },
+    {
+      "path": "props/porta_potty/textures/lambert1_normal.jpg",
+      "bytes": 157440,
+      "sha256": "9af90f3df9e649ee7722d124c572fde995cb1ec8c52d8255f1bcbc01b355fb59"
+    },
+    {
+      "path": "props/portable_generator/model.bin",
+      "bytes": 626004,
+      "sha256": "b3775438379f9d0930d491c7d8ec322ecd4c20612f3dee8fc9d80e421956f202"
+    },
+    {
+      "path": "props/portable_generator/model.gltf",
+      "bytes": 3163,
+      "sha256": "829e05096d025f7ec2e790a6f23cee1b12bc0bc36b500d5bf309f80625894137"
+    },
+    {
+      "path": "props/portable_generator/model.rasset",
+      "bytes": 133,
+      "sha256": "e703bc342178a0b579ab36f4572c22b95a85fe07f2bf4247aa047473cc763cfa"
+    },
+    {
+      "path": "props/portable_generator/textures/portable_generator_arm_1k.jpg",
+      "bytes": 887711,
+      "sha256": "10236e967baddd90ec7d4ab68969b06fb419f98782a2796db94edc0249b0dad2"
+    },
+    {
+      "path": "props/portable_generator/textures/portable_generator_diff_1k.jpg",
+      "bytes": 755079,
+      "sha256": "32acc300105a2df2290d872889b24e1b29ff1ca2c56c0a0cf8fbba0c5966a063"
+    },
+    {
+      "path": "props/portable_generator/textures/portable_generator_nor_gl_1k.jpg",
+      "bytes": 818829,
+      "sha256": "8a868edab1a2f5ffa50b2b1680c2c342491b3eeeac443734178c445c7286c25d"
+    },
+    {
+      "path": "props/portable_generator/textures/portable_generator_spec_1k.jpg",
+      "bytes": 23119,
+      "sha256": "acf30e81c367898eb846f353d77e404f6831ac23bf071e0e718fddb8881b86cb"
+    },
+    {
+      "path": "props/rock_07/collision.obj",
+      "bytes": 2623,
+      "sha256": "4dc3cc37a0a0b3247e09e385188c338c54443ed0cc935f878ff22e009302f78a"
+    },
+    {
+      "path": "props/rock_07/model.bin",
+      "bytes": 46672,
+      "sha256": "89d2f5819fa1c1d22b5783efa8bc829fa986f6e14c3e5e6d095e9680326e0a03"
+    },
+    {
+      "path": "props/rock_07/model.gltf",
+      "bytes": 1602,
+      "sha256": "d0200e0e2d9d5e8a0f30cd038e3556066b6d522076d3f883e14e75531a2c6ca0"
+    },
+    {
+      "path": "props/rock_07/model.rasset",
+      "bytes": 116,
+      "sha256": "3d532c0e8d6a8368db3fc05bdf909038b7e1ecfcdb3b60aaa989c833422a192f"
+    },
+    {
+      "path": "props/rock_07/textures/rock_07_arm_1k.jpg",
+      "bytes": 309735,
+      "sha256": "1ed76e9a8542c76bdc6b7b018720ae1f52cd75d9f5ae719f613de3f5032cf4da"
+    },
+    {
+      "path": "props/rock_07/textures/rock_07_diff_1k.jpg",
+      "bytes": 635452,
+      "sha256": "8ff1965aa1664cc4abcc0131c44ee2b97ab14d6e131d7a51429ff261eeb101c8"
+    },
+    {
+      "path": "props/rock_07/textures/rock_07_nor_gl_1k.jpg",
+      "bytes": 766986,
+      "sha256": "57cb2210951aeb376164fce5f7c65f03e5599def04873b56cad0f173c275d78d"
+    },
+    {
+      "path": "props/rock_09/model.bin",
+      "bytes": 31520,
+      "sha256": "b430d35fc6856474d82871f934174a6d25392fed2a56112eef3fece446abab3d"
+    },
+    {
+      "path": "props/rock_09/model.gltf",
+      "bytes": 1599,
+      "sha256": "d66f6824edb34d1db856e7049c064b2415042a14015047f6824f6ce19764f7bc"
+    },
+    {
+      "path": "props/rock_09/textures/rock_09_arm_1k.jpg",
+      "bytes": 322950,
+      "sha256": "594e2cec49e6bb40bd9bab2649e37dcc261079456cf4d6f680f56770c19db5ea"
+    },
+    {
+      "path": "props/rock_09/textures/rock_09_diff_1k.jpg",
+      "bytes": 595103,
+      "sha256": "afb7ae5ae82238d304aba589391ac6bc87f7cf1dbfe50980c21f762cfdd87efd"
+    },
+    {
+      "path": "props/rock_09/textures/rock_09_nor_gl_1k.jpg",
+      "bytes": 757031,
+      "sha256": "2195b5c7da3a23af2a5f93dbb20f38bc069028509b106397bc8d2aee0bc55729"
+    },
+    {
+      "path": "props/start_gantry/model.bin",
+      "bytes": 192496,
+      "sha256": "bb47ba5ac3de4173409714a91dc528c7671b3269100ea9aedfbfa508256c7df2"
+    },
+    {
+      "path": "props/start_gantry/model.gltf",
+      "bytes": 2633,
+      "sha256": "3633159dd5ca5baa193cae7af95cecefb842a15282deb24c35afa0eb4981c5bf"
+    },
+    {
+      "path": "props/start_gantry/model.rasset",
+      "bytes": 178,
+      "sha256": "b0cc038f7c6ab14392a35373584e066740b1c2a14acb5d1f1d62e519db673cc5"
+    },
+    {
+      "path": "props/start_gantry/textures/banner.jpg",
+      "bytes": 34524,
+      "sha256": "1517ecdbbfc033d45d1cde20c032243117331220e16a1c16f4c34d6aab0e7cc4"
+    },
+    {
+      "path": "props/tool_cart/model.bin",
+      "bytes": 336688,
+      "sha256": "fe8f550253e0b4dea3b2edc42e8dad9096dad645e5ab40051e246026f3ff5434"
+    },
+    {
+      "path": "props/tool_cart/model.gltf",
+      "bytes": 1615,
+      "sha256": "f81f67a9839563c1d1165a7d665000553cd74e134c784fce8970ad4eb020108a"
+    },
+    {
+      "path": "props/tool_cart/model.rasset",
+      "bytes": 129,
+      "sha256": "d6a17ca38f88dc2ca9e8758340b137d0c08aae5085ac19d5bf7eb32167dda3e6"
+    },
+    {
+      "path": "props/tool_cart/textures/tool_cart_arm_1k.jpg",
+      "bytes": 744873,
+      "sha256": "2b928779ab242468c90e6074ab72567bc58ecf3e0240fd709e4507b59764aef7"
+    },
+    {
+      "path": "props/tool_cart/textures/tool_cart_diff_1k.jpg",
+      "bytes": 711555,
+      "sha256": "3a3e18efa54d18f2d01ad51cb40f8edd9af76e054a6a9c21324bc14fe49be965"
+    },
+    {
+      "path": "props/tool_cart/textures/tool_cart_nor_gl_1k.jpg",
+      "bytes": 817628,
+      "sha256": "fa995e77eacad81c78f650e28a6d4c1c7b9d6c74a3f314d5f5ebdddf6de510fc"
+    },
+    {
+      "path": "props/traffic_cone/collision.obj",
+      "bytes": 1127,
+      "sha256": "440bf2139e7a6226045622526d029660c6c184485b6b1f465ff7b73334ca6580"
+    },
+    {
+      "path": "props/traffic_cone/model.bin",
+      "bytes": 60440,
+      "sha256": "ea27852e09c0670a22ea0709f4b735125c880ee21398df1c64890536d3637bfa"
+    },
+    {
+      "path": "props/traffic_cone/model.gltf",
+      "bytes": 1465,
+      "sha256": "cdb9dcd9b7e65f5ebe5ace3efc3d5e809f1e1eaafecde2002ce5dde6054b84c3"
+    },
+    {
+      "path": "props/traffic_cone/textures/traffic_cone_diffuse.jpg",
+      "bytes": 404939,
+      "sha256": "c60cd79c109727e977695a5a9326e78dd23047acac7bcab20cb90f55e0bd2d6c"
+    },
+    {
+      "path": "props/traffic_cone/textures/traffic_cone_normal.jpg",
+      "bytes": 170119,
+      "sha256": "f52033ac122650dc153be373646a7314196dbabad5d3bfa54e5d0ecc97b94225"
+    },
+    {
+      "path": "props/traffic_cone/textures/traffic_cone_roughness.jpg",
+      "bytes": 352158,
+      "sha256": "48fbd73c8c79fff4887fc992ee320ef50a66eab9d94c92e562e9e09e9ddf12e6"
+    },
+    {
+      "path": "props/tyre_stack/model.bin",
+      "bytes": 152064,
+      "sha256": "74aa5f6a59f8a05a9cb87578293e0396aa0e53a653dc5d58928e6ced4fda70f8"
+    },
+    {
+      "path": "props/tyre_stack/model.gltf",
+      "bytes": 1593,
+      "sha256": "36cb759304dcf8eb01ead9fcc21f0e7ade43533fd6b934a27093c0cf89737da7"
+    },
+    {
+      "path": "props/tyre_stack/model.rasset",
+      "bytes": 143,
+      "sha256": "971f4e369dd680c5f00458b1cf4f126b1bf7ee62b519ead03f6b155e955a3970"
+    },
+    {
+      "path": "props/tyre_stack/textures/old_tyre_arm_1k.jpg",
+      "bytes": 776823,
+      "sha256": "3bcf192f5b99a7a574f9e21e75927043e6726c601a5da15e3210a31db05e12d4"
+    },
+    {
+      "path": "props/tyre_stack/textures/old_tyre_diff_1k.jpg",
+      "bytes": 650708,
+      "sha256": "0e34ce658c0844c0c94022233226d495930d514c917a5fa15ffee4760567439e"
+    },
+    {
+      "path": "props/tyre_stack/textures/old_tyre_nor_gl_1k.jpg",
+      "bytes": 722778,
+      "sha256": "34b716e140408985ddbab7d4bf1d8d430edf834cd2fd4639d82b14cb393fa73e"
+    },
+    {
+      "path": "props/water_barrier/license.txt",
+      "bytes": 688,
+      "sha256": "41b65cd932b1c3211966220b124ef9376bb5003f42dc8705887b4a5774bb9ff7"
+    },
+    {
+      "path": "props/water_barrier/red.bin",
+      "bytes": 47488,
+      "sha256": "a855abcfda1957d8b0654877885946f204787543dc2ae5aa77f754bd44eb2514"
+    },
+    {
+      "path": "props/water_barrier/red.gltf",
+      "bytes": 2020,
+      "sha256": "b24f1e8110a9ce15a0d4ffa56f5c8eaa2a76b07ba50dce03e24a5e2ebb8c75d2"
+    },
+    {
+      "path": "props/water_barrier/red.rasset",
+      "bytes": 130,
+      "sha256": "bbabfec9461f1e64a0836f790df508bc21d1348c6e0cd9f187f2a0e8d6af3d16"
+    },
+    {
+      "path": "props/water_barrier/textures/WaterBarrier_RED_M_baseColor.jpg",
+      "bytes": 179756,
+      "sha256": "dc5d393058dfec64962c7aef8a6fa13b29c550d3619bfd61498d9c665bbec363"
+    },
+    {
+      "path": "props/water_barrier/textures/WaterBarrier_RED_M_metallicRoughness.jpg",
+      "bytes": 330225,
+      "sha256": "31423e00160e1bf9b0b28ef00c3761b08671767541161a0f1244b60caeeb81c0"
+    },
+    {
+      "path": "props/water_barrier/textures/WaterBarrier_RED_M_normal.jpg",
+      "bytes": 123519,
+      "sha256": "fe71d7a5f34850390fcb1a85affe16ea8f485c355c05fbd980f7a223553df3b9"
+    },
+    {
+      "path": "props/water_barrier/textures/WaterBarrier_WHITE_M_baseColor.jpg",
+      "bytes": 126224,
+      "sha256": "5c8cb0f8e894011aacd7cd9a92d3f843f3fc6c9fc9c6aeb16c78ce6e89cfa9d8"
+    },
+    {
+      "path": "props/water_barrier/textures/WaterBarrier_WHITE_M_metallicRoughness.jpg",
+      "bytes": 264961,
+      "sha256": "df70ad19a77b538e5d20212d4e5e8f2b10e8cb53be041b4c8487e60fa6249369"
+    },
+    {
+      "path": "props/water_barrier/textures/WaterBarrier_WHITE_M_normal.jpg",
+      "bytes": 120410,
+      "sha256": "73fc0cabe6dddb68557ccff555ed5dd1854e6c35183a1ecda569c96d50ef1667"
+    },
+    {
+      "path": "props/water_barrier/white.bin",
+      "bytes": 47488,
+      "sha256": "a855abcfda1957d8b0654877885946f204787543dc2ae5aa77f754bd44eb2514"
+    },
+    {
+      "path": "props/water_barrier/white.gltf",
+      "bytes": 2026,
+      "sha256": "2f4d45d1c5a15a61634ba7aa4130709a376057917414d0866ef22b74c5950061"
+    },
+    {
+      "path": "props/water_barrier/white.rasset",
+      "bytes": 132,
+      "sha256": "512636041f096a5a6fcecd195d9ad4b0c59512003a2e65da9b5a3d2d09f55fe4"
+    },
+    {
+      "path": "props/wooden_picnic_table/model.bin",
+      "bytes": 340376,
+      "sha256": "d9cd79f4128b72b28120a0a216cd7f713f594a9080cbbe46b1bdf36fb7d68b29"
+    },
+    {
+      "path": "props/wooden_picnic_table/model.gltf",
+      "bytes": 3111,
+      "sha256": "d5bc209b37efc9c42202f177bf8a6135d66a92406d060de5e02572d39cddaf9e"
+    },
+    {
+      "path": "props/wooden_picnic_table/model.rasset",
+      "bytes": 133,
+      "sha256": "d2974132b5589e07c1dc1f806b43c0b7581523a88e9f96885ff3b5c4197e6f9a"
+    },
+    {
+      "path": "props/wooden_picnic_table/textures/wooden_picnic_table_bottom_arm_1k.jpg",
+      "bytes": 699984,
+      "sha256": "555226136c1d754d4aa5da42385a9152a146c5175382c77cced611a6880efd35"
+    },
+    {
+      "path": "props/wooden_picnic_table/textures/wooden_picnic_table_bottom_diff_1k.jpg",
+      "bytes": 680087,
+      "sha256": "887b9a57213f87196fb090419e14d00095af8fa56c93ca6cd7d0d70ef4e5fd27"
+    },
+    {
+      "path": "props/wooden_picnic_table/textures/wooden_picnic_table_bottom_nor_gl_1k.jpg",
+      "bytes": 548315,
+      "sha256": "c5d6eb388eceb6d98e92ff31d3f3346d411b1bbcb15c05dc9da71e4a7e398539"
+    },
+    {
+      "path": "props/wooden_picnic_table/textures/wooden_picnic_table_top_arm_1k.jpg",
+      "bytes": 747432,
+      "sha256": "50d2b7a0b15c56bf82bc0c918e6eaa5f590a6fd61d32311c8da85c414ace297d"
+    },
+    {
+      "path": "props/wooden_picnic_table/textures/wooden_picnic_table_top_diff_1k.jpg",
+      "bytes": 722582,
+      "sha256": "4aefdef35bf343410dbebd8577dfc968f1d6420ccddc601b19912e84b2accc0a"
+    },
+    {
+      "path": "props/wooden_picnic_table/textures/wooden_picnic_table_top_nor_gl_1k.jpg",
+      "bytes": 625681,
+      "sha256": "1e65787457f9edfdd04f1ee3f777ac2d2a9d43bfbbd3cb40c1e086f939bba419"
+    },
+    {
+      "path": "sources.json",
+      "bytes": 39404,
+      "sha256": "b87bc0b9d335531824facecc262f6f3e067732733a50c67a6ede552ed4e46d1f"
+    },
+    {
+      "path": "terrain/height.png",
+      "bytes": 1362030,
+      "sha256": "014c2c96d35679f55cd29c1e2aca643fafd591a488e0e410ab29d76ae9f16127"
+    },
+    {
+      "path": "terrain/surface.png",
+      "bytes": 275646,
+      "sha256": "e46bacbaeb785196ec1b7d04796acccf969c32565b8189c96642eb270c9ec970"
+    },
+    {
+      "path": "terrain/terrain.txt",
+      "bytes": 14734,
+      "sha256": "e2bb408f75ba0c122a30acad45415b386a11db106388e144a227f2ffe305314b"
+    },
+    {
+      "path": "terrain/textures/brown_mud_dry_diff_2k.jpg",
+      "bytes": 2247717,
+      "sha256": "96556347836807cd10b3f83cdb7cdf780bdcc1891e29b832edcdae80d769ca92"
+    },
+    {
+      "path": "terrain/textures/brown_mud_dry_nor_gl_1k.jpg",
+      "bytes": 662840,
+      "sha256": "387cdad4de188702f2984fc4e0086112b8f5cb48c2ded6b62caf5f61afc5a423"
+    },
+    {
+      "path": "terrain/textures/dry_ground_rocks_diff_2k.jpg",
+      "bytes": 2093389,
+      "sha256": "f6e7cb2d6b19fc1af6bb7377e960cafbd1ecd415d807057c95b466f0d4911ded"
+    },
+    {
+      "path": "terrain/textures/dry_ground_rocks_nor_gl_1k.jpg",
+      "bytes": 597337,
+      "sha256": "45e5a92931b3b0c5ba079263bb3099cbb00c729ff5b91931fe361c16b6b7d0f6"
+    },
+    {
+      "path": "terrain/textures/rock_face_03_diff_2k.jpg",
+      "bytes": 1445004,
+      "sha256": "eabebe147f6d993f5c84a1dd5c8bcd2e765f4d08f042ba88efc88c686607c0a7"
+    },
+    {
+      "path": "terrain/textures/rock_face_03_nor_gl_1k.jpg",
+      "bytes": 457303,
+      "sha256": "b130908a6b9d55fca19176a04ca4d88a2339216770f4a4e0b790c19abe1e6e36"
+    },
+    {
+      "path": "terrain/textures/rocky_terrain_02_diff_2k.jpg",
+      "bytes": 1106987,
+      "sha256": "91930cdcfa324e061460c7b5f453a4ce8ecfac1aa211fcc7315c2d3da93fa7ea"
+    },
+    {
+      "path": "terrain/textures/rocky_terrain_02_nor_gl_1k.jpg",
+      "bytes": 350223,
+      "sha256": "656c11b8e4b0d52756d07879a8a4b630d4f97d8ac9ba1ad1ae05f8cf41a1c304"
+    },
+    {
+      "path": "terrain/textures/rocky_trail_diff_2k.jpg",
+      "bytes": 1760424,
+      "sha256": "9612fa4ccf29874d5f87cc391a6dcdad2312d71583f4a12b7426f3615ae36e7f"
+    },
+    {
+      "path": "terrain/textures/rocky_trail_nor_gl_1k.jpg",
+      "bytes": 629434,
+      "sha256": "e5f9e4dfe5eddaa83a633aca0d0ff7a29edb2ff6f14942d5d1e5f51c3482f889"
+    },
+    {
+      "path": "terrain/wear.png",
+      "bytes": 48687,
+      "sha256": "09ded8288e877211857d4b727c8a6b1e3e866ff218447badfb2c80e7b12e9bfd"
+    }
+  ]
+}

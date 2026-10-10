@@ -28,6 +28,11 @@ data/*
 docs/.venv/*
 uv.lock
 .python-version
+
+# Python bytecode caches
+__pycache__/
+*.py[cod]
+
 .codex
 ./agents/*
 

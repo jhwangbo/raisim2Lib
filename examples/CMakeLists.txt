@@ -213,6 +213,7 @@ create_rayrai_executable(rayrai_complete_showcase src/rayrai/getting_started/ray
 # Sensors.
 create_rayrai_executable(rayrai_rgb_camera src/rayrai/sensors/rayrai_rgb_camera.cpp)
 create_rayrai_executable(rayrai_depth_camera src/rayrai/sensors/rayrai_depth_camera.cpp)
+create_rayrai_executable(rayrai_deformable_terrain src/rayrai/physics/rayrai_deformable_terrain.cpp)
 create_rayrai_executable(rayrai_heightmap_replacement src/rayrai/sensors/rayrai_heightmap_replacement.cpp)
 create_rayrai_executable(rayrai_lidar_pointcloud src/rayrai/sensors/rayrai_lidar_pointcloud.cpp)
 create_rayrai_executable(rayrai_aruco_marker src/rayrai/sensors/rayrai_aruco_marker.cpp)
@@ -296,36 +297,38 @@ create_rayrai_executable(rayrai_forest src/rayrai/worlds/rayrai_forest.cpp)
 target_compile_features(rayrai_forest PRIVATE cxx_std_20)
 target_compile_definitions(rayrai_forest PRIVATE
     FOREST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../rsc/forest")
-# The same forest built by raisim::World from its .rscene file. The .rscene reader is new in
-# v2.7.1, so a package without its rayrai half (RsceneVisuals.hpp) skips this example.
+# The scene examples below build a raisim::World from a .rscene file (or an XML file that includes
+# one) and rely on raisin::RayraiWindow applying the world's scene itself. rayrai/RsceneVisuals.hpp
+# declares raisin::rsceneVisuals() since then; an older package would show only the physics bodies,
+# so these examples are skipped against it.
 get_target_property(_rayrai_include_dirs rayrai INTERFACE_INCLUDE_DIRECTORIES)
-set(_rayrai_has_rscene OFF)
+set(_rayrai_applies_world_rscene OFF)
 foreach(_rayrai_include_dir IN LISTS _rayrai_include_dirs)
     if(EXISTS "${_rayrai_include_dir}/rayrai/RsceneVisuals.hpp")
-        set(_rayrai_has_rscene ON)
+        file(STRINGS "${_rayrai_include_dir}/rayrai/RsceneVisuals.hpp" _rayrai_rscene_accessor
+            REGEX "rsceneVisuals\\(")
+        if(_rayrai_rscene_accessor)
+            set(_rayrai_applies_world_rscene ON)
+        endif()
     endif()
 endforeach()
-if(_rayrai_has_rscene)
-    create_rayrai_executable(rayrai_forest_from_rscene src/rayrai/worlds/rayrai_forest_from_rscene.cpp)
-    target_compile_features(rayrai_forest_from_rscene PRIVATE cxx_std_20)
-else()
-    message(STATUS "Skipping rayrai_forest_from_rscene: the installed rayrai has no .rscene "
-                   "support (rayrai/RsceneVisuals.hpp, new in v2.7.1)")
-endif()
-# Photoreal city loaded from rsc/city/rayrai_city.rscene, with an ANYmal C added in C++.
-if(_rayrai_has_rscene)
-    create_rayrai_executable(rayrai_city src/rayrai/worlds/rayrai_city.cpp)
-    target_compile_features(rayrai_city PRIVATE cxx_std_20)
-else()
-    message(STATUS "Skipping rayrai_city: the installed rayrai has no .rscene support")
-endif()
-# Photoreal warehouse loaded from rsc/warehouse/rayrai_warehouse.rscene, with an ANYmal C added in C++.
-if(_rayrai_has_rscene)
-    create_rayrai_executable(rayrai_warehouse src/rayrai/worlds/rayrai_warehouse.cpp)
-    target_compile_features(rayrai_warehouse PRIVATE cxx_std_20)
-else()
-    message(STATUS "Skipping rayrai_warehouse: the installed rayrai has no .rscene support")
-endif()
+foreach(_rscene_example IN ITEMS
+        rayrai_forest_from_rscene  # the forest, from its .rscene file
+        rayrai_city                # photoreal city from rsc/city, with an ANYmal C added in C++
+        rayrai_city_from_xml       # the same city and robot from one XML file that includes the scene
+        rayrai_warehouse)          # photoreal warehouse, with an ANYmal C added in C++
+    if(_rayrai_applies_world_rscene)
+        create_rayrai_executable(${_rscene_example} src/rayrai/worlds/${_rscene_example}.cpp)
+        target_compile_features(${_rscene_example} PRIVATE cxx_std_20)
+    else()
+        message(STATUS "Skipping ${_rscene_example}: the installed rayrai does not apply a world's "
+                       ".rscene scene (rayrai/RsceneVisuals.hpp has no rsceneVisuals())")
+    endif()
+endforeach()
+# An off-road buggy with double-wishbone suspension (URDF closed by pin, equality and mimic
+# constraints) driven with the arrow keys over an eroded meadow with a dirt track.
+create_rayrai_executable(rayrai_offroad_buggy src/rayrai/worlds/rayrai_offroad_buggy.cpp)
+target_compile_features(rayrai_offroad_buggy PRIVATE cxx_std_20)
 option(RAISIM_FOREST_COLLISION_BENCHMARK "Build the forest collision benchmark" OFF)
 if(RAISIM_FOREST_COLLISION_BENCHMARK)
     create_executable(forest_collision_benchmark tools/benchmark_forest_collision.cpp)

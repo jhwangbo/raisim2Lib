@@ -185,17 +185,28 @@ Start with these targets when learning a specific feature:
        :doc:`examples/rayrai/rayrai_forest` for the required rayrai version.
    * - ``rayrai_forest_from_rscene``
      - The same forest built from its saved RaiSim Engine ``.rscene`` file
-       with ``raisim::World(path)`` and ``raisin::applyRscene``. Requires
+       with ``raisim::World(path)`` and shown by a ``RayraiWindow``. Requires
        RaiSim and rayrai v2.7.1 (not yet released); see
        :doc:`examples/rayrai/rayrai_forest_from_rscene` and :doc:`RsceneFile`.
    * - ``rayrai_city``
      - A photoreal city of modular buildings, streets and parked cars loaded
        from ``rsc/city/rayrai_city.rscene``, with an ANYmal C quadruped added
        in C++. See :doc:`examples/rayrai/rayrai_city`.
+   * - ``rayrai_city_from_xml``
+     - The same city and robot from one RaiSim XML world file, which describes
+       the ANYmal C and includes the city's ``.rscene`` file. See
+       :doc:`examples/rayrai/rayrai_city_from_xml`.
    * - ``rayrai_warehouse``
      - A photoreal warehouse of pallet racks, forklifts and a dock area loaded
        from ``rsc/warehouse/rayrai_warehouse.rscene``, with an ANYmal C
        quadruped added in C++. See :doc:`examples/rayrai/rayrai_warehouse`.
+   * - ``rayrai_offroad_buggy``
+     - An off-road buggy with double-wishbone suspension, coilovers and
+       rack-and-pinion steering, all in one URDF closed by pin, equality and
+       mimic constraints, driven with the arrow keys on a dirt race circuit
+       with pits, tyre walls, hay bales, cones and spectator stands;
+       ``--validate`` checks its physics.
+       See :doc:`examples/rayrai/rayrai_offroad_buggy`.
 
 Targets without a dedicated page
 --------------------------------
@@ -226,8 +237,8 @@ feature page:
    * - ``rayrai_blue_wall_scene``
      - An authored glTF interior with its light sidecar and HDR environment,
        described by ``rsc/rayrai/blue_wall/blue_wall.rscene``. The example
-       reads that file with its own parser; ``raisim::World(path)`` and
-       ``raisin::applyRscene`` load it as well (see :doc:`RsceneFile`).
+       reads that file with its own parser; ``raisim::World(path)`` and a
+       ``RayraiWindow`` on that world load it as well (see :doc:`RsceneFile`).
        ``--screenshot PNG`` renders in a hidden window, saves the image, and
        exits.
 
@@ -251,10 +262,16 @@ Some targets depend on bundled assets or platform runtime packages:
   executables, and the scene references the same assets.
 * ``rayrai_city`` reads ``rsc/city/rayrai_city.rscene`` from the ``rsc`` copy
   next to the executables (``--scene`` picks another file). Its street trees
-  are the forest's, so it also needs ``rsc/forest``.
+  are the forest's, so it also needs ``rsc/forest``. ``rayrai_city_from_xml``
+  reads ``rsc/xmlScripts/rscene/anymal_in_city.xml``, which includes the same
+  scene.
 * ``rayrai_warehouse`` reads ``rsc/warehouse/rayrai_warehouse.rscene`` the same
   way. It reuses the city's sky, asphalt and traffic cones, so it also needs
   ``rsc/city``.
+* ``rayrai_offroad_buggy`` reads ``rsc/offroad_buggy`` (the car, its URDF, the
+  terrain and the race venue's props), places the trees, rocks and grass of
+  ``rsc/forest``, and uses the sky and cars of ``rsc/city`` and the barrels of
+  ``rsc/warehouse``.
 * ``rayrai_coacd_mesh_approximation`` writes ``raisim_coacd_*`` cache files
   beside the YCB meshes in the build tree's ``rsc`` copy.
 
@@ -311,7 +328,9 @@ Rayrai Tools And Examples
    examples/rayrai/rayrai_swept_ccd
    examples/rayrai/rayrai_forest_from_rscene
    examples/rayrai/rayrai_city
+   examples/rayrai/rayrai_city_from_xml
    examples/rayrai/rayrai_warehouse
+   examples/rayrai/rayrai_offroad_buggy
    examples/rayrai/rayrai_tcp_viewer
 
 Server Examples

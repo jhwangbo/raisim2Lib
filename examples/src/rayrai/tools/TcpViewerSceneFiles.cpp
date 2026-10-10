@@ -58,8 +58,10 @@ bool ViewerSceneFiles::update(RayraiWindow& viewer, RemoteScene& scene) {
   viewerSettingsReset_ = false;
   touched_ = true;
   try {
-    // On failure, applyRscene() removes the visuals it created before it throws.
-    visuals_ = applyRscene(*sync_.scene(), viewer);
+    // The server's scene is not the viewer's world scene, so it is applied here. On failure,
+    // applyRscene() removes the visuals it created before it throws.
+    visuals_ = rayrai_internal::applyRscene(*sync_.scene(), viewer,
+                                            rsceneRenderSettings(*sync_.scene()));
   } catch (const std::exception& error) {
     remove(viewer);
     sync_.markFailed(std::string("The scene could not be shown: ") + error.what());

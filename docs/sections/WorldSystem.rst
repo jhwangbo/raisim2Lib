@@ -44,21 +44,20 @@ a path chooses the loader from the file extension and content.
    through ``World::getRscene()``, so rayrai can apply the rest of the scene,
    as RaiSim Engine 2's viewport shows it (render settings, sky, lights, fog,
    visual-only objects, instanced visuals, terrain foliage and textures, and
-   the camera), in one call:
+   the camera). A ``RayraiWindow`` applies it when it is constructed:
 
    .. code-block:: cpp
 
      auto world = std::make_shared<raisim::World>("forest.rscene");
-     raisin::RayraiWindow viewer(world, 1280, 800);
-     raisin::applyRscene(*world->getRscene(), viewer);
+     raisin::RayraiWindow viewer(world, 1280, 800);  // shows the whole scene
 
-   Change the file's render settings in C++ before applying them:
+   To change the file's render settings in C++:
 
    .. code-block:: cpp
 
      auto render = raisin::rsceneRenderSettings(*world->getRscene());
      render.quality.viewerMsaaSamples = 8;
-     raisin::applyRscene(*world->getRscene(), viewer, render);
+     raisin::setRsceneRenderSettings(viewer, render);
 
    Content the reader cannot reproduce exactly, such as articulated systems,
    compounds or nodes that inherit another node's transform, is a fatal error
@@ -66,6 +65,9 @@ a path chooses the loader from the file extension and content.
    world's defaults; Engine 2's defaults differ from ``raisim::World``'s (see
    :ref:`sections/RsceneFile:Solver defaults`). See
    :doc:`examples/rayrai/rayrai_forest_from_rscene` for a complete example.
+   An XML world configuration file can include a scene
+   (``<include value="[THIS_DIR]/scene.rscene"/>``) and add a robot to it; see
+   :ref:`sections/RsceneFile:A robot in a scene`.
 
 #. **Programmatically.** Default-construct an empty world and add objects
    in code:

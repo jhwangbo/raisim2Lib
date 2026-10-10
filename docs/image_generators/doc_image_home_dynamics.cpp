@@ -243,7 +243,6 @@ void city(const std::filesystem::path& frames, const std::filesystem::path& rsc)
 
   raisin::RayraiWindow viewer(world, width, height);
   viewer.setAsyncMeshLoadingEnabled(true);
-  raisin::applyRscene(*world->getRscene(), viewer);
   if (!doc_image::waitForSceneAssetsReady(viewer, width, height))
     throw std::runtime_error("city assets did not finish loading");
   viewer.setAsyncMeshLoadingEnabled(false);

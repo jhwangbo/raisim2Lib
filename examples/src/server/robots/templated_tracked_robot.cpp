@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
   auto box5 = world.addBox(1,3,0.3, 100);
   box5->setPosition(10, 0, 0.15);
 
-  /// customize robot in code
+  /// customize robot in code: each @@name in the URDF template is replaced by its value
   std::vector<raisim::World::ParameterContainer> params;
   params.push_back({"rho", "500"});
   params.push_back({"base_length", "1.0"});
@@ -34,30 +34,29 @@ int main(int argc, char *argv[]) {
   params.push_back({"wheel_width", "0.08"});
   params.push_back({"wheel_radius", "0.17775"});
   params.push_back({"flipper_radius", "0.16"});
+  params.push_back({"track_thickness", "0.015"});
 
   auto robot =
       world.addArticulatedSystem(exampleRscPath(argv[0], "templatedTrackedRobot/trackedTemplate.urdf"), params);
   robot->setName("tracked");
-  robot->setBasePos({0,0,0.4});
-  Eigen::VectorXd pGain(robot->getDOF()), dGain(robot->getDOF()), pTarget(robot->getGeneralizedCoordinateDim()),
-      dTarget(robot->getDOF());
-  raisim::Vec<3> pos(robot->getBasePosition());
-  pGain.setZero();
-  dGain.setZero();
-  pTarget.setZero();
-  dTarget.setZero();
-  std::vector<int> trackLinkGv = {10, 12, 18, 20, 24, 26, 28, 30, 11, 13, 19, 21, 25, 27, 29, 31};
-  std::vector<int> wheelGv = {6, 22, 14, 23, 8, 9, 16, 17};
-  std::vector<int> flipperGv = {7, 15};
-  dGain.setConstant(50.0);
+  robot->setBasePos({0, 0, 0.25});
 
-  for (auto wheel: wheelGv)
-    dTarget[wheel] = 5.0;
-
-  for (auto flipper: flipperGv) {
-    pGain[flipper] = 250.0;
-    pTarget[flipper + 1] = -0.6;
+  /// the belts move with the sprockets (see the <track> elements of the URDF): drive the sprockets
+  /// at 5 rad/s and hold the flippers raised at 0.6 rad
+  Eigen::VectorXd pGain = Eigen::VectorXd::Zero(robot->getDOF()), dGain = pGain, dTarget = pGain;
+  Eigen::VectorXd pTarget = Eigen::VectorXd::Zero(robot->getGeneralizedCoordinateDim());
+  for (const char* sprocket : {"left_sprocket", "right_sprocket"}) {
+    const size_t gv = robot->getGeneralizedVelocityIndex(sprocket);
+    dGain[gv] = 50.0;
+    dTarget[gv] = 5.0;
   }
+  for (const char* flipper : {"left_flipper_joint", "right_flipper_joint"}) {
+    pGain[robot->getGeneralizedVelocityIndex(flipper)] = 250.0;
+    dGain[robot->getGeneralizedVelocityIndex(flipper)] = 50.0;
+    pTarget[robot->getJoint(flipper).getIdxInGeneralizedCoordinate()] = -0.6;
+  }
+  robot->setPdGains(pGain, dGain);
+  robot->setPdTarget(pTarget, dTarget);
 
   /// launch raisim server
   raisim::RaisimServer server(&world);
@@ -67,20 +66,6 @@ int main(int argc, char *argv[]) {
 
   for (int i = 0; i < 200000; i++) {
     RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
-    raisim::VecDyn gc = robot->getGeneralizedCoordinate();
-    raisim::VecDyn gv = robot->getGeneralizedVelocity();
-
-    // reset tracks
-    for (auto idx : trackLinkGv) {
-      gc[idx + 1] = 0;
-      gv[idx] = 0;
-      pGain[idx] = 0;
-      dGain[idx] = 0;
-    }
-
-    robot->setState(gc.e(), gv.e());
-    robot->setPdGains(pGain, dGain);
-    robot->setPdTarget(pTarget, dTarget);
     server.integrateWorldThreadSafe();
   }
 

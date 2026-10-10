@@ -1160,11 +1160,22 @@ void openFileBrowser(FileBrowserState& browser, FileBrowserMode mode, std::strin
  */
 bool isLoopbackHostName(const std::string& host) {
   const std::string trimmed = toLowerAscii(trimAscii(host));
-  if (trimmed.empty()) {
-    return false;
+  if (trimmed == "localhost" || trimmed == "::1" || trimmed == "[::1]") return true;
+  // An IPv4 literal in 127.0.0.0/8; a name such as 127.example.com may resolve anywhere.
+  int octets = 0, value = -1;
+  for (const char c : trimmed + ".") {
+    if (c == '.') {
+      if (value < 0 || value > 255 || (octets == 0 && value != 127)) return false;
+      ++octets;
+      value = -1;
+    } else if (c >= '0' && c <= '9') {
+      value = (value < 0 ? 0 : value * 10) + (c - '0');
+      if (value > 255) return false;
+    } else {
+      return false;
+    }
   }
-  return trimmed == "localhost" || trimmed == "::1" || trimmed == "[::1]" ||
-         trimmed.rfind("127.", 0) == 0;
+  return octets == 4;
 }
 
 bool allComponentsFinite(const float* values, size_t count) {

@@ -24,7 +24,7 @@ class RemoteScene;
  * The server's RaiSim Engine scene in one viewer pane: finding or downloading its files
  * (SceneSync), the prompt that asks before a download, and the scene's visuals, lights and
  * render settings once applied. The server streams the physics bodies; the scene adds what
- * rayrai draws for it locally (raisin::applyRscene()).
+ * rayrai draws for it locally (raisin::rayrai_internal::applyRscene()).
  */
 class ViewerSceneFiles {
  public:
@@ -36,6 +36,8 @@ class ViewerSceneFiles {
   /// Disconnect: removes the applied scene from @p viewer and forgets it.
   void reset(RayraiWindow& viewer, RemoteScene& scene);
 
+  /// See SceneSync::setServerPathsTrusted(): true for a server on this computer.
+  void setServerPathsTrusted(bool trusted) { sync_.setServerPathsTrusted(trusted); }
   /// Scene-file block of a live response (not of a replayed one).
   void receive(SceneFileBlock&& block) { sync_.receive(std::move(block)); }
   /// Requests for the next update.

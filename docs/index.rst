@@ -115,6 +115,7 @@ If you are new to RaiSim, start with the page that matches your goal:
    sections/CollisionDetection
    sections/MaterialSystem
    sections/HeightMap
+   sections/DeformableTerrain
    sections/Constraints
    sections/Tendons
    sections/RayTest

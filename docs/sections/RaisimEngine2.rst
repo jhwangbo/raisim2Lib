@@ -29,8 +29,8 @@ Use the supported public interfaces instead:
 * use :doc:`RaisimGymTorch` for reinforcement-learning training.
 
 ``.re2`` is an internal Engine 2 format. ``.rscene`` is the scene file Engine 2
-writes. RaiSim and rayrai read it through ``raisim::World(path)`` and
-``raisin::applyRscene``, available from v2.7.1 (not yet released; the v2.7.0
+writes. RaiSim and rayrai read it through ``raisim::World(path)`` and a
+``raisin::RayraiWindow`` on that world, available from v2.7.1 (not yet released; the v2.7.0
 package does not include the reader), and show what Engine 2's viewport
 shows, except articulated systems, compounds, deformables, granular media,
 decals, irradiance volumes and point clouds. :doc:`RsceneFile` documents the

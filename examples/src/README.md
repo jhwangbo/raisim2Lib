@@ -77,8 +77,9 @@ after the viewer.
   collision detection.
 - `rayrai/tools`: standalone rayrai tools such as the TCP viewer.
 - `rayrai/worlds`: large rayrai worlds such as the instanced forest and its
-  `.rscene` version, and the photoreal city and warehouse loaded from
-  `.rscene` with an ANYmal C on the street or in an aisle.
+  `.rscene` version, the photoreal city and warehouse loaded from
+  `.rscene` with an ANYmal C on the street or in an aisle, and the off-road
+  buggy with its simulated suspension.
 - `worlds`: larger packaged scene examples.
 - `xml`: XML world loading and templated XML world examples.
 
@@ -129,14 +130,23 @@ after the viewer.
 - `rayrai_blue_wall_scene`: explore the furnished Poly Haven Blue Wall scene
   with imported lights and HDR environment lighting.
 - `rayrai_forest_from_rscene`: build the `rayrai_forest` world from its saved
-  RaiSim Engine `.rscene` file with `raisim::World(path)` and
-  `raisin::applyRscene`.
+  RaiSim Engine `.rscene` file with `raisim::World(path)`, shown by a
+  `raisin::RayraiWindow` on that world.
 - `rayrai_city`: a photoreal city of modular buildings, streets and parked cars
   loaded from `rsc/city/rayrai_city.rscene`, with an ANYmal C standing on the
   street.
+- `rayrai_city_from_xml`: the same city and ANYmal C from one RaiSim XML world
+  file (`rsc/xmlScripts/rscene/anymal_in_city.xml`) that describes the robot and
+  includes the city's `.rscene` file.
 - `rayrai_warehouse`: a photoreal warehouse of pallet racks, forklifts and a
   dock area loaded from `rsc/warehouse/rayrai_warehouse.rscene`, with an
   ANYmal C standing in an aisle.
+- `rayrai_offroad_buggy`: an off-road buggy with double-wishbone suspension,
+  coilovers and rack-and-pinion steering, all in one URDF closed by pin,
+  equality and mimic constraints, driven with the arrow keys on a dirt race
+  circuit with a pit lane, tyre walls, hay bales and cones it can knock over,
+  spectator stands, trees and boulders. The springs are coloured by their
+  compression; `--validate` runs physics checks without a window.
 - `rayrai_runtime_scene_editing`: stable ids, snapshots, collision filters,
   cloning, and removal.
 - `rayrai_swept_ccd`: swept CCD settings for a fast falling sphere.

@@ -259,21 +259,20 @@ in a few lines, without RaiSim Engine:
 
 ```cpp
 auto world = std::make_shared<raisim::World>("rayrai_forest.rscene");
-raisin::RayraiWindow viewer(world, 1280, 800);
-raisin::applyRscene(*world->getRscene(), viewer);
+raisin::RayraiWindow viewer(world, 1280, 800);  // shows the whole scene
 ```
 
 `raisim::World(path)` creates the terrain, the 2,068 hidden `.rasset` tree
-and rock bodies and the 100 props. `raisin::applyRscene` applies the render
+and rock bodies and the 100 props. The `RayraiWindow` applies the scene's render
 settings, sky, sun, terrain texture, 16 instanced batches and saved camera.
 The example takes no command-line arguments; like the other Rayrai examples,
 it finds `rsc/forest/rayrai_forest.rscene` with `exampleRscPath`. The file's
-render settings can be changed in C++ first:
+render settings can be changed in C++:
 
 ```cpp
 auto render = raisin::rsceneRenderSettings(*world->getRscene());
 render.quality.viewerMsaaSamples = 8;
-raisin::applyRscene(*world->getRscene(), viewer, render);
+raisin::setRsceneRenderSettings(viewer, render);
 ```
 
 The scene stores `raisim::World`'s default solver settings (ERP 1.5, 150

@@ -638,7 +638,8 @@ def main():
                   sha256=hashlib.sha256(p.read_bytes()).hexdigest())
              for p in sorted(output.rglob('*')) if p.is_file() and p.name != 'manifest.json'
              and not p.name.endswith('.lods') and not p.name.endswith('.rmpc')]
-    (output / 'manifest.json').write_text(json.dumps(dict(license='CC0-1.0', files=files), indent=2) + '\n')
+    (output / 'manifest.json').write_text(json.dumps(dict(license='CC-BY-4.0 and CC0-1.0, see ATTRIBUTION.md',
+                                                          files=files), indent=2) + '\n')
 
 
 if __name__ == '__main__':

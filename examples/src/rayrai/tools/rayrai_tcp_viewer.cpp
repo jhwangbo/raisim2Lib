@@ -3196,6 +3196,9 @@ int main(int argc, char* argv[]) {
             break;
         }
       }
+      // A server on this computer, such as a --simulate child, names this computer's files.
+      // The socket's peer address decides it, not the host name the user typed.
+      sceneFiles.setServerPathsTrusted(client.peerIsLoopback());
       sceneFiles.receive(scene.takeSceneFileBlock());
     } else {
       static_cast<void>(scene.takeViewerCommands());
@@ -3927,7 +3930,7 @@ int main(int argc, char* argv[]) {
     const bool weatherControlsLight = settings.skyEnabled && settings.skyWeatherEnabled &&
       weatherDefaultEnabledForQuality(settings.renderQuality);
     if (sceneFiles.applied()) {
-      // The scene's lights and weather stay as applyRscene() set them.
+      // The scene's lights and weather stay as its application set them.
     } else if (weatherControlsLight) {
       viewer->updateWeather(static_cast<double>(std::max(0.0f, io.DeltaTime)));
       applyWeatherLightStrength(viewer->getLight(), viewer->getRenderQualitySettings(), lightStrength);

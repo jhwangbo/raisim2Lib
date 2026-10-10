@@ -55,6 +55,7 @@ autosectionlabel_prefix_document = True
 autosectionlabel_maxdepth = 4
 html_show_sphinx = False
 html_logo = "../rsc/docs/image/logo.png"
+html_favicon = "_static/favicon.png"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_theme_options = {

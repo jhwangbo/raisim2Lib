@@ -41,7 +41,7 @@ Loading the forest from a scene file
 ====================================
 The same world is saved as ``rsc/forest/rayrai_forest.rscene``.
 :doc:`rayrai_forest_from_rscene` builds it from that file with
-``raisim::World(path)`` and ``raisin::applyRscene`` instead of placing it in
+``raisim::World(path)``, shown by a ``RayraiWindow``, instead of placing it in
 C++, and simulates identically. The reader is new in v2.7.1 (not yet
 released); :doc:`../../RsceneFile` describes the file format.
 

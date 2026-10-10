@@ -35,7 +35,7 @@ Quick map to the current rayrai-related targets:
 * ``rayrai_blue_wall_scene``: the authored Poly Haven "Blue Wall" scene, loaded
   from ``rsc/rayrai/blue_wall/blue_wall.rscene`` with its light sidecar and HDR
   environment. The example reads that file with its own parser, not with
-  ``raisin::applyRscene``.
+  ``raisim::World(path)``.
 * ``rayrai_coacd_mesh_approximation``: in-process comparison of source meshes
   and CoACD convex approximation parts generated through ``World::addMesh``.
 * ``rayrai_runtime_scene_editing``: snapshots, cloning, removal, stable object
@@ -51,17 +51,26 @@ Quick map to the current rayrai-related targets:
   mesh LOD, foliage wind and shadows, and asynchronous loading; see
   :doc:`../examples/rayrai/rayrai_forest`.
 * ``rayrai_forest_from_rscene``: the same forest loaded from its ``.rscene``
-  file with ``raisim::World(path)`` and ``raisin::applyRscene`` (new in
+  file with ``raisim::World(path)``, shown by a ``RayraiWindow`` (new in
   v2.7.1, not yet released); see
   :doc:`../examples/rayrai/rayrai_forest_from_rscene` and
   :doc:`../RsceneFile`.
 * ``rayrai_city``: a photoreal city built from free Poly Haven, BlendKit and
   Sketchfab assets and stored as a ``.rscene`` file, with an ANYmal C
   quadruped on the street; see :doc:`../examples/rayrai/rayrai_city`.
+* ``rayrai_city_from_xml``: the same city and robot from a RaiSim XML world
+  file that describes the robot and includes the ``.rscene`` file; see
+  :doc:`../examples/rayrai/rayrai_city_from_xml`.
 * ``rayrai_warehouse``: a photoreal warehouse of pallet racks, forklifts and a
   dock area built from free Poly Haven and Sketchfab assets and generated
   racking, stored as a ``.rscene`` file, with an ANYmal C quadruped in an
   aisle; see :doc:`../examples/rayrai/rayrai_warehouse`.
+* ``rayrai_offroad_buggy``: an off-road buggy driven with the arrow keys on a
+  dirt race circuit with a pit lane, tyre walls, hay bales and cones that it
+  can knock over, and spectator stands. Its double wishbones, coilovers and
+  rack-and-pinion steering are one URDF closed by pin, equality and mimic
+  constraints; the coil springs are drawn at their simulated length and
+  coloured by their compression. See :doc:`../examples/rayrai/rayrai_offroad_buggy`.
 * glTF/GLB scene import with authored lights and reflection-probe sidecars is
   described in :doc:`../examples/rayrai/rayrai_blender_scene_import`.
 * OpenUSD visual meshes can be loaded through ``RayraiWindow::addVisualMesh``;

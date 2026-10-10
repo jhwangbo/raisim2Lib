@@ -138,8 +138,8 @@ Visualization and tools
        ``rayrai_forest``
      - :doc:`rayrai/Visuals`, :doc:`examples/rayrai/rayrai_forest`
    * - Load a RaiSim Engine ``.rscene`` scene (from v2.7.1, not yet released)
-     - ``raisim::World(path)``, ``raisin::applyRscene``,
-       ``raisin::rsceneRenderSettings``; ``rayrai_forest_from_rscene``
+     - ``raisim::World(path)``, ``raisin::RayraiWindow``,
+       ``raisin::setRsceneRenderSettings``; ``rayrai_forest_from_rscene``
      - :doc:`RsceneFile`, :doc:`WorldSystem`,
        :doc:`examples/rayrai/rayrai_forest_from_rscene`
    * - Render glass

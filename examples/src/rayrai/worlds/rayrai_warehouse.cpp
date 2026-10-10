@@ -16,7 +16,6 @@
 #include "stb/stb_image_write.h"
 
 #include "rayrai/example_common.hpp"
-#include "rayrai/RsceneVisuals.hpp"
 #include "example_resources.hpp"
 #include "rayrai_loading_progress.hpp"
 
@@ -81,9 +80,11 @@ int main(int argc, char* argv[]) {
   ImGui::GetIO().IniFilename = nullptr;
   int status = 0;
   {
+    // The window applies the world's scene.
     raisin::RayraiWindow viewer(world, 1280, 800);
+    // Meshes load asynchronously by default, so this line changes nothing; it shows the
+    // switch. setAsyncMeshLoadingEnabled(false) loads the scene's meshes before it returns.
     viewer.setAsyncMeshLoadingEnabled(true);
-    raisin::applyRscene(*world->getRscene(), viewer);
     RayraiLoadingProgress loading("Loading warehouse assets");
     loading.update(viewer.pendingAsyncMeshLoadCount());
     // A screenshot waits for the assets, then lets the robot and the loose props settle.
