@@ -1,14 +1,14 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
-#include "raisim/RaisimServer.hpp"
-#include "raisim/World.hpp"
-#include "rayrai_tcp_viewer_hint.hpp"
-
 #include <array>
 #include <stdexcept>
 #include <string>
+
 #include "example_resources.hpp"
+#include "raisim/RaisimServer.hpp"
+#include "raisim/World.hpp"
+#include "rayrai_tcp_viewer_hint.hpp"
 
 namespace {
 
@@ -19,15 +19,9 @@ struct UsdRobot {
 };
 
 const std::array<UsdRobot, 3> robotAssets = {{
-    {"iRobot Create 3",
-     "isaac/Robots/iRobot/Create3/create_3.usd",
-     {-1.4, 0.0, 0.18}},
-    {"AWS Robomaker Jetbot",
-     "isaac/Robots/NVIDIA/Robomaker/aws_robomaker_jetbot.usd",
-     {0.0, 0.0, 0.12}},
-    {"Isaac Sim Ant",
-     "isaac/Robots/IsaacSim/Ant/ant.usd",
-     {1.6, 0.0, 0.55}},
+    {"iRobot Create 3", "isaac/Robots/iRobot/Create3/create_3.usd", {-1.4, 0.0, 0.18}},
+    {"AWS Robomaker Jetbot", "isaac/Robots/NVIDIA/Robomaker/aws_robomaker_jetbot.usd", {0.0, 0.0, 0.12}},
+    {"Isaac Sim Ant", "isaac/Robots/IsaacSim/Ant/ant.usd", {1.6, 0.0, 0.55}},
 }};
 
 }  // namespace
@@ -42,17 +36,13 @@ int main(int argc, char* argv[]) {
   for (const auto& robotAsset : robotAssets) {
     auto* robot = world.addUsdArticulatedSystem(exampleRscPath(argv[0], robotAsset.path));
     if (robot == nullptr) {
-      throw std::runtime_error(std::string("Failed to import ") + robotAsset.name +
-                               " from " + robotAsset.path);
+      throw std::runtime_error(std::string("Failed to import ") + robotAsset.name + " from " + robotAsset.path);
     }
     if (robot->getCollisionBodies().empty()) {
-      throw std::runtime_error(std::string("USD robot has no supported collision bodies: ") +
-                               robotAsset.name);
+      throw std::runtime_error(std::string("USD robot has no supported collision bodies: ") + robotAsset.name);
     }
 
-    robot->setBasePos({robotAsset.basePosition[0],
-                       robotAsset.basePosition[1],
-                       robotAsset.basePosition[2]});
+    robot->setBasePos({robotAsset.basePosition[0], robotAsset.basePosition[1], robotAsset.basePosition[2]});
     robot->setBaseOrientation(raisim::Mat<3, 3>::getIdentity());
     for (auto& collisionBody : robot->getCollisionBodies()) {
       collisionBody.setMaterial("nvidia_usd_robot");
@@ -63,8 +53,7 @@ int main(int argc, char* argv[]) {
     }
   }
   if (world.getObjectCount() < robotAssets.size()) {
-    throw std::runtime_error("Expected 3 USD robots, but imported " +
-                             std::to_string(world.getObjectCount()));
+    throw std::runtime_error("Expected 3 USD robots, but imported " + std::to_string(world.getObjectCount()));
   }
 
   auto* ground = world.addGround(0.0, "ground");

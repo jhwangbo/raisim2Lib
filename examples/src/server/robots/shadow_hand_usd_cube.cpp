@@ -1,16 +1,16 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
-#include "raisim/RaisimServer.hpp"
-#include "raisim/World.hpp"
-#include "rayrai_tcp_viewer_hint.hpp"
-
-#include <Eigen/Core>
-
 #include <sstream>
 #include <stdexcept>
 #include <string>
+
+#include <Eigen/Core>
+
 #include "example_resources.hpp"
+#include "raisim/RaisimServer.hpp"
+#include "raisim/World.hpp"
+#include "rayrai_tcp_viewer_hint.hpp"
 
 namespace {
 
@@ -21,17 +21,14 @@ constexpr double kCubeDropY = -0.39;
 constexpr double kCubeDropHeight = 1.05;
 constexpr double kInteractiveGcUpdateTolerance = 1e-7;
 
-raisim::ArticulatedSystem* findShadowHand(raisim::World& world) {
-  return dynamic_cast<raisim::ArticulatedSystem*>(world.getObject("shadow_hand"));
-}
+raisim::ArticulatedSystem* findShadowHand(raisim::World& world) { return dynamic_cast<raisim::ArticulatedSystem*>(world.getObject("shadow_hand")); }
 
 std::string describeImportedObjects(raisim::World& world) {
   std::ostringstream stream;
   stream << "object count: " << world.getObjList().size();
   if (!world.getObjList().empty()) {
     stream << ", imported objects:";
-    for (auto* object : world.getObjList())
-      stream << " '" << object->getName() << "'";
+    for (auto* object : world.getObjList()) stream << " '" << object->getName() << "'";
   }
   return stream.str();
 }
@@ -54,34 +51,25 @@ void setNominalPdControl(raisim::ArticulatedSystem* hand) {
 int main(int argc, char* argv[]) {
   raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
-  const auto shadowHandUsd =
-      exampleRscPath(argv[0], "isaac/Robots/ShadowRobot/ShadowHand/shadow_hand.usd");
+  const auto shadowHandUsd = exampleRscPath(argv[0], "isaac/Robots/ShadowRobot/ShadowHand/shadow_hand.usd");
 
   raisim::World world(shadowHandUsd);
   world.setTimeStep(1.0 / 500.0);
 
   auto* hand = findShadowHand(world);
   if (hand == nullptr) {
-    throw std::runtime_error(
-        "Failed to load ShadowHand from USD '" + shadowHandUsd +
-        "': no ArticulatedSystem named 'shadow_hand' was imported (" +
-        describeImportedObjects(world) + ").");
+    throw std::runtime_error("Failed to load ShadowHand from USD '" + shadowHandUsd + "': no ArticulatedSystem named 'shadow_hand' was imported (" + describeImportedObjects(world) + ").");
   }
 
   hand->setBasePos({0.0, 0.0, 0.5});
   hand->setBaseOrientation(raisim::Mat<3, 3>::getIdentity());
   setNominalPdControl(hand);
-  for (auto& collisionBody : hand->getCollisionBodies())
-    collisionBody.setMaterial("shadow_hand");
+  for (auto& collisionBody : hand->getCollisionBodies()) collisionBody.setMaterial("shadow_hand");
   if (hand->getCollisionBodies().empty()) {
-    throw std::runtime_error(
-        "Failed to load ShadowHand from USD '" + shadowHandUsd +
-        "': imported ArticulatedSystem has no collision bodies.");
+    throw std::runtime_error("Failed to load ShadowHand from USD '" + shadowHandUsd + "': imported ArticulatedSystem has no collision bodies.");
   }
   if (hand->getVisOb().empty()) {
-    throw std::runtime_error(
-        "Failed to load ShadowHand from USD '" + shadowHandUsd +
-        "': imported ArticulatedSystem has no visual meshes.");
+    throw std::runtime_error("Failed to load ShadowHand from USD '" + shadowHandUsd + "': imported ArticulatedSystem has no visual meshes.");
   }
 
   auto* ground = world.addGround(0.0, "ground");
@@ -102,8 +90,7 @@ int main(int argc, char* argv[]) {
   server.focusOn(cube);
   server.setCameraPositionAndLookAt({1.2, -1.3, 1.15}, {0.0, -0.33, 0.72});
 
-  const Eigen::VectorXd zeroVelocityTarget =
-      Eigen::VectorXd::Zero(hand->getDOF());
+  const Eigen::VectorXd zeroVelocityTarget = Eigen::VectorXd::Zero(hand->getDOF());
   Eigen::VectorXd pausedGcSnapshot(hand->getGeneralizedCoordinateDim());
   bool pausedGcSnapshotValid = false;
 
@@ -122,8 +109,7 @@ int main(int argc, char* argv[]) {
         return;
       }
 
-      if ((currentGc - pausedGcSnapshot).cwiseAbs().maxCoeff() >
-          kInteractiveGcUpdateTolerance) {
+      if ((currentGc - pausedGcSnapshot).cwiseAbs().maxCoeff() > kInteractiveGcUpdateTolerance) {
         hand->setGeneralizedVelocity(zeroVelocityTarget);
         hand->setPdTarget(currentGc, zeroVelocityTarget);
         pausedGcSnapshot = currentGc;

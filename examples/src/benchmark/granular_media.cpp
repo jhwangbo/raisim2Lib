@@ -1,13 +1,5 @@
 // ANYmal standing on native granular media.
 
-#include "benchmarkCommon.hpp"
-
-#include <raisim/RaisimServer.hpp>
-#include <raisim/World.hpp>
-#include <raisim/object/granular/GranularSystem.hpp>
-
-#include <Eigen/Dense>
-
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -19,6 +11,13 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+#include <Eigen/Dense>
+#include <raisim/RaisimServer.hpp>
+#include <raisim/World.hpp>
+#include <raisim/object/granular/GranularSystem.hpp>
+
+#include "benchmarkCommon.hpp"
 #include "example_resources.hpp"
 
 namespace {
@@ -35,12 +34,7 @@ int parseServerPort(int argc, char** argv) {
   return port;
 }
 
-void buildAnymalDefaults(raisim::ArticulatedSystem* anymal,
-                         Eigen::VectorXd& gc,
-                         Eigen::VectorXd& gv,
-                         Eigen::VectorXd& pgain,
-                         Eigen::VectorXd& dgain,
-                         Eigen::VectorXd& velTarget) {
+void buildAnymalDefaults(raisim::ArticulatedSystem* anymal, Eigen::VectorXd& gc, Eigen::VectorXd& gv, Eigen::VectorXd& pgain, Eigen::VectorXd& dgain, Eigen::VectorXd& velTarget) {
   const size_t gcDim = anymal->getGeneralizedCoordinateDim();
   const size_t dof = anymal->getDOF();
   gc.setZero(static_cast<int>(gcDim));
@@ -49,12 +43,7 @@ void buildAnymalDefaults(raisim::ArticulatedSystem* anymal,
   dgain.setZero(static_cast<int>(dof));
   velTarget.setZero(static_cast<int>(dof));
 
-  const double jointDefaults[12] = {
-      0.03, 0.4, -0.8,
-      -0.03, 0.4, -0.8,
-      0.03, -0.4, 0.8,
-      -0.03, -0.4, 0.8
-  };
+  const double jointDefaults[12] = {0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8};
 
   if (gcDim >= 7 && dof >= 6) {
     gc[0] = 0.0;
@@ -82,14 +71,7 @@ void buildAnymalDefaults(raisim::ArticulatedSystem* anymal,
   }
 }
 
-void makeGranularBed(int resolution,
-                     int layers,
-                     double radius,
-                     double spacing,
-                     double bedLength,
-                     double bedWidth,
-                     std::vector<raisim::Vec<3>>& positions,
-                     std::vector<double>& radii,
+void makeGranularBed(int resolution, int layers, double radius, double spacing, double bedLength, double bedWidth, std::vector<raisim::Vec<3>>& positions, std::vector<double>& radii,
                      std::vector<uint8_t>& fixed) {
   const double staggerPad = 0.5 * radius;
   const int fitNx = std::max(1, static_cast<int>((bedLength - 2.0 * radius - staggerPad) / spacing) + 1);
@@ -114,9 +96,7 @@ void makeGranularBed(int resolution,
       for (int x = 0; x < nx; ++x) {
         const double staggerX = ((y + z) & 1) ? 0.5 * radius : 0.0;
         const double staggerY = (z & 1) ? 0.5 * radius : 0.0;
-        positions.push_back({x0 + spacing * static_cast<double>(x) + staggerX,
-                             y0 + spacing * static_cast<double>(y) + staggerY,
-                             radius + spacing * static_cast<double>(z)});
+        positions.push_back({x0 + spacing * static_cast<double>(x) + staggerX, y0 + spacing * static_cast<double>(y) + staggerY, radius + spacing * static_cast<double>(z)});
         radii.push_back(radius);
         fixed.push_back(z == 0 ? 1u : 0u);
       }
@@ -178,7 +158,7 @@ void addPhysicalContainer(raisim::World& world, double bedLength, double bedWidt
   front->setBodyType(raisim::BodyType::STATIC);
 }
 
-} // namespace
+}  // namespace
 
 int run_granular_media_example(int argc, char** argv) {
   const int serverPort = parseServerPort(argc, argv);
@@ -301,8 +281,7 @@ int run_granular_media_example(int argc, char** argv) {
   material.tangentialDamping = tangentialDamping;
   material.friction = friction;
   material.rollingFriction = rollingFriction;
-  material.normalContactModel = hertz ? raisim::GranularSystem::NormalContactModel::HERTZ
-                                      : raisim::GranularSystem::NormalContactModel::LINEAR;
+  material.normalContactModel = hertz ? raisim::GranularSystem::NormalContactModel::HERTZ : raisim::GranularSystem::NormalContactModel::LINEAR;
   material.substeps = substeps;
   material.maxSpeed = 10.0;
   material.maxAngularSpeed = 100.0;
@@ -341,17 +320,12 @@ int run_granular_media_example(int argc, char** argv) {
   }
 
   raisim::RaisimServer server(&world);
-  auto* particleVisuals = server.addInstancedVisuals(
-      "granular_anymal_particles",
-      raisim::Shape::Sphere,
-      raisim::Vec<3>{radius, radius, radius},
-      raisim::Vec<4>{0.92, 0.70, 0.34, 1.0},
-      raisim::Vec<4>{0.16, 0.45, 0.95, 1.0});
+  auto* particleVisuals = server.addInstancedVisuals("granular_anymal_particles", raisim::Shape::Sphere, raisim::Vec<3>{radius, radius, radius}, raisim::Vec<4>{0.92, 0.70, 0.34, 1.0},
+                                                     raisim::Vec<4>{0.16, 0.45, 0.95, 1.0});
   particleVisuals->resize(grains->getNumParticles());
   syncParticleVisuals(particleVisuals, grains);
   server.launchServer(serverPort);
-  std::cout << "[granular_media] server on port " << serverPort
-            << ". Connect Rayrai/RaiSim visualizer." << std::endl;
+  std::cout << "[granular_media] server on port " << serverPort << ". Connect Rayrai/RaiSim visualizer." << std::endl;
 
   const auto begin = std::chrono::steady_clock::now();
   int stepsRun = 0;
@@ -417,37 +391,14 @@ int run_granular_media_example(int argc, char** argv) {
   anymal->getPosition(0, basePosition);
   const int divisor = std::max(1, stepsRun);
   raisim::print_timediff("Granular media", divisor, begin, end);
-  std::cout << "resolution=" << resolution
-            << " particles=" << grains->getNumParticles()
-            << " fixed_particles=" << std::count(fixed.begin(), fixed.end(), uint8_t(1))
-            << " steps=" << stepsRun
-            << " settle_steps=" << settleSteps
-            << " robot_settle_steps=" << robotSettleSteps
-            << " layers=" << layers
-            << " substeps=" << substeps
-            << " radius=" << radius
-            << " spacing=" << spacing
-            << " bed_length=" << bedLength
-            << " bed_width=" << bedWidth
-            << " stiffness=" << stiffness
-            << " damping=" << damping
-            << " tangential_stiffness=" << tangentialStiffness
-            << " tangential_damping=" << tangentialDamping
-            << " friction=" << friction
-            << " rolling_friction=" << rollingFriction
-            << " base_clearance=" << baseClearance
-            << " bed_surface=" << bedSurface
-            << " normal_model=" << (hertz ? "hertz" : "linear")
-            << " avg_anymal_contacts=" << static_cast<double>(totalAnymalContacts) / divisor
-            << " avg_particle_contacts=" << static_cast<double>(totalParticleContacts) / divisor
-            << " avg_boundary_contacts=" << static_cast<double>(totalBoundaryContacts) / divisor
-            << " avg_rigid_contacts=" << static_cast<double>(totalRigidContacts) / divisor
-            << " avg_rigid_candidate_pairs=" << static_cast<double>(totalRigidCandidatePairs) / divisor
-            << " max_penetration=" << maxPenetration
-            << " max_speed=" << maxSpeed
-            << " unstable=" << (unstable ? 1 : 0)
-            << " final_base_z=" << basePosition[2]
-            << std::endl;
+  std::cout << "resolution=" << resolution << " particles=" << grains->getNumParticles() << " fixed_particles=" << std::count(fixed.begin(), fixed.end(), uint8_t(1)) << " steps=" << stepsRun
+            << " settle_steps=" << settleSteps << " robot_settle_steps=" << robotSettleSteps << " layers=" << layers << " substeps=" << substeps << " radius=" << radius << " spacing=" << spacing
+            << " bed_length=" << bedLength << " bed_width=" << bedWidth << " stiffness=" << stiffness << " damping=" << damping << " tangential_stiffness=" << tangentialStiffness
+            << " tangential_damping=" << tangentialDamping << " friction=" << friction << " rolling_friction=" << rollingFriction << " base_clearance=" << baseClearance
+            << " bed_surface=" << bedSurface << " normal_model=" << (hertz ? "hertz" : "linear") << " avg_anymal_contacts=" << static_cast<double>(totalAnymalContacts) / divisor
+            << " avg_particle_contacts=" << static_cast<double>(totalParticleContacts) / divisor << " avg_boundary_contacts=" << static_cast<double>(totalBoundaryContacts) / divisor
+            << " avg_rigid_contacts=" << static_cast<double>(totalRigidContacts) / divisor << " avg_rigid_candidate_pairs=" << static_cast<double>(totalRigidCandidatePairs) / divisor
+            << " max_penetration=" << maxPenetration << " max_speed=" << maxSpeed << " unstable=" << (unstable ? 1 : 0) << " final_base_z=" << basePosition[2] << std::endl;
 
   server.killServer();
   return unstable ? 2 : 0;

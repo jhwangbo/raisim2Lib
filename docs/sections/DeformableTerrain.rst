@@ -1,26 +1,41 @@
 Deformable terrain
 ==================
 
-``World::addDeformableTerrain`` creates a triangulated, deformable soil bed.
-It has no particles: the regular surface mesh stores total sinkage, permanent
-sinkage, and accumulated shear displacement at its vertices. Rigid bodies and
-articulated systems interact with the bed through distributed pressure and
-shear forces. Ray tests and Rayrai use the deformed mesh.
+``World::addDeformableTerrain`` creates a soil bed that deforms under rigid
+bodies and articulated systems. Distributed normal pressure supports their
+weight, while shear resistance provides traction. The model describes
+pressure-dependent sinkage, elastic recovery, permanent ruts, and traction
+buildup with slip.
 
-.. figure:: ../../rsc/docs/image/rayrai/deformable_terrain_blocks.png
+.. figure:: ../../rsc/docs/image/rayrai/deformable_terrain_car.png
    :width: 100%
-   :alt: Three colored weighted blocks loading and sliding across a deformed soil mesh in Rayrai.
+   :alt: A four-wheel car driving across a deformable soil mesh and leaving wheel tracks in Rayrai.
 
-   The example's 10 kg blue, 20 kg orange and 30 kg red blocks after settling
-   and one second of dragging. Rayrai renders the simulated mesh heights.
+   The example's 896 kg buggy driving across the bed.
+   Rear-wheel drive supplies torque through the wheel joints; soil traction
+   moves the chassis and the wheels leave ruts in the surface.
+
+   Car visuals are based on
+   `Sci - Fi Buggy <https://sketchfab.com/3d-models/sci-fi-buggy-085bd97876a64eacbc041299ac945e9c>`_
+   by `TiyaMakes <https://sketchfab.com/tiyamakes>`_, licensed under
+   `CC BY 4.0 <https://creativecommons.org/licenses/by/4.0/>`_. The meshes
+   and textures are modified; the :download:`buggy asset credits <../../rsc/offroad_buggy/ATTRIBUTION.md>`
+   describe the changes and redistribution requirements.
+
+.. figure:: ../../rsc/docs/image/rayrai/deformable_terrain_suspension.png
+   :width: 100%
+   :alt: Close view of the buggy's double wishbones, coil spring, damper and rear drive shaft on deformable soil.
+
+   The buggy's double-wishbone suspension distributes the vehicle load
+   between the wheels. Springs and dampers respond as the wheels sink into
+   the soil.
 
 .. figure:: ../../rsc/docs/image/rayrai/deformable_terrain_ruts.png
    :width: 100%
-   :alt: Permanent mesh ruts after lifting the three blocks away and allowing elastic recovery.
+   :alt: Two permanent wheel tracks after removing the car and allowing elastic recovery.
 
-   The same bed after lifting the blocks away and advancing one simulation
-   step. Elastic displacement recovers and permanent ruts remain; mesh heights
-   are shown without vertical exaggeration.
+   The same bed after removing the car. Elastic displacement recovers and
+   permanent ruts remain; surface heights are shown without vertical exaggeration.
 
 Creating a bed
 --------------
@@ -42,18 +57,15 @@ Creating a bed
        nx, ny, 8.0, 4.0, 0.0, 0.0, std::vector<double>(nx * ny, 0.0), soil);
    bed->setName("soil");
 
-Heights use ``height[y * nx + x]``. The mesh covers the same local coordinate
-range and has the same triangle diagonals as :doc:`HeightMap`. You may place
-the bed with ``setPosition`` and ``setOrientation`` between steps. Deformation
+Heights use ``height[y * nx + x]``. The bed covers the same local coordinate
+range as :doc:`HeightMap`. You may place the bed with ``setPosition`` and ``setOrientation`` between steps. Deformation
 and normal pressure act along the bed's local Z axis. The bed is static;
 dynamic and kinematic body types are rejected.
 
 The default values are illustrative parameters, not a calibrated material.
 Choose the mesh spacing to resolve the footprint and the desired rut width;
 2--5 cm is a useful starting point for robot feet and wheels of comparable size.
-Small flat feet are clipped before quadrature, so their contact area remains
-resolved even when the footprint fits inside a single cell. Curved footprints,
-rut boundaries, and overlapping shapes still require spatial refinement.
+Finer spacing represents curved footprints and rut boundaries in more detail.
 
 Constitutive model
 ------------------
@@ -66,16 +78,33 @@ and projected contact width :math:`b`, the normal pressure is
    p(s,s_p,b) = \max\left(0,\min\left[
       K_e(s-s_p),\left(k_c/b+k_\phi\right)s^n\right]\right).
 
-The width is the shorter side of a collider's projected bounding rectangle in
-the bed frame. This is a footprint approximation for general shapes; calibrate
-the width-dependent term for the intended wheel or foot geometry. Loading
-adds viscosity :math:`D\max(\dot{s},0)`. Plastic return keeps
-:math:`s_p = \max(s_p,s-p/K_e)`. Unloaded vertices recover elastic displacement
-and retain their permanent ruts. Impact loading can therefore produce deeper
-ruts than slow loading at the same final weight. Plastic strain increments
-are projected onto lumped vertex control areas; the projection preserves
-existing history below yield and bounds new vertex values by the sampled
-plastic return to avoid artificial ratcheting.
+The effective width :math:`b` is the narrowest width of the collider's
+footprint projected onto the bed plane: the shorter side of a flat box, the
+tread width of a wheel whose axle lies in the bed plane, and the diameter of a
+sphere or capsule. Mesh colliders use the footprint of their bounding box.
+The width turns with the collider, so a body's heading does not change its
+soil stiffness. This approximates contact width for general shapes; calibrate
+the width-dependent term for the intended wheel or foot geometry.
+
+The elastic branch :math:`K_e(s-s_p)` describes recoverable deformation, while
+the Bekker envelope :math:`(k_c/b+k_\phi)s^n` limits the pressure before further
+permanent compaction. Permanent sinkage never decreases: after loading,
+:math:`s_p` retains at least :math:`s-p/K_e`. Removing the load recovers the
+elastic displacement and leaves a rut of depth :math:`s_p`.
+
+Penetration adds loading-only viscosity:
+
+.. math::
+
+   p_n = p + D\max(\dot{s},0).
+
+Here :math:`\dot{s}` is the rate at which the body pushes the soil surface
+down. A body above the surface, or above the floor of an existing rut, meets
+no resistance until it reaches it; only its travel into the soil is damped.
+The normal response is compressive; the soil supplies no suction when the
+body lifts away.
+Impact loading can produce deeper ruts than slow loading at the same final
+weight.
 
 Shear strength follows Mohr--Coulomb and Janosi--Hanamoto:
 
@@ -83,23 +112,21 @@ Shear strength follows Mohr--Coulomb and Janosi--Hanamoto:
 
    \tau_{\max} = (c+\mu p_n)(1-\exp[-j/K_j]).
 
-Here :math:`j` accumulates solved tangential slip while the surface is loaded.
-The friction impulse opposes motion and stays within this circular strength
-bound. ``shearDisplacement = 0`` selects fully mobilized Coulomb friction.
-Normal pressure and tangential slip are solved implicitly with the other
-world contacts. The contact solver's usual iteration limit and tolerance apply. Here
-:math:`p_n` includes loading viscosity, while :math:`p` in the normal law
-above denotes its non-viscous elastic/plastic part.
+Here :math:`j` is accumulated tangential slip while the surface is loaded.
+Shear resistance opposes slip, with the same strength limit in every tangent
+direction. ``shearDisplacement = 0`` selects fully mobilized friction immediately.
+The normal pressure :math:`p_n` includes loading viscosity, while :math:`p`
+denotes the non-viscous elastic/plastic part.
 
 Material parameters
 -------------------
 
 ``DeformableTerrain::Material`` defines the soil response for the entire bed.
 These parameters use SI units: metres, seconds, and pascals (N/m\ :sup:`2`).
-They describe pressure and shear stress per unit area; the solver integrates
-those stresses over the sampled footprint to obtain forces. Their values do
-not need rescaling when changing the mesh spacing or timestep. Refinement
-still matters for resolving the geometry and the evolving soil history.
+They describe pressure and shear stress per unit area. Total contact forces
+are the corresponding stresses integrated over the loaded footprint. The
+parameters describe the material and do not need rescaling with mesh spacing
+or timestep.
 
 .. list-table:: Defaults and valid values
    :header-rows: 1
@@ -158,7 +185,7 @@ same load, provided the elastic branch is not the limiting response.
 ``bekkerKc`` supplies the width dependence: its contribution increases as
 :math:`b` decreases. ``bekkerKphi`` supplies the width-independent contribution.
 Setting ``bekkerKc = 0`` removes this explicit width dependence, although the
-footprint's area still affects force and its shape still affects quadrature.
+footprint's area still affects force and its shape affects the pressure distribution.
 Despite its name, ``bekkerKc`` is a normal pressure coefficient; it is distinct
 from the tangential ``cohesion`` parameter.
 
@@ -204,26 +231,24 @@ permanent fraction through :math:`s_p=s-p_y/K_e`. If the elastic stiffness is
 too low relative to the desired loading envelope, the response can remain
 mostly elastic and produce much less permanent rutting. Fit this parameter
 from unloading/reloading data rather than treating it as a general hardness
-control. Completely unloaded vertices recover to their permanent depth on
-that step; there is no independent delayed relaxation model.
+control. Completely unloaded soil recovers to its permanent depth; the model
+has no independent delayed relaxation.
 
 Loading rate: ``damping``
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``damping`` adds pressure :math:`p_v=D\max(\dot{s},0)` during penetration.
-For example, :math:`D=2000` Pa s/m and a solved loading speed of 0.1 m/s add
+For example, :math:`D=2000` Pa s/m and a loading speed of 0.1 m/s add
 200 Pa. Increasing it raises transient resistance and dissipation during
 loading; it does not alter the equilibrium pressure when the loading speed
 is zero. It supplies no viscous suction or tensile force during unloading.
-Zero removes this term while retaining the implicit elastic/plastic solve.
+Zero removes the viscous term while retaining the elastic/plastic response.
 
-The speed is the displacement rate solved by the coupled contact system,
-not the body's unconstrained trial velocity. The total solved normal pressure
-:math:`p_n=p+p_v` also enters the frictional strength, so increasing damping
-can raise transient shear resistance as well as normal resistance. Calibrate
-rate effects separately from the Bekker envelope and check the intended
-impact speeds and timestep. This local viscosity does not represent soil
-mass, wave propagation, or a volumetric viscoelastic continuum.
+The total normal pressure :math:`p_n=p+p_v` also enters the frictional strength,
+so increasing damping can raise transient shear resistance as well as normal
+resistance. Calibrate rate effects separately from the Bekker envelope and
+check the intended impact speeds. This local viscosity does not represent
+soil mass, wave propagation, or a volumetric viscoelastic continuum.
 
 Shear strength: ``cohesion`` and ``frictionCoefficient``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -264,19 +289,18 @@ A smaller scale builds traction over less slip; a larger scale produces
 slower buildup and more creep before reaching the same strength. Setting
 zero selects fully mobilized friction immediately, including any cohesion.
 
-The history is accumulated solved slip displacement at the terrain vertices,
+The history is accumulated slip displacement at a loaded soil patch,
 not elapsed time, commanded wheel travel, or body displacement in free flight.
 It grows while a patch is loaded and resets when that patch unloads. Permanent
 sinkage survives unloading separately. A new footprint therefore does not
-inherit the shear history of an unloaded rut. Do not set :math:`K_j` equal to
-the cell size to stabilize the solver: fit a physical displacement scale and
-refine the spatial discretization as needed.
+inherit the shear history of an unloaded rut. Fit :math:`K_j` as a physical
+slip displacement scale, independently of the terrain mesh spacing.
 
 .. figure:: ../../rsc/docs/image/rayrai/deformable_terrain_material_response.png
    :width: 100%
    :alt: Loading envelopes with a shared reference pressure, elastic recovery, and shear mobilization curves.
 
-   Constitutive curves evaluated from the implemented equations. The loading
+   Constitutive curves for the dynamics model. The loading
    curves share 1000 Pa at 20 mm; the recovery example unloads with
    :math:`K_e=2\times10^6` Pa/m. The shear plot shows different displacement
    scales and the fully mobilized zero-scale case. These are illustrative
@@ -293,7 +317,7 @@ Calibrating a material
    Use the same projected-width convention as the colliders being simulated.
 2. Measure unloading/reloading slopes to fit :math:`K_e`, including recovered
    depth and the remaining rut. Fit the loading envelope and elastic branch
-   consistently; the implemented pressure is their minimum.
+   consistently; the normal pressure is their minimum.
 3. Repeat indentation at different speeds to fit :math:`D` from the extra
    loading pressure, after accounting for quasistatic pressure. Recheck impact
    compaction rather than fitting only the final resting depth.
@@ -306,15 +330,23 @@ Calibrating a material
    Agreement with an analytical plate case alone does not establish accuracy
    for a particular soil or for phenomena outside the supported model.
 
-State, rendering and saving
----------------------------
+Terrain state and saving
+------------------------
 
 ``getSoilState()`` returns three arrays with one value per vertex:
-``sinkage``, ``plasticSinkage``, and ``shear``. ``setSoilState`` validates and
-restores these arrays and updates collision and rendering data. ``resetSoil``
+``sinkage``, ``plasticSinkage``, and ``shear``. They represent total downward
+displacement, permanent downward displacement, and accumulated loaded slip,
+respectively. ``setSoilState`` restores these arrays. ``resetSoil``
 returns to the undeformed mesh. Call state setters between complete steps.
 HeightMap height-edit APIs are rejected for this subclass because they bypass
 soil history. ``getUndeformedHeights`` returns the original surface.
+
+``getSoilStepStats()`` describes the last step. ``contacts`` counts the
+quadrature contacts near bodies, including those a body approaches but has
+not yet loaded. ``contactArea`` and ``normalForce`` are the area and total
+normal force of the loaded contacts. A soil contact's ``getDepth()`` is its
+separation from the floor of the current rut: positive while the body
+approaches, negative while it compresses the soil.
 
 World checkpoints capture the soil history and support deterministic replay.
 XML export saves original heights and the complete state. To author a soil
@@ -333,156 +365,184 @@ Soil XML currently requires ``height``; generate or load a height array in C++
 when starting from PNG, text, or procedural terrain. Exported soil elements
 also contain ``sinkage``, ``plastic_sinkage``, and ``shear`` arrays.
 
-``getSoilStepStats`` reports candidate cells, ray queries, contact rows, updated
-vertices, sampled contact area, and solved normal force. Mesh collision tiles
-are rebuilt only where vertices change. Each dirty tile accumulates an affected
-cell rectangle: cell heights and triangle normals are refreshed within that
-rectangle, then the tile bounds are reduced from all its cached cells. This
-avoids recomputing unchanged triangle normals while retaining the complete
-collision surface and conservative bounds.
-The shear solve uses analytical brackets and chooses well-scaled multiplier
-or inverse-multiplier coordinates for the same nonlinear constitutive root,
-including nearly stationary contacts. It reuses evaluated bracket endpoints
-and retains the contact quadrature and convergence tolerances. Newton proposals
-in both coordinate systems move toward the feasible endpoint by a relative
-rounding margin of eight double machine epsilons before the residual is evaluated
-again. The feasible direction increases the multiplier and decreases its inverse.
-The multiplier solve also permits its already verified feasible bracket endpoint
-as a seed, avoiding a return to bisection when a proposal rounds to that endpoint.
-These changes reduce redundant root evaluations during sliding; every accepted
-impulse still satisfies the original feasible residual and stopping tolerance. Material constants
-and pressure evaluations are cached across sweeps of each coupled solve.
-A cached Bekker yield value also supplies a conservative lower bound at a new
-depth. Monotonicity, Bernoulli's inequality for exponents above one, and the
-chord bound for exponents below one can prove that elastic pressure is smaller.
-This skips power evaluations during elastic unloading; uncertain bounds retain
-the original power evaluation, pressure, and derivative. A floating-point rounding margin
-and normal-range checks keep this shortcut away from ambiguous or subnormal
-bounds.
-For nonlinear loading, nearby depths can reuse an ordinary power value with
-:math:`s^n=s_a^n(1+r)^n`, where :math:`r=(s-s_a)/s_a`. A cubic series is used
-only for :math:`0<n\leq32` and :math:`|r|\max(1,n)\leq10^{-4}`. Its fourth-order
-remainder is below :math:`7\times10^{-18}`, smaller than double rounding.
-A fused multiply-add computes the updated envelope. The anchor always comes
-from an ordinary power evaluation and is never replaced with a series value,
-so repeated sweeps cannot accumulate approximation error. Ambiguous
-elastic/yield crossings, larger depth changes, other exponents, and extreme
-power scales retain ordinary evaluation. Accuracy tests compare pressure and
-its derivative against a long-double reference within four and six double
-machine epsilons, respectively, across exponents, depth scales, and moduli.
-The public pressure query retains the original power evaluation. Projection
-at a changed final depth uses the conservative elastic bound or an ordinary
-power evaluation. The nonlinear calculation stays outside the linear
-contact kernel to reduce instruction overhead. Mesh resolution, quadrature,
-constitutive equations, and solver tolerances are unchanged.
-The tangential mobility inverse is prepared once for sticking contacts, and
-damping reuses its timestep-scaled coefficient. The shear root also reuses
-its timestep-to-displacement-scale ratio for mobilization and its derivative.
-When a scaled coefficient overflows or underflows, the original multiplication
-and division order is retained. These caches are refreshed for the next solve.
-Weakly mobilized contacts enter the same nonlinear shear solve directly when
-an analytical bound rules out sticking.
-For a constant, fully mobilized shear bound, a safeguarded Halley step reaches
-the same maximum-dissipation root with fewer evaluations. Its bracket, feasible
-endpoint and stopping tolerance remain unchanged. Positive displacement scales
-reuse the frozen history factor in the identity
-:math:`g(h+d)=g(h)+(1-g(h))g(d)`, with :math:`g(x)=1-\exp(-x)`.
-Small increments use a double-precision series whose degree follows the
-increment size: cubic through :math:`10^{-5}`, degree six through
-:math:`0.005`, and degree ten through :math:`0.125`. The degree-ten
-remainder is below :math:`3\times10^{-18}` over its interval. Constant polynomial reciprocals remove divisions from each
-root evaluation, and a single check routes negative arguments to ``expm1``.
-Each range keeps truncation error below floating-point rounding; the
-mobilization is checked against a long-double reference within two double
-machine epsilons of the reference value. Other increments retain ``expm1``. Extreme velocity
-scales retain the overflow/underflow-safe norm calculation. Mesh history
-projection skips contacts with zero normal impulse and reuses the prepared
-rigid-body Jacobians for final contact velocities. Its shear displacement uses
-the same guarded norm calculation. For permanent sinkage, the final coupled
-velocity determines the projection depth. The last solved pressure is reused
-only if that depth is identical; otherwise the same conservative yield bound
-can prove elastic unloading, or the original power is evaluated. This avoids
-redundant constitutive work without changing the plastic return or mesh
-projection weights. The previous and current loaded footprints can share
-vertices; synchronization checks each final height before updating collision
-and visual data, so repeated vertices need no sorting or extra mesh update.
+For terrain-only contacts on articulated systems, the solver packs the fixed
+impulse-response matrices once per physics step and uses vectorized updates
+of the generalized velocities. When a second sweep is needed, it packs padded
+Jacobian columns once so all three contact-velocity components can use vector instructions,
+while retaining each component's original summation order. The responses include
+the suspension's eliminated pin and equality constraints. Contact order, quadrature samples,
+material equations, and convergence tolerances remain the same.
 
-Dense terrain-only contact sets prepare constitutive caches, direct Jacobian
-access, initial velocities and error weights in one pass, then use a dedicated
-Gauss--Seidel loop with the same contact order, velocity updates, area-weighted
-error and stopping rules. Direct access is refreshed for each solve, including
-reused public-solver rows. Ineligible or mixed sets receive the general solver's
-complete initialization; native warm-start cache lifetimes remain the same.
-Consecutive rows reuse the current body velocity locally, committing every
-update before switching bodies and before returning from the solver.
-Mixed rigid contacts, articulated contacts and tendon constraints use the
-general coupled solver. Quadrature rays share their fixed orientation setup.
-For a box collider, the normalized direction, local direction, and axis signs
-are prepared once per step; each quadrature query uses the same native slab
-intersection arithmetic with its own origin and length. A terrain with an exactly identity rotation also skips local/world matrix
-transforms. Every nonidentity rotation, including very small rotations, keeps
-the complete transform calculations. Other collider shapes
-retain their native query paths. Cells with a single projected collider avoid
-unnecessary bound sorting;
-overlapping colliders still receive the full area partition. Each clipped
-rectangle shares its two abscissae on each axis and its quadrature weight across
-the same four samples. Sample order, interpolation arithmetic and every
-positive-area footprint remain unchanged, including very narrow overlaps.
-The collision detector skips rigid heightmap manifolds for this terrain because
-its area contact law supplies the supporting contacts. Ray and direct mesh queries
-continue to use the deformed surface. Per-step physics work depends on the
-contacted area, not the full terrain size. Initialization, checkpoints, XML,
-and some visualization operations process the full grid. Soil contacts keep
-their supporting islands awake to preserve continuous elastic response.
+When an articulated terrain solve needs more than four sweeps, sufficiently
+large contact groups can use six-component velocity and force/torque coordinates
+for each contacting link. Setup is attempted only when the residual after four
+sweeps still exceeds 1,000 times the existing stopping threshold, so solves near
+convergence retain the cheaper full-coordinate updates. Each quadrature point still receives its own normal
+and shear solve, with its original apparent inertia, material history, and
+residual tolerances. While consecutive points on one link are visited, changes
+to other links accumulate as force and torque. Their coupled velocity is updated
+before the next contact on another link is read. The Gauss-Seidel contact order
+and stopping criteria are retained; contacts are never merged.
 
-Scope and verification
-----------------------
+The six-direction basis is rebuilt from well-separated points in the current
+step. Every original sparse Jacobian and every full generalized impulse response
+must pass reconstruction checks at double-precision roundoff before this path
+is enabled. The responses include eliminated pin and equality constraints.
+Small groups and poorly conditioned geometry continue through the full
+articulated update. At the end of the solve, the original point responses update
+all generalized velocities, including passive joints absent from the contact
+Jacobians. This reduction can change floating-point summation order; it changes
+neither the mesh resolution, timestep, constitutive equations, nor solver
+accuracy settings.
 
-This is a surface terramechanics model for a supported bed, not a volumetric
-continuum model. It does not represent lateral soil transport, displaced-volume
-berms, excavation, overhangs, failure planes, or soil inertia. Mesh vertices move
-only along local Z. Contact support currently covers rigid and articulated
-colliders; contacts with granular or deformable particle objects are rejected.
+The solver also seeds mesh-soil contacts with the last converged traction on
+the same bed and body link. The cache sorts contact positions by X to limit
+nearest-point searches to the contact matching radius. It keeps them apart
+from the same body's rigid contacts, so the search cost stays linear when a
+body rests on soil and on a rigid support at once. Quadrature points are
+matched one to one; the cached traction is scaled by the current contact
+area and timestep and projected into the current soil strength bound. Impacts, unmatched points,
+and stale or non-converged cache entries receive a cold start. Current soil
+history and material forces are still solved each step at the existing
+convergence tolerances. Normal and shear updates continue iterating until
+their coupled force converges, including an isolated contact.
 
-``testDeformableTerrain`` checks plate-loading equations, nonlinear and
-width-dependent pressure, mesh/timestep refinement, small feet, unloading,
-impact compaction, shear limits, masks, articulated collider overlap,
-distant collision tiles, sparse acceleration-cache equivalence, very small
-slip with anisotropic or constrained mobility, independent bisection checks
-across shear-solver coordinates, three timesteps and extreme displacement
-scales, cached loading
-and unloading solves, cache reset on timestep and contact-type changes, automatic
-manifold suppression with retained mesh queries, floating-point accuracy of shear
-mobilization and extreme velocity norms, rotated anisotropic shear roots,
-shift rounding margins across sticking and high-speed sliding,
-exact dense/general sweep equivalence with grouped and alternating bodies,
-tangential inverse refresh, extreme damping scales, subnormal shear scaling,
-exact cached/uncached pressure equivalence across yielding and unloading,
-final projection depths and adjacent representable depths, nearby nonlinear
-power accuracy without anchor drift, elastic/yield crossings and extreme powers,
-partial-tile refresh equivalence at grid and tile boundaries, prepared/native
-box-ray equivalence for rotated poses and inside, face, edge, parallel, and
-short-range queries, XML, and checkpoint replay.
-Run it with:
+Warm starting changes the numerical iteration path, so a cold-start trajectory
+need not be bit-for-bit identical. Set
+``world.getContactSolver().getConfig().terrainWarmStart = false`` to disable
+cached traction guesses while keeping the same mesh, timestep, material equations,
+and tolerances. World checkpoints include this configuration and cache for
+deterministic replay.
 
-.. code-block:: console
+Within each coupled solve, shear updates also reuse the previous scalar root
+as an initial guess inside the current analytic bracket, in both compliance
+and shift coordinates. The current slip, normal load, and shear strength are
+evaluated again before a root is accepted, using the same constitutive residual
+tolerance. A valid seed avoids evaluating unused bracket endpoints; the solver
+verifies a feasible endpoint if its safeguarded iterations exhaust their limit.
+It retains the impulse already evaluated at the accepted root. These guesses
+reset at the start of each physics step.
 
-   ctest --test-dir build-benchmark -j12 -R '^testDeformableTerrain$' --output-on-failure
-   OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 build-benchmark/benchmark/benchmarks \
-     --bench deformable_terrain --raisim
+The scalar shear roots use Newton for small corrections and safeguarded Halley
+updates for larger corrections, including the curvature of the
+displacement-dependent shear strength. This reduces repeated
+constitutive evaluations without changing the force equations. An update is
+accepted only after re-evaluating the current residual on the feasible side of
+the original tolerance. Poorly scaled curvature uses Newton, and proposals
+outside the current bracket use bisection. The fixed tangential matrix from
+that residual evaluation is reused in the derivative calculations.
 
-The benchmark measures resting and sliding plates with both linear pressure /
-fully mobilized friction and nonlinear Bekker / Janosi-Hanamoto material laws.
-Grid sizes increase while the 5 cm cell spacing stays fixed. To select a case,
-append ``-- --material=nonlinear --grid=129 --steps=500 --repeats=5``.
-``--trace=/tmp/soil-trace.bin`` records per-step poses, velocities, normal forces,
-solver sweeps, and the complete final soil history outside the timed sections
-for comparison between builds on the same platform.
+Normal warm seeds also reuse the reciprocals of the fixed elastic loading and
+unloading slopes. These are separate because loading includes the material's
+viscous term. Yield branches retain their nonlinear slope calculation. Each
+nonzero warm residual still receives a correction before acceptance, and the
+updated pressure and depth must pass the same normal residual tolerance.
+For nonlinear warm seeds, a conservative tangent below the convex Bekker
+pressure envelope can certify an interval where the elastic branch wins.
+The interval is constructed only when an elastic warm seed needs it, and a
+new ordinary pressure anchor invalidates it.
+Inside that interval, one exact elastic correction replaces the general Newton
+loop when loading or unloading does not change. The updated pressure is still
+checked against the original normal residual tolerance. An envelope crossing,
+a viscous loading transition, an unsupported exponent, or a poorly scaled
+interval retains the safeguarded solve.
 
-The ``rayrai_deformable_terrain`` example slides three weighted blocks across
-the mesh and leaves permanent ruts. It also supports ``--headless --steps=3000``
-and ``--export=/tmp/soil-world`` to save a resulting world without a display.
+When the sinkage exponent is one, both pressure branches are affine. The solver
+computes the four elastic/yield and loading/unloading depth candidates from
+coefficients fixed for the current physics step. Taking the minimum of each
+branch's loading/unloading candidates and then the maximum of the two pressure
+candidates solves the same piecewise pressure equation directly. It evaluates
+the current pressure and residual before acceptance; poorly scaled coefficients
+and candidates that fail the existing tolerance use the iterative solve.
 
-The empirical model families are also documented by the
-`Project Chrono SCM terrain reference <https://api.projectchrono.org/10.0.0/classchrono_1_1vehicle_1_1_s_c_m_terrain.html>`_.
-This implementation uses RaiSim's own mesh collision and coupled contact solver.
+Warm shear visits can also use a fixed compliance cap from the tangential
+mobility matrix. A conservative bound using the current normal load, shear
+history, and tangential velocity components proves the cap feasible before it
+replaces the more expensive analytic bracket calculation. If that proof fails,
+the original analytic bracket is calculated. Both paths evaluate the current
+slip-dependent force at the same tolerance.
+
+All of these scalar caches reset each physics step.
+
+For bodies with many terrain quadrature points, dense pin elimination projects
+six spatial impulse directions once per body. Each point's response and pin
+coupling are recovered from those directions and its lever arm. This uses the
+linearity of the current mass-weighted projection; it retains every contact
+point and recomputes the mass response and constraint factorization each step.
+Smaller constraint or contact groups, tracked bodies, and the structured pin factorization
+use the existing per-contact projection.
+
+The ``deformable_terrain`` benchmark accepts ``--body=articulated`` to measure
+a 60-DOF plate with the same analytical load and sinkage checks as its default
+rigid plate. ``--body=pinned`` adds eight independent joint relations to
+exercise the shared suspension projection with the same analytical load.
+``--body=multilink`` uses a 64-DOF body supported by four separate articulated
+pads with horizontal sliders, retaining the same total 20 kg load and
+0.24 square metre footprint. This exercises coupling between contacting links
+and checks sinkage against the same analytical pressure law.
+Compare ``--start=warm`` (default) and ``--start=cold`` to measure
+warm starting at the same accuracy settings; each case reports solver sweeps
+and analytical sinkage error. Use one CPU thread for timing comparisons.
+
+Add ``--contact-law`` to time the normal and shear updates independently of
+collision detection and articulated-body calculations. This workload visits
+32 anisotropic point contacts with changing loads and slip speeds, covering
+fresh, partially mobilized, and fully mobilized shear histories. It verifies
+normal pressure, shear feasibility, tangential alignment, and dissipation after
+each timed run. For example::
+
+   ./benchmarks --bench deformable_terrain --raisim -- --contact-law --start=warm --steps=10000 --repeats=3
+
+Use ``--start=cold`` for the same inputs with fresh scalar solve state at every
+visit. Add ``--material=linear`` to isolate the piecewise affine pressure solve;
+the default is ``--material=nonlinear`` with exponent 1.1. Both material options
+retain displacement-dependent shear and the same force checks. This microbenchmark complements the full mesh and vehicle workloads;
+its timing does not include mesh updates, collision queries, or suspension
+constraints.
+
+Model scope
+-----------
+
+This is a surface terramechanics model for a supported bed. The surface deforms
+only along the bed's local Z axis. It represents distributed support,
+permanent compaction, elastic recovery, loading viscosity, and slip-dependent
+traction for rigid bodies and articulated systems.
+
+The model does not include soil inertia, lateral soil transport,
+displaced-volume berms, excavation, overhangs, or failure planes. It is not a
+volumetric continuum model.
+
+The soil has no contact model for granular media or deformable objects
+(cloth and volumes), so a world cannot hold a deformable terrain together with
+either. Adding the second of them is a fatal error (``RSFATAL``), whichever is
+added first and also while a world XML file loads, so the combination fails
+before any simulation step.
+
+Vehicle example
+---------------
+
+The ``rayrai_deformable_terrain`` example drives an 896 kg off-road buggy over
+a 16 m by 6 m soil bed. It uses the same vehicle model as
+:doc:`examples/rayrai/rayrai_offroad_buggy`: double-wishbone suspension,
+coil springs and dampers, rack-and-pinion steering, and tyre compliance.
+The cylindrical wheel colliders have radius 0.3611 m and contact widths
+of 0.126 m in front and 0.1562 m at the rear.
+
+While meshes load, the example shows the same loading bar as the forest
+example. Its gradient and deep-purple label use the colors from the RaiSim
+logo. Physics stays paused until the assets are ready, then driving starts
+without a settling phase.
+
+.. figure:: ../../rsc/docs/image/rayrai/deformable_terrain_loading.png
+   :width: 100%
+   :alt: A loading bar in the RaiSim logo colors above the terrain viewer while buggy meshes load.
+
+   The shared loading bar stays above the viewer while the simulation clock
+   remains at zero.
+
+The bed uses ``bekkerKphi = 2.0e6``, ``elasticStiffness = 2.0e7``,
+``damping = 4.0e4``, ``sinkageExponent = 1.1``, and ``cohesion = 100``.
+Other material fields retain their defaults. These parameters demonstrate
+wheel sinkage, permanent ruts, and traction; they are not measurements of a
+particular soil. Rear-wheel drive requests about 0.8 m/s, with the actual speed
+determined by sinkage, slip, and soil resistance.

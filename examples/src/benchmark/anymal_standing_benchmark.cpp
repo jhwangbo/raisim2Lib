@@ -1,11 +1,6 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
-#include "benchmarkCommon.hpp"
-
-#include <Eigen/Dense>
-#include <raisim/World.hpp>
-
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
@@ -14,6 +9,11 @@
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include <Eigen/Dense>
+#include <raisim/World.hpp>
+
+#include "benchmarkCommon.hpp"
 #include "example_resources.hpp"
 
 namespace {
@@ -35,20 +35,14 @@ int parseStepsArg(int argc, char** argv, int defaultSteps) {
 
 bool wantsFastMode(int argc, char** argv) {
   for (int i = 1; i < argc; ++i) {
-    if (std::strcmp(argv[i], "--fast") == 0 ||
-        std::strcmp(argv[i], "--quick") == 0) {
+    if (std::strcmp(argv[i], "--fast") == 0 || std::strcmp(argv[i], "--quick") == 0) {
       return true;
     }
   }
   return false;
 }
 
-void buildAnymalDefaults(raisim::ArticulatedSystem* anymal,
-                         Eigen::VectorXd& gc,
-                         Eigen::VectorXd& gv,
-                         Eigen::VectorXd& pgain,
-                         Eigen::VectorXd& dgain,
-                         Eigen::VectorXd& velTarget) {
+void buildAnymalDefaults(raisim::ArticulatedSystem* anymal, Eigen::VectorXd& gc, Eigen::VectorXd& gv, Eigen::VectorXd& pgain, Eigen::VectorXd& dgain, Eigen::VectorXd& velTarget) {
   const size_t gcDim = anymal->getGeneralizedCoordinateDim();
   const size_t dof = anymal->getDOF();
   gc.setZero(static_cast<int>(gcDim));
@@ -57,12 +51,7 @@ void buildAnymalDefaults(raisim::ArticulatedSystem* anymal,
   dgain.setZero(static_cast<int>(dof));
   velTarget.setZero(static_cast<int>(dof));
 
-  const double jointDefaults[12] = {
-      0.03, 0.4, -0.8,
-      -0.03, 0.4, -0.8,
-      0.03, -0.4, 0.8,
-      -0.03, -0.4, 0.8
-  };
+  const double jointDefaults[12] = {0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8};
 
   if (gcDim >= 7 && dof >= 6) {
     gc[0] = 0.0;
@@ -93,7 +82,6 @@ void buildAnymalDefaults(raisim::ArticulatedSystem* anymal,
 }  // namespace
 
 int main(int argc, char* argv[]) {
-
   raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
 
   const char* anymalStepsEnv = std::getenv("ANYMAL_STEPS");
@@ -134,10 +122,8 @@ int main(int argc, char* argv[]) {
       const auto p2Begin = p1End;
       world.integrate2();
       const auto p2End = std::chrono::steady_clock::now();
-      integrate1Ns += static_cast<std::uint64_t>(
-          std::chrono::duration_cast<std::chrono::nanoseconds>(p1End - p1Begin).count());
-      integrate2Ns += static_cast<std::uint64_t>(
-          std::chrono::duration_cast<std::chrono::nanoseconds>(p2End - p2Begin).count());
+      integrate1Ns += static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(p1End - p1Begin).count());
+      integrate2Ns += static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(p2End - p2Begin).count());
     } else {
       world.integrate();
     }
@@ -145,15 +131,11 @@ int main(int argc, char* argv[]) {
   }
   const auto end = std::chrono::steady_clock::now();
   raisim::print_timediff("ANYmal standing (raisim)", steps, begin, end);
-  const double avgContacts =
-      steps > 0 ? static_cast<double>(contactTotal) / static_cast<double>(steps) : 0.0;
+  const double avgContacts = steps > 0 ? static_cast<double>(contactTotal) / static_cast<double>(steps) : 0.0;
   std::cout << "ANYmal avg contacts (raisim): " << avgContacts << std::endl;
   if (phaseProfile && steps > 0) {
-    std::cout << "[anymal_phase_profile][raisim] integrate1_us_per_step="
-              << (static_cast<double>(integrate1Ns) / 1e3 / static_cast<double>(steps))
-              << " integrate2_us_per_step="
-              << (static_cast<double>(integrate2Ns) / 1e3 / static_cast<double>(steps))
-              << std::endl;
+    std::cout << "[anymal_phase_profile][raisim] integrate1_us_per_step=" << (static_cast<double>(integrate1Ns) / 1e3 / static_cast<double>(steps))
+              << " integrate2_us_per_step=" << (static_cast<double>(integrate2Ns) / 1e3 / static_cast<double>(steps)) << std::endl;
   }
 
   return 0;

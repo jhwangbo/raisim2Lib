@@ -1,6 +1,8 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
+// Manual stress tool for object creation, removal, and memory handling.
+
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 
@@ -13,7 +15,7 @@ int main(int argc, char* argv[]) {
   ground->setAppearance("grid");
 
   while (1) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
 
     /// create objects
     std::vector<raisim::Box*> cubes;
@@ -26,8 +28,7 @@ int main(int argc, char* argv[]) {
     for (size_t i = 0; i < N; i++) {
       for (size_t j = 0; j < N; j++) {
         for (size_t k = 0; k < N; k++) {
-          std::string number =
-              std::to_string(i) + std::to_string(j) + std::to_string(k);
+          std::string number = std::to_string(i) + std::to_string(j) + std::to_string(k);
           raisim::SingleBodyObject* ob = nullptr;
           switch ((i + j + k) % 4) {
             case 0:
@@ -56,19 +57,14 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    for (int i=0; i<5; i++)
-      world.integrate();
+    for (int i = 0; i < 5; i++) world.integrate();
 
-    for (auto c : cubes)
-      world.removeObject(c);
+    for (auto c : cubes) world.removeObject(c);
 
-    for (auto c : spheres)
-      world.removeObject(c);
+    for (auto c : spheres) world.removeObject(c);
 
-    for (auto c : capsules)
-      world.removeObject(c);
+    for (auto c : capsules) world.removeObject(c);
 
-    for (auto c : cylinders)
-      world.removeObject(c);
+    for (auto c : cylinders) world.removeObject(c);
   }
 }

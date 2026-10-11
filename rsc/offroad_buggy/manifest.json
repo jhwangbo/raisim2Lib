@@ -3,8 +3,8 @@
   "files": [
     {
       "path": "ATTRIBUTION.md",
-      "bytes": 8928,
-      "sha256": "b3fcba4e1329b922fbe76058c08d03e6e93e04e9d12b2bf8746d63c498b7d366"
+      "bytes": 9047,
+      "sha256": "ee5a1cc84ce5b13660557064861fbdd564d0d9cc74028fe580328c716cc5325d"
     },
     {
       "path": "LICENSE-CC0-1.0.txt",
@@ -13,8 +13,8 @@
     },
     {
       "path": "buggy.urdf",
-      "bytes": 26813,
-      "sha256": "a60b92c1c0e367b5bb8788521ee64c2411bece386575d395859358e477561f02"
+      "bytes": 29687,
+      "sha256": "9fd6e3ce4fe51b922acb4e07f6312ab65beb79b2abb269f7709cf8b4aa7f5e4c"
     },
     {
       "path": "meshes/chassis.bin",
@@ -25,6 +25,16 @@
       "path": "meshes/chassis.gltf",
       "bytes": 19541,
       "sha256": "f9ef0ea6a647cfc365c31e374b07972dcc0696ef415c60dfc02207bd167796cd"
+    },
+    {
+      "path": "meshes/coil_spring.bin",
+      "bytes": 101040,
+      "sha256": "db8cfece218ac0abc73caba79d759eeb198cb8a3ec1be48d5b8374a273b7dec5"
+    },
+    {
+      "path": "meshes/coil_spring.gltf",
+      "bytes": 1029,
+      "sha256": "113ca0e9c50a57a10e45739576ec1b5417ce8cbfaa9da2f16ccd16db06ac458a"
     },
     {
       "path": "meshes/coilover_body.bin",
@@ -45,6 +55,16 @@
       "path": "meshes/coilover_rod.gltf",
       "bytes": 1528,
       "sha256": "f2f0952e634d38505b8b275d1393dd71cfd1a6a7caf292bf37a2b9319951cdf4"
+    },
+    {
+      "path": "meshes/drive_shaft.bin",
+      "bytes": 2928,
+      "sha256": "2f23393c615012c1311afc7909b4eef17f053753250e00602771172212fd9559"
+    },
+    {
+      "path": "meshes/drive_shaft.gltf",
+      "bytes": 982,
+      "sha256": "dd1ade9d646cf09cb2af64ad14847f73912383ec3bef0d3333e2d5cfaab6df06"
     },
     {
       "path": "meshes/fl_disc.bin",

@@ -1,12 +1,12 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
+#include "example_resources.hpp"
+#include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
-#include "raisim/RaisimServer.hpp"
-#include "example_resources.hpp"
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   auto binaryPath = raisim::Path::setFromArgv(argv[0]);
 
   /// create raisim world
@@ -119,18 +119,16 @@ int main(int argc, char **argv) {
   raisim::RaisimServer server(&world);
   server.launchServer(8080);
 
-
   raisim_examples::warnIfNoClientConnected(server, 8080);
   world.exportToXml(binaryPath.getDirectory(), "exportedWorld.xml");
 
-  for (int i=0; i< 5000000; i++) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+  for (int i = 0; i < 5000000; i++) {
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
     if (server.isConnected()) {
       server.integrateWorldThreadSafe();
     }
 
-    if (i == 5000)
-      world.removeTendon(actuator);
+    if (i == 5000) world.removeTendon(actuator);
   }
 
   server.killServer();

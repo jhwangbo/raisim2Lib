@@ -6,18 +6,16 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "rayrai/example_common.hpp"
 #include "example_resources.hpp"
-#include "rayrai_example_compat.hpp"
+#include "raisim/World.hpp"
 #include "rayrai/Camera.hpp"
 #include "rayrai/CameraFrustum.hpp"
-#include "raisim/World.hpp"
+#include "rayrai/example_common.hpp"
+#include "rayrai_example_compat.hpp"
 
-namespace
-{
+namespace {
 ImVec2 fitToAspect(ImVec2 avail, float aspect) {
-  if (aspect <= 0.0f)
-    return avail;
+  if (aspect <= 0.0f) return avail;
   ImVec2 size = avail;
   size.y = size.x / aspect;
   if (size.y > avail.y) {
@@ -26,20 +24,15 @@ ImVec2 fitToAspect(ImVec2 avail, float aspect) {
   }
   return size;
 }
-} // namespace
+}  // namespace
 
-static inline glm::vec3 toGlm(const raisim::Vec<3>& v) {
-  return glm::vec3(v[0], v[1], v[2]);
-}
+static inline glm::vec3 toGlm(const raisim::Vec<3>& v) { return glm::vec3(v[0], v[1], v[2]); }
 
-static inline glm::mat3 toGlm(const raisim::Mat<3, 3>& R) {
-  return glm::make_mat3(R.ptr());
-}
+static inline glm::mat3 toGlm(const raisim::Mat<3, 3>& R) { return glm::make_mat3(R.ptr()); }
 
 int main(int argc, char* argv[]) {
   ExampleApp app;
-  if (!app.init("rayrai_example_rgb", 1280, 720))
-    return -1;
+  if (!app.init("rayrai_example_rgb", 1280, 720)) return -1;
 
   auto world = std::make_shared<raisim::World>();
   world->addGround();
@@ -48,8 +41,7 @@ int main(int argc, char* argv[]) {
   const std::string go1Dir = exampleRscPath(argv[0], "go1");
   std::vector<std::string> modules = {"d455"};
   auto go1 = world->addArticulatedSystem(go1Dir + sep + "go1.urdf", modules, go1Dir);
-  go1->setGeneralizedCoordinate({0, 0, 0.32, 1.0, 0.0, 0.0, 0.0, 0, 0.67, -1.3, 0, 0.67, -1.3, 0,
-    0.67, -1.3, 0, 0.67, -1.3});
+  go1->setGeneralizedCoordinate({0, 0, 0.32, 1.0, 0.0, 0.0, 0.0, 0, 0.67, -1.3, 0, 0.67, -1.3, 0, 0.67, -1.3, 0, 0.67, -1.3});
 
   auto rgbCam = go1->getSensorSet("d455_front")->getSensor<raisim::RGBCamera>("color");
 
@@ -60,8 +52,7 @@ int main(int argc, char* argv[]) {
   box->setAppearance("0.2,0.7,0.9,1.0");
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
-  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Balanced));
+  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {35, 35, 45, 255});
   auto& camera = viewer->getCamera();
   camera.position = {3.2f, 2.6f, 2.2f};
@@ -91,8 +82,7 @@ int main(int argc, char* argv[]) {
 
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     world->integrate();
 

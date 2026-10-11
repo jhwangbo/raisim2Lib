@@ -241,9 +241,32 @@ class Urdf:
         return ''.join(out)
 
 
-def visual(mesh, xyz=(0, 0, 0), rpy=(0, 0, 0)):
-    return (f'    <visual>\n      <origin xyz="{fmt(xyz)}" rpy="{fmt(rpy)}"/>\n'
-            f'      <geometry><mesh filename="{mesh}"/></geometry>\n    </visual>\n')
+def visual(mesh, xyz=(0, 0, 0), rpy=(0, 0, 0), scale=(1, 1, 1), material=None, colour=None):
+    text = (f'    <visual>\n      <origin xyz="{fmt(xyz)}" rpy="{fmt(rpy)}"/>\n'
+            f'      <geometry><mesh filename="{mesh}" scale="{fmt(scale)}"/></geometry>\n')
+    if material:
+        text += f'      <material name="{material}"><color rgba="{fmt(colour)}"/></material>\n'
+    return text + '    </visual>\n'
+
+
+def drive_shaft_visuals(meshes):
+    text = ''
+    for name, side in [('rl', 1), ('rr', -1)]:
+        inner = np.array([-1.3571, 0.30 * side, 0.0])
+        outer = corner_points('r', side)['wheel'] - np.array([0.0, 0.115 * side, 0.0])
+        axis = outer - inner
+        length = np.linalg.norm(axis)
+        direction = axis / length
+        # Rz(yaw) Ry(pitch) maps the visual's +Z axis onto the shaft.
+        rpy = (0.0, math.acos(direction[2]), math.atan2(direction[1], direction[0]))
+        text += visual(f'{meshes}/drive_shaft.gltf', (inner + outer) / 2, rpy,
+                       (1, 1, length - 0.1), f'{name}_shaft', (0.55, 0.56, 0.58, 1))
+        for end, centre in [('inner', inner + direction * 0.045), ('outer', outer - direction * 0.045)]:
+            text += (f'    <visual>\n      <origin xyz="{fmt(centre)}" rpy="{fmt(rpy)}"/>\n'
+                     '      <geometry><capsule radius="0.042" length="0.06"/></geometry>\n'
+                     f'      <material name="{name}_{end}_boot"><color rgba="0.02 0.02 0.02 1"/></material>\n'
+                     '    </visual>\n')
+    return text
 
 
 def collision(geometry, material, xyz=(0, 0, 0), rpy=(0, 0, 0)):
@@ -265,7 +288,7 @@ def build_urdf(steering_wheel, meshes='meshes'):
     """URDF text of the buggy. steering_wheel = (centre, axis) in the chassis frame, the axis
     pointing at the driver, so that a positive angle turns the wheel counter-clockwise."""
     u = Urdf('offroad_buggy')
-    body = visual(f'{meshes}/chassis.gltf') + visual(f'{meshes}/steering_rack_housing.gltf', rack_origin())
+    body = visual(f'{meshes}/chassis.gltf') + drive_shaft_visuals(meshes) + visual(f'{meshes}/steering_rack_housing.gltf', rack_origin())
     body += ''.join(collision(f'<box size="{fmt(size)}"/>', 'body', centre) for centre, size in CHASSIS_BOXES)
     u.link('chassis', MASS['chassis'], CHASSIS_COM, CHASSIS_INERTIA, body)
     centre, axis = steering_wheel
@@ -337,7 +360,7 @@ def build_urdf(steering_wheel, meshes='meshes'):
                 rpy=(shock_angle(p), 0, 0), axis=(1, 0, 0),
                 body='    <limit effort="0" velocity="100" lower="-3.1" upper="3.1"/>\n    <dynamics damping="0.5"/>\n')
         u.link(f'{c}_shock_body', MASS['shock_body'], (0, 0, -0.09), (0.02, 0.02, 0.004),
-               visual(f'{meshes}/coilover_body.gltf'))
+               visual(f'{meshes}/coilover_body.gltf') + visual(f'{meshes}/coil_spring.gltf', material=f'{c}_coil', colour=(0.10, 0.80, 0.30, 1)))
         low, high = SHOCK_TRAVEL
         u.joint(f'{c}_shock', 'prismatic', f'{c}_shock_body', f'{c}_shock_rod', (0, 0, 0), axis=(0, 0, -1),
                 body=f'    <limit effort="0" velocity="10" lower="{low}" upper="{high}"/>\n'

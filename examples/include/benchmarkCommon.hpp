@@ -26,19 +26,15 @@
 #define RAISIM_BENCHMARKCOMMON_HPP
 #define MAKE_STR(x) _MAKE_STR(x)
 #define _MAKE_STR(x) #x
-#include <iostream>
 #include <chrono>
+#include <iostream>
 
 namespace raisim {
 
-void print_timediff(const char *prefix, int loopCount,
-                    const std::chrono::steady_clock::time_point &start,
-                    const std::chrono::steady_clock::time_point &end) {
-  double milliseconds =
-      std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
-          .count();
-  std::cout<<"The simulation of "<<prefix<<" is running at: "<<loopCount / milliseconds<<" kHz\n";
+void print_timediff(const char* prefix, int loopCount, const std::chrono::steady_clock::time_point& start, const std::chrono::steady_clock::time_point& end) {
+  double milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  std::cout << "The simulation of " << prefix << " is running at: " << loopCount / milliseconds << " kHz\n";
 }
-}
+}  // namespace raisim
 
-#endif //RAISIM_BENCHMARKCOMMON_HPP
+#endif  // RAISIM_BENCHMARKCOMMON_HPP

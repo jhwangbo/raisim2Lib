@@ -5,14 +5,13 @@
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "raisim/World.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
-#include "raisim/World.hpp"
 
 int main() {
   ExampleApp app;
-  if (!app.init("rayrai_quality_lighting", 1280, 720))
-    return -1;
+  if (!app.init("rayrai_quality_lighting", 1280, 720)) return -1;
 
   auto world = std::make_shared<raisim::World>();
   world->addGround();
@@ -33,8 +32,7 @@ int main() {
   greenCylinder->setAppearance("green");
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
-  auto quality = raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Ultra);
+  auto quality = raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Ultra);
   quality.reflectiveGround = true;
   quality.fxaaEnabled = true;
   quality.depthOfFieldEnabled = true;
@@ -89,8 +87,7 @@ int main() {
 
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     const double t = world->getWorldTime();
     point.position = glm::vec3(-1.7f + 0.35f * std::sin(t), -1.2f, 2.3f);

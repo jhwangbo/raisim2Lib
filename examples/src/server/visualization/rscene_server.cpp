@@ -13,16 +13,16 @@
 // its resource directories and its download cache first, and asks before downloading
 // whatever is still missing from this server. setSceneFileSharing(false) turns sharing off.
 
+#include "example_resources.hpp"
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
-#include "example_resources.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
 
 int main(int argc, char* argv[]) {
   raisim::World world(exampleRscPath(argv[0], "forest/rayrai_forest.rscene"));
 
   raisim::RaisimServer server(&world);
-  server.setSceneFileSharing(true); // the default; shown for discoverability
+  server.setSceneFileSharing(true);  // the default; shown for discoverability
   server.launchServer();
   raisim_examples::warnIfNoClientConnected(server);
 

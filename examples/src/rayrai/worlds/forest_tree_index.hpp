@@ -13,17 +13,14 @@ class TreeProximityIndex {
  public:
   TreeProximityIndex() { heads_.fill(end); }
   void add(double x, double y) {
-    auto& head = x >= -40 && x < 40 && y >= -40 && y < 40
-      ? heads_[coordinate(y) * cells + coordinate(x)] : outside_;
+    auto& head = x >= -40 && x < 40 && y >= -40 && y < 40 ? heads_[coordinate(y) * cells + coordinate(x)] : outside_;
     points_.push_back({x, y, head});
     head = points_.size() - 1;
   }
   bool anyWithin(double x, double y, double radius) const {
     if (radius <= 0) return false;
     if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(radius)) {
-      return std::any_of(points_.begin(), points_.end(), [&](const Point& p) {
-        return std::hypot(x - p.x, y - p.y) < radius;
-      });
+      return std::any_of(points_.begin(), points_.end(), [&](const Point& p) { return std::hypot(x - p.x, y - p.y) < radius; });
     }
     // Expand by a cell on each side so rounding at a bin/radius boundary can
     // only add candidates. Trees outside the template are checked separately.
@@ -36,10 +33,14 @@ class TreeProximityIndex {
         if (anyWithin(heads_[iy * cells + ix], x, y, radius)) return true;
     return anyWithin(outside_, x, y, radius);
   }
+
  private:
   static constexpr int cells = 40;
   static constexpr size_t end = std::numeric_limits<size_t>::max();
-  struct Point { double x, y; size_t next; };
+  struct Point {
+    double x, y;
+    size_t next;
+  };
   static int coordinate(double value) {
     if (value <= -40) return 0;
     if (value >= 40) return cells - 1;
@@ -56,4 +57,4 @@ class TreeProximityIndex {
   size_t outside_ = end;
   std::vector<Point> points_;
 };
-} // namespace forest
+}  // namespace forest

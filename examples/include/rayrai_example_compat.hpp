@@ -13,8 +13,7 @@ namespace rayrai_detail {
 template <typename T>
 class HasBackgroundColorRgb255 {
   template <typename U>
-  static auto test(int) -> decltype(
-    std::declval<U&>().setBackgroundColorRgb255(std::declval<glm::vec4>()), std::true_type{});
+  static auto test(int) -> decltype(std::declval<U&>().setBackgroundColorRgb255(std::declval<glm::vec4>()), std::true_type{});
 
   template <typename>
   static std::false_type test(...);
@@ -33,14 +32,12 @@ template <typename T>
 struct HasAdditionalLight<T, VoidT<typename T::AdditionalLight>> : std::true_type {};
 
 template <typename Viewer>
-typename std::enable_if<HasBackgroundColorRgb255<Viewer>::value>::type setBackgroundRgb255(
-  Viewer& viewer, const glm::vec4& color) {
+typename std::enable_if<HasBackgroundColorRgb255<Viewer>::value>::type setBackgroundRgb255(Viewer& viewer, const glm::vec4& color) {
   viewer.setBackgroundColorRgb255(color);
 }
 
 template <typename Viewer>
-typename std::enable_if<!HasBackgroundColorRgb255<Viewer>::value>::type setBackgroundRgb255(
-  Viewer& viewer, const glm::vec4& color) {
+typename std::enable_if<!HasBackgroundColorRgb255<Viewer>::value>::type setBackgroundRgb255(Viewer& viewer, const glm::vec4& color) {
   viewer.setBackgroundColor(color);
 }
 
@@ -83,16 +80,10 @@ typename std::enable_if<!HasAdditionalLight<Viewer>::value>::type addPbrSceneLig
 
 }  // namespace rayrai_detail
 
-inline void setRayraiBackgroundColorRgb255(raisin::RayraiWindow& viewer, const glm::vec4& color) {
-  rayrai_detail::setBackgroundRgb255(viewer, color);
-}
+inline void setRayraiBackgroundColorRgb255(raisin::RayraiWindow& viewer, const glm::vec4& color) { rayrai_detail::setBackgroundRgb255(viewer, color); }
 
-inline void addRayraiBasicSceneLights(raisin::RayraiWindow& viewer) {
-  rayrai_detail::addBasicSceneLights(viewer);
-}
+inline void addRayraiBasicSceneLights(raisin::RayraiWindow& viewer) { rayrai_detail::addBasicSceneLights(viewer); }
 
-inline void addRayraiPbrSceneLights(raisin::RayraiWindow& viewer) {
-  rayrai_detail::addPbrSceneLights(viewer);
-}
+inline void addRayraiPbrSceneLights(raisin::RayraiWindow& viewer) { rayrai_detail::addPbrSceneLights(viewer); }
 
 }  // namespace raisim_examples

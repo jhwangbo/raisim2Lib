@@ -13,11 +13,10 @@
 
 #include <glbinding/gl/gl.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb/stb_image_write.h"
-
-#include "rayrai/example_common.hpp"
 #include "example_resources.hpp"
+#include "rayrai/example_common.hpp"
 #include "rayrai_loading_progress.hpp"
+#include "stb/stb_image_write.h"
 
 namespace {
 
@@ -29,8 +28,7 @@ raisim::ArticulatedSystem* addStandingAnymal(raisim::World& world, const std::st
   auto* anymal = world.addArticulatedSystem(urdf);
   anymal->setName("anymal");
   Eigen::VectorXd gc(anymal->getGeneralizedCoordinateDim()), gv(anymal->getDOF());
-  gc << kRobotX, kRobotY, 0.56, std::cos(kRobotYaw / 2), 0, 0, std::sin(kRobotYaw / 2),
-    0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
+  gc << kRobotX, kRobotY, 0.56, std::cos(kRobotYaw / 2), 0, 0, std::sin(kRobotYaw / 2), 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
   gv.setZero();
   Eigen::VectorXd pGain = Eigen::VectorXd::Zero(anymal->getDOF());
   Eigen::VectorXd dGain = Eigen::VectorXd::Zero(anymal->getDOF());
@@ -51,20 +49,20 @@ bool saveScreenshot(raisin::Camera& camera, const std::filesystem::path& path) {
   gl::glBindTexture(gl::GL_TEXTURE_2D, camera.getFinalTexture());
   gl::glGetTexImage(gl::GL_TEXTURE_2D, 0, gl::GL_RGBA, gl::GL_UNSIGNED_BYTE, rgba.data());
   gl::glBindTexture(gl::GL_TEXTURE_2D, 0);
-  for (int y = 0; y < height; ++y)
-    std::memcpy(&flipped[y * stride], &rgba[(height - 1 - y) * stride], stride);
-  return stbi_write_png(path.string().c_str(), width, height, 4, flipped.data(),
-                        static_cast<int>(stride)) != 0;
+  for (int y = 0; y < height; ++y) std::memcpy(&flipped[y * stride], &rgba[(height - 1 - y) * stride], stride);
+  return stbi_write_png(path.string().c_str(), width, height, 4, flipped.data(), static_cast<int>(stride)) != 0;
 }
 
-} // namespace
+}  // namespace
 
 int main(int argc, char* argv[]) {
   std::filesystem::path scene = exampleRscPath(argv[0], "city/rayrai_city.rscene"), screenshot;
   for (int i = 1; i < argc; ++i) {
     const std::string option = argv[i];
-    if (option == "--scene" && i + 1 < argc) scene = argv[++i];
-    else if (option == "--screenshot" && i + 1 < argc) screenshot = argv[++i];
+    if (option == "--scene" && i + 1 < argc)
+      scene = argv[++i];
+    else if (option == "--screenshot" && i + 1 < argc)
+      screenshot = argv[++i];
     else {
       std::cerr << "Usage: rayrai_city [--scene FILE.rscene] [--screenshot PNG]\n";
       return 2;
@@ -105,15 +103,13 @@ int main(int argc, char* argv[]) {
       if (!screenshot.empty() && !loading.visible()) {
         if (settleFrames == kSettleFrames) settleStart = std::chrono::steady_clock::now();
         if (--settleFrames > 0) continue;
-        const double ms = std::chrono::duration<double, std::milli>(
-          std::chrono::steady_clock::now() - settleStart).count();
-        std::cout << "City: " << kSettleFrames - 1 << " frames after loading, "
-                  << ms / (kSettleFrames - 1) << " ms per frame\n";
+        const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - settleStart).count();
+        std::cout << "City: " << kSettleFrames - 1 << " frames after loading, " << ms / (kSettleFrames - 1) << " ms per frame\n";
         status = saveScreenshot(viewer.getCamera(), screenshot) ? 0 : 1;
         break;
       }
     }
-  } // Release graphics resources before closing the OpenGL context.
+  }  // Release graphics resources before closing the OpenGL context.
   app.shutdown();
   return status;
 }

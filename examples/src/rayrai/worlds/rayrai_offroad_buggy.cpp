@@ -26,16 +26,16 @@
 
 #include <glbinding/gl/gl.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb/stb_image_write.h"
-
-#include "rayrai/example_common.hpp"
-#include "rayrai/Visuals.hpp"
 #include "example_resources.hpp"
-#include "rayrai_loading_progress.hpp"
 #include "offroad_buggy_scene.hpp"
-#include "offroad_buggy_venue.hpp"
-#include "offroad_buggy_vehicle.hpp"
 #include "offroad_buggy_validation.hpp"
+#include "offroad_buggy_vehicle.hpp"
+#include "offroad_buggy_visuals.hpp"
+#include "offroad_buggy_venue.hpp"
+#include "rayrai/Visuals.hpp"
+#include "rayrai/example_common.hpp"
+#include "rayrai_loading_progress.hpp"
+#include "stb/stb_image_write.h"
 
 namespace {
 
@@ -43,151 +43,10 @@ using Viewer = raisin::RayraiWindow;
 constexpr double kTimeStep = 0.001;
 constexpr const char* kCornerLabels[4] = {"Front left", "Front right", "Rear left", "Rear right"};
 
-/// Spring colour by compression: blue at full droop, green at ride height, red on the bump stop.
-glm::vec3 springColour(double compression) {
-  static const std::array<std::pair<double, glm::vec3>, 5> stops = {{
-    {0.00, {0.10f, 0.35f, 1.00f}}, {0.38, {0.05f, 0.85f, 0.30f}}, {0.62, {1.00f, 0.86f, 0.05f}},
-    {0.80, {1.00f, 0.42f, 0.02f}}, {1.00, {0.95f, 0.02f, 0.02f}}}};
-  compression = std::clamp(compression, 0.0, 1.0);
-  for (size_t i = 1; i < stops.size(); ++i)
-    if (compression <= stops[i].first) {
-      const float t = float((compression - stops[i - 1].first) / (stops[i].first - stops[i - 1].first));
-      return glm::mix(stops[i - 1].second, stops[i].second, t);
-    }
-  return stops.back().second;
-}
+using offroad::springColour;
+using offroad::toGlmQuat;
 
-ImU32 imColour(const glm::vec3& c, float alpha = 1.f) {
-  return ImGui::ColorConvertFloat4ToU32(ImVec4(c.r, c.g, c.b, alpha));
-}
-
-glm::vec4 toGlmQuat(const Eigen::Matrix3d& R) {
-  const Eigen::Quaterniond q(R);
-  return {float(q.w()), float(q.x()), float(q.y()), float(q.z())};
-}
-
-/// A coil spring drawn at its simulated length: a tube swept along a helix with closed, ground
-/// ends, in the frame of the damper body (z along the damper, origin at its top eye).
-class CoilSpring {
- public:
-  // Seats of the spring in the damper body frame at the design length, and its size, measured
-  // from the coilover model (prepare_offroad_buggy_assets.py).
-  static constexpr double kUpperSeat = -0.1028, kLowerSeat = -0.3357;
-  static constexpr double kCoilRadius = 0.0485, kWireRadius = 0.0076;
-  static constexpr double kActiveCoils = 6.0, kEndCoils = 0.75;
-  static constexpr int kPerTurn = 28, kSides = 10;
-
-  CoilSpring(Viewer& viewer, const std::string& name) {
-    const int rings = int((kActiveCoils + 2 * kEndCoils) * kPerTurn) + 1;
-    vertices_.resize(size_t(rings) * kSides);
-    std::vector<unsigned int> indices;
-    for (int r = 0; r + 1 < rings; ++r)
-      for (int s = 0; s < kSides; ++s) {
-        const unsigned a = r * kSides + s, b = r * kSides + (s + 1) % kSides;
-        const unsigned c = a + kSides, d = b + kSides;
-        indices.insert(indices.end(), {a, c, b, b, c, d});
-      }
-    build(0.0);
-    auto meshes = std::make_shared<std::vector<std::shared_ptr<OpenGLMesh>>>();
-    meshes->push_back(std::make_shared<OpenGLMesh>(vertices_, indices));
-    visual_ = viewer.addVisualCustomMesh(name, meshes, glm::vec4(1.f), false);
-    // Powder-coated spring steel.
-    material_ = std::make_shared<raisin::Material>(raisin::Material::pbr(name, glm::vec4(0.1f, 0.8f, 0.3f, 1.f), 0.05f, 0.32f));
-    visual_->setMaterialOverride(material_);
-  }
-
-  /// @param extension damper extension from its design length [m]
-  void update(double extension, const glm::vec3& colour, const Eigen::Vector3d& position, const Eigen::Matrix3d& R) {
-    if (std::abs(extension - built_) > 1e-5) {
-      build(extension);
-      visual_->updateSingleMeshVertices(vertices_);
-    }
-    material_->baseColorFactor = glm::vec4(colour, 1.f);
-    // A faint glow in the same colour keeps the compression readable in the car's shadow.
-    material_->emissiveFactor = colour * 0.45f;
-    visual_->notifyMeshMaterialsChanged();
-    visual_->setPosition(position.x(), position.y(), position.z());
-    visual_->setOrientation(toGlmQuat(R));
-  }
-
- private:
-  void build(double extension) {
-    built_ = extension;
-    const double bottom = kLowerSeat - extension, top = kUpperSeat;
-    const double turns = kActiveCoils + 2 * kEndCoils;
-    const double closed = 2 * kWireRadius;  // rise per turn of a closed end coil
-    const double pitch = std::max(closed, (top - bottom - 2 * kWireRadius - 2 * kEndCoils * closed) / kActiveCoils);
-    const int rings = int(vertices_.size() / kSides);
-    auto centre = [&](double turn) {
-      double z;
-      if (turn < kEndCoils) z = turn * closed;
-      else if (turn < kEndCoils + kActiveCoils) z = kEndCoils * closed + (turn - kEndCoils) * pitch;
-      else z = kEndCoils * closed + kActiveCoils * pitch + (turn - kEndCoils - kActiveCoils) * closed;
-      const double a = 2 * M_PI * turn;
-      return Eigen::Vector3d(kCoilRadius * std::cos(a), kCoilRadius * std::sin(a), bottom + kWireRadius + z);
-    };
-    for (int r = 0; r < rings; ++r) {
-      const double turn = turns * r / (rings - 1);
-      const Eigen::Vector3d c = centre(turn);
-      const Eigen::Vector3d tangent = (centre(turn + 1e-3) - centre(turn - 1e-3)).normalized();
-      const Eigen::Vector3d radial(std::cos(2 * M_PI * turn), std::sin(2 * M_PI * turn), 0);
-      const Eigen::Vector3d binormal = tangent.cross(radial).normalized();
-      const Eigen::Vector3d normal = binormal.cross(tangent);
-      for (int s = 0; s < kSides; ++s) {
-        const double a = 2 * M_PI * s / kSides;
-        const Eigen::Vector3d n = std::cos(a) * normal + std::sin(a) * binormal;
-        const Eigen::Vector3d p = c + kWireRadius * n;
-        auto& v = vertices_[size_t(r) * kSides + s];
-        v.Position = glm::vec3(p.x(), p.y(), p.z());
-        v.Normal = glm::vec3(n.x(), n.y(), n.z());
-        v.TexCoords = glm::vec2(float(s) / kSides, float(turn));
-        // The surface direction of increasing u (around the wire). Supplying it
-        // spares rayrai generating tangents for every rebuild; the spring's
-        // material has no normal map, so they do not change its shading.
-        const Eigen::Vector3d t = -std::sin(a) * normal + std::cos(a) * binormal;
-        v.Tangent = glm::vec4(t.x(), t.y(), t.z(), 1.f);
-      }
-    }
-  }
-
-  std::vector<Vertex> vertices_;
-  std::shared_ptr<raisin::Visuals> visual_;
-  std::shared_ptr<raisin::Material> material_;
-  double built_ = 1e9;
-};
-
-/// A rear half shaft from the drive unit's output flange to the wheel hub, with its CV joints.
-class HalfShaft {
- public:
-  HalfShaft(Viewer& viewer, const std::string& name) {
-    shaft_ = viewer.addVisualCylinder(name, 0.019, 1.0, glm::vec4(0.55f, 0.56f, 0.58f, 1.f));
-    shaft_->setMaterialOverride(raisin::Material::pbr(name, glm::vec4(0.55f, 0.56f, 0.58f, 1.f), 1.f, 0.3f));
-    for (int i = 0; i < 2; ++i) {
-      boots_[i] = viewer.addVisualCapsule(name + (i ? " outer boot" : " inner boot"), 0.042, 0.06, glm::vec4(0.02f, 0.02f, 0.02f, 1.f));
-      boots_[i]->setMaterialOverride(raisin::Material::pbr(name + "boot", glm::vec4(0.02f, 0.02f, 0.02f, 1.f), 0.f, 0.6f));
-    }
-  }
-  void update(const Eigen::Vector3d& inner, const Eigen::Vector3d& outer) {
-    const Eigen::Vector3d axis = outer - inner;
-    const double length = axis.norm();
-    const Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitZ(), axis / length);
-    const glm::vec4 orientation(q.w(), q.x(), q.y(), q.z());
-    const Eigen::Vector3d mid = 0.5 * (inner + outer);
-    shaft_->setCylinderSize(0.019, length - 0.1);
-    shaft_->setPosition(mid.x(), mid.y(), mid.z());
-    shaft_->setOrientation(orientation);
-    for (int i = 0; i < 2; ++i) {
-      const Eigen::Vector3d p = i ? Eigen::Vector3d(outer - axis / length * 0.045)
-                                  : Eigen::Vector3d(inner + axis / length * 0.045);
-      boots_[i]->setPosition(p.x(), p.y(), p.z());
-      boots_[i]->setOrientation(orientation);
-    }
-  }
-
- private:
-  std::shared_ptr<raisin::Visuals> shaft_;
-  std::array<std::shared_ptr<raisin::Visuals>, 2> boots_;
-};
+ImU32 imColour(const glm::vec3& c, float alpha = 1.f) { return ImGui::ColorConvertFloat4ToU32(ImVec4(c.r, c.g, c.b, alpha)); }
 
 enum class CameraMode { Chase, Suspension, Side, Free };
 /// Look-at point in the chassis frame, orbit distance, and yaw (relative to the heading) and pitch
@@ -196,11 +55,10 @@ struct CameraView {
   Eigen::Vector3d focus;
   float distance, yaw, pitch;
 };
-const std::array<CameraView, 4> kCameraViews = {{
-  {{0.0, 0.0, 0.55}, 7.5f, 0.f, -13.f},          // chase
-  {{-1.36, 0.80, 0.0}, 1.45f, -28.f, -10.f},    // rear-left corner from behind: coilover, arms, half shaft
-  {{0.0, 0.0, 0.0}, 6.5f, -90.f, -3.f},         // low side view: all four wheels articulating
-  {{0.0, 0.0, 0.55}, 7.5f, 0.f, -13.f}}};        // free orbit
+const std::array<CameraView, 4> kCameraViews = {{{{0.0, 0.0, 0.55}, 7.5f, 0.f, -13.f},       // chase
+                                                 {{-1.36, 0.80, 0.0}, 1.45f, -28.f, -10.f},  // rear-left corner from behind: coilover, arms, half shaft
+                                                 {{0.0, 0.0, 0.0}, 6.5f, -90.f, -3.f},       // low side view: all four wheels articulating
+                                                 {{0.0, 0.0, 0.55}, 7.5f, 0.f, -13.f}}};     // free orbit
 
 /// Set the locked orbit distance of the camera.
 void setOrbitDistance(raisin::Camera& camera, float distance) {
@@ -212,10 +70,14 @@ void setOrbitDistance(raisin::Camera& camera, float distance) {
 }
 const char* cameraModeName(CameraMode m) {
   switch (m) {
-    case CameraMode::Chase: return "chase";
-    case CameraMode::Suspension: return "rear suspension";
-    case CameraMode::Side: return "side";
-    case CameraMode::Free: return "free orbit";
+    case CameraMode::Chase:
+      return "chase";
+    case CameraMode::Suspension:
+      return "rear suspension";
+    case CameraMode::Side:
+      return "side";
+    case CameraMode::Free:
+      return "free orbit";
   }
   return "";
 }
@@ -311,9 +173,8 @@ void configureRendering(Viewer& viewer, const std::filesystem::path& sky) {
 /// the screen in rayrai 2.8.1: its samplers use texture units 39 and 40, above the 32 that a
 /// fragment shader has on most GPUs, and the lean PBR shader that draws plain textured meshes
 /// ignores it.
-std::vector<std::shared_ptr<raisin::Visuals>> addTerrainVisuals(
-    Viewer& viewer, const offroad::TerrainInfo& info, const std::vector<double>& heights,
-    const std::vector<Eigen::Vector3f>& tint, const offroad::Surface& surface, const std::filesystem::path& textures) {
+std::vector<std::shared_ptr<raisin::Visuals>> addTerrainVisuals(Viewer& viewer, const offroad::TerrainInfo& info, const std::vector<double>& heights, const std::vector<Eigen::Vector3f>& tint,
+                                                                const offroad::Surface& surface, const std::filesystem::path& textures) {
   using raisin::Material;
   enum Ground { Meadow, Track, Loose, Gravel, Rock, kGrounds };
   struct Layer {
@@ -323,12 +184,11 @@ std::vector<std::shared_ptr<raisin::Visuals>> addTerrainVisuals(
     glm::vec4 colour;
     float roughness, normalStrength;
   };
-  const std::array<Layer, kGrounds> layers = {{
-    {"meadow", "rocky_terrain_02", 7.0, glm::vec4(1.f), .95f, .8f},
-    {"track", "dry_ground_rocks", 4.5, glm::vec4(.70f, .60f, .50f, 1.f), .92f, 1.f},
-    {"loose dirt", "brown_mud_dry", 3.0, glm::vec4(.95f, .90f, .86f, 1.f), .96f, 1.f},
-    {"gravel", "rocky_trail", 3.0, glm::vec4(.70f, .68f, .65f, 1.f), .9f, 1.f},
-    {"rock", "rock_face_03", 6.0, glm::vec4(.9f, .88f, .85f, 1.f), .85f, 1.2f}}};
+  const std::array<Layer, kGrounds> layers = {{{"meadow", "rocky_terrain_02", 7.0, glm::vec4(1.f), .95f, .8f},
+                                               {"track", "dry_ground_rocks", 4.5, glm::vec4(.70f, .60f, .50f, 1.f), .92f, 1.f},
+                                               {"loose dirt", "brown_mud_dry", 3.0, glm::vec4(.95f, .90f, .86f, 1.f), .96f, 1.f},
+                                               {"gravel", "rocky_trail", 3.0, glm::vec4(.70f, .68f, .65f, 1.f), .9f, 1.f},
+                                               {"rock", "rock_face_03", 6.0, glm::vec4(.9f, .88f, .85f, 1.f), .85f, 1.2f}}};
   std::array<Material, kGrounds> materials;
   for (int l = 0; l < kGrounds; ++l) {
     auto& m = materials[l] = Material::pbr(layers[l].name, layers[l].colour, 0.f, layers[l].roughness);
@@ -340,9 +200,7 @@ std::vector<std::shared_ptr<raisin::Visuals>> addTerrainVisuals(
   }
   const int n = info.samples, chunks = 8, per = (n - 1) / chunks;
   const double cell = info.extent / (n - 1), half = info.extent / 2;
-  auto height = [&](int i, int j) {
-    return heights[size_t(std::clamp(j, 0, n - 1)) * n + std::clamp(i, 0, n - 1)];
-  };
+  auto height = [&](int i, int j) { return heights[size_t(std::clamp(j, 0, n - 1)) * n + std::clamp(i, 0, n - 1)]; };
   // A point of the surface: grid coordinates (fractional on cut edges) and the mask values there.
   struct Point {
     double i, j;
@@ -356,9 +214,7 @@ std::vector<std::shared_ptr<raisin::Visuals>> addTerrainVisuals(
     const double x = -half + p.i * cell, y = -half + p.j * cell;
     const int i0 = std::min(int(p.i), n - 2), j0 = std::min(int(p.j), n - 2);
     const double fi = p.i - i0, fj = p.j - j0;
-    auto lerp2 = [&](auto f) {
-      return (1 - fj) * ((1 - fi) * f(i0, j0) + fi * f(i0 + 1, j0)) + fj * ((1 - fi) * f(i0, j0 + 1) + fi * f(i0 + 1, j0 + 1));
-    };
+    auto lerp2 = [&](auto f) { return (1 - fj) * ((1 - fi) * f(i0, j0) + fi * f(i0 + 1, j0)) + fj * ((1 - fi) * f(i0, j0 + 1) + fi * f(i0 + 1, j0 + 1)); };
     Vertex v;
     v.Position = glm::vec3(float(x), float(y), float(lerp2(height)));
     const double dx = lerp2([&](int i, int j) { return (height(i + 1, j) - height(i - 1, j)) / (2 * cell); });
@@ -419,8 +275,7 @@ std::vector<std::shared_ptr<raisin::Visuals>> addTerrainVisuals(
       };
       auto point = [&](int i, int j) {
         const double x = -half + i * cell, y = -half + j * cell;
-        return Point{double(i), double(j),
-                     {surface.rock.at(x, y), surface.gravel.at(x, y), surface.bare.at(x, y), surface.loose.at(x, y)}};
+        return Point{double(i), double(j), {surface.rock.at(x, y), surface.gravel.at(x, y), surface.bare.at(x, y), surface.loose.at(x, y)}};
       };
       for (int j = cy * per; j < (cy + 1) * per; ++j)
         for (int i = cx * per; i < (cx + 1) * per; ++i) {
@@ -433,8 +288,7 @@ std::vector<std::shared_ptr<raisin::Visuals>> addTerrainVisuals(
         auto meshes = std::make_shared<std::vector<std::shared_ptr<OpenGLMesh>>>();
         meshes->push_back(std::make_shared<OpenGLMesh>(std::move(vertices[l]), std::move(indices[l])));
         meshes->front()->material = materials[l];
-        visuals.push_back(viewer.addVisualCustomMesh(std::string(layers[l].name) + " " + std::to_string(cy * chunks + cx),
-                                                     meshes, glm::vec4(1.f), false));
+        visuals.push_back(viewer.addVisualCustomMesh(std::string(layers[l].name) + " " + std::to_string(cy * chunks + cx), meshes, glm::vec4(1.f), false));
       }
     }
   return visuals;
@@ -458,19 +312,16 @@ void updateGrassTiles(std::vector<GrassTile>& tiles, const glm::vec3& camera) {
   }
 }
 
-void addScenery(Viewer& viewer, const offroad::Scenery& scenery, const offroad::Venue& venue,
-                const std::filesystem::path& rsc, std::vector<std::shared_ptr<raisin::InstancedVisuals>>& keep,
+void addScenery(Viewer& viewer, const offroad::Scenery& scenery, const offroad::Venue& venue, const std::filesystem::path& rsc, std::vector<std::shared_ptr<raisin::InstancedVisuals>>& keep,
                 std::vector<std::shared_ptr<raisin::Visuals>>& singles, std::vector<GrassTile>& grass) {
   const auto forest = rsc / "forest", props = rsc / "offroad_buggy" / "props";
   // tint: vary the colour of each instance a little (plants and rocks).
-  auto instanced = [&](const std::string& name, const std::filesystem::path& mesh, const std::vector<offroad::Placement>& all,
-                       int type, bool foliage, float sway, int tile = -1, double tileSize = 0, int tiles = 1,
-                       bool tint = true) {
+  auto instanced = [&](const std::string& name, const std::filesystem::path& mesh, const std::vector<offroad::Placement>& all, int type, bool foliage, float sway, int tile = -1, double tileSize = 0,
+                       int tiles = 1, bool tint = true) {
     std::vector<raisin::InstancedVisuals::InstanceSpec> instances;
     for (const auto& p : all)
       if ((type < 0 || p.type == type) &&
-          (tile < 0 || std::clamp(int((p.x + tiles * tileSize / 2) / tileSize), 0, tiles - 1) +
-                           tiles * std::clamp(int((p.y + tiles * tileSize / 2) / tileSize), 0, tiles - 1) == tile)) {
+          (tile < 0 || std::clamp(int((p.x + tiles * tileSize / 2) / tileSize), 0, tiles - 1) + tiles * std::clamp(int((p.y + tiles * tileSize / 2) / tileSize), 0, tiles - 1) == tile)) {
         raisin::InstancedVisuals::InstanceSpec instance;
         instance.position = {float(p.x), float(p.y), float(p.z)};
         instance.orientation = {float(std::cos(p.yaw * .5)), 0.f, 0.f, float(std::sin(p.yaw * .5))};
@@ -479,8 +330,7 @@ void addScenery(Viewer& viewer, const offroad::Scenery& scenery, const offroad::
         instances.push_back(instance);
       }
     if (instances.empty()) return;
-    auto visual = viewer.addInstancedVisuals(name, raisim::Shape::Mesh, glm::vec3(1), glm::vec4(1),
-                                             tint ? glm::vec4(.85f, .92f, .75f, 1) : glm::vec4(1), mesh.string(), true);
+    auto visual = viewer.addInstancedVisuals(name, raisim::Shape::Mesh, glm::vec3(1), glm::vec4(1), tint ? glm::vec4(.85f, .92f, .75f, 1) : glm::vec4(1), mesh.string(), true);
     visual->addInstances(instances);
     visual->setAutomaticMeshLodEnabled(true);
     if (foliage) {
@@ -496,17 +346,12 @@ void addScenery(Viewer& viewer, const offroad::Scenery& scenery, const offroad::
   // Batches in 64 m tiles: rayrai picks one mesh LOD per batch from its nearest instance, and culls
   // whole batches out of view, so a batch spread over the circuit would draw every instance at full
   // detail.
-  auto tiled = [&](const std::string& name, const std::filesystem::path& mesh, const std::vector<offroad::Placement>& all,
-                   int type, bool tint) {
-    for (int tile = 0; tile < 16; ++tile)
-      instanced(name + " " + std::to_string(tile), mesh, all, type, false, 0, tile, 64.0, 4, tint);
+  auto tiled = [&](const std::string& name, const std::filesystem::path& mesh, const std::vector<offroad::Placement>& all, int type, bool tint) {
+    for (int tile = 0; tile < 16; ++tile) instanced(name + " " + std::to_string(tile), mesh, all, type, false, 0, tile, 64.0, 4, tint);
   };
-  for (int t = 0; t < 3; ++t)
-    instanced(offroad::kTreeNames[t], forest / offroad::kTreeNames[t] / "model.gltf", scenery.trees, t, true, 1.3f);
-  for (int t = 0; t < offroad::kRockTypes; ++t)
-    tiled("rock " + std::to_string(t), offroad::rockFolder(rsc, t) / "model.gltf", scenery.rocks, t, true);
-  for (int t = 0; t < int(offroad::kStoneNames.size()); ++t)
-    tiled(offroad::kStoneNames[t], props / offroad::kStoneNames[t] / "model.gltf", scenery.stones, t, true);
+  for (int t = 0; t < 3; ++t) instanced(offroad::kTreeNames[t], forest / offroad::kTreeNames[t] / "model.gltf", scenery.trees, t, true, 1.3f);
+  for (int t = 0; t < offroad::kRockTypes; ++t) tiled("rock " + std::to_string(t), offroad::rockFolder(rsc, t) / "model.gltf", scenery.rocks, t, true);
+  for (int t = 0; t < int(offroad::kStoneNames.size()); ++t) tiled(offroad::kStoneNames[t], props / offroad::kStoneNames[t] / "model.gltf", scenery.stones, t, true);
   tiled("fallen trunk", props / "dead_tree_trunk_02" / "model.gltf", scenery.logs, 0, true);
   // The venue: textured props instanced, plain-coloured ones as single visuals.
   int count = 0;
@@ -531,12 +376,10 @@ void addScenery(Viewer& viewer, const offroad::Scenery& scenery, const offroad::
   constexpr double kTileSize = 32.0;
   grass.resize(kTiles * kTiles);
   for (int tile = 0; tile < kTiles * kTiles; ++tile) {
-    grass[tile].centre = glm::vec2(float((tile % kTiles + 0.5 - kTiles / 2.0) * kTileSize),
-                                   float((tile / kTiles + 0.5 - kTiles / 2.0) * kTileSize));
+    grass[tile].centre = glm::vec2(float((tile % kTiles + 0.5 - kTiles / 2.0) * kTileSize), float((tile / kTiles + 0.5 - kTiles / 2.0) * kTileSize));
     for (int t = 0; t < int(offroad::kGrassNames.size()); ++t) {
       const size_t before = keep.size();
-      instanced(std::string(offroad::kGrassNames[t]) + " " + std::to_string(tile),
-                forest / offroad::kGrassNames[t] / "model.gltf", scenery.grass, t, true, .5f, tile, kTileSize, kTiles);
+      instanced(std::string(offroad::kGrassNames[t]) + " " + std::to_string(tile), forest / offroad::kGrassNames[t] / "model.gltf", scenery.grass, t, true, .5f, tile, kTileSize, kTiles);
       if (keep.size() > before) grass[tile].batches.push_back(keep.back());
     }
   }
@@ -576,14 +419,12 @@ struct KeyboardDriver {
   }
 };
 
-void drawHud(const offroad::Buggy& buggy, const offroad::TerrainInfo& info, const offroad::DriverInput& input,
-             CameraMode cameraMode, double stepMicros, double realTimeFactor, bool showHelp) {
+void drawHud(const offroad::Buggy& buggy, const offroad::TerrainInfo& info, const offroad::DriverInput& input, CameraMode cameraMode, double stepMicros, double realTimeFactor, bool showHelp) {
   const auto& t = buggy.telemetry();
   const ImGuiViewport* viewport = ImGui::GetMainViewport();
   const ImVec2 origin = viewport->Pos, size = viewport->Size;
-  const ImGuiWindowFlags panel = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
-                                 ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
-                                 ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+  const ImGuiWindowFlags panel =
+      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.f);
   ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.03f, 0.04f, 0.05f, 0.72f));
 
@@ -634,8 +475,7 @@ void drawHud(const offroad::Buggy& buggy, const offroad::TerrainInfo& info, cons
   ImGui::Dummy(ImVec2(width, 2 * ch));
   const ImVec2 body0(base.x + bodyX - 22, base.y + 28), body1(base.x + bodyX + 22, base.y + 2 * ch - 28);
   draw->AddRectFilled(body0, body1, IM_COL32(60, 64, 70, 255), 8.f);
-  draw->AddTriangleFilled(ImVec2(base.x + bodyX, base.y + 12), ImVec2(base.x + bodyX - 10, base.y + 26),
-                          ImVec2(base.x + bodyX + 10, base.y + 26), IM_COL32(255, 160, 40, 255));
+  draw->AddTriangleFilled(ImVec2(base.x + bodyX, base.y + 12), ImVec2(base.x + bodyX - 10, base.y + 26), ImVec2(base.x + bodyX + 10, base.y + 26), IM_COL32(255, 160, 40, 255));
   for (int i = 0; i < 4; ++i) {
     const auto& c = t.corners[i];
     const bool right = i % 2, rear = i >= 2;
@@ -644,11 +484,8 @@ void drawHud(const offroad::Buggy& buggy, const offroad::TerrainInfo& info, cons
     // Wheel, turned by its steer angle; red while it is off the ground.
     const ImVec2 wc(column(wheelX), top + ch / 2);
     const float a = float(-c.steerAngle);
-    auto rot = [&](float x, float y) {
-      return ImVec2(wc.x + x * std::cos(a) - y * std::sin(a), wc.y + x * std::sin(a) + y * std::cos(a));
-    };
-    draw->AddQuadFilled(rot(-6, -18), rot(6, -18), rot(6, 18), rot(-6, 18),
-                        c.contact ? IM_COL32(20, 20, 22, 255) : IM_COL32(150, 40, 40, 255));
+    auto rot = [&](float x, float y) { return ImVec2(wc.x + x * std::cos(a) - y * std::sin(a), wc.y + x * std::sin(a) + y * std::cos(a)); };
+    draw->AddQuadFilled(rot(-6, -18), rot(6, -18), rot(6, 18), rot(-6, 18), c.contact ? IM_COL32(20, 20, 22, 255) : IM_COL32(150, 40, 40, 255));
     draw->AddLine(ImVec2(wc.x + (right ? -6.f : 6.f), wc.y), ImVec2(column(bodyX - 22), wc.y), IM_COL32(150, 150, 150, 255), 2.f);
     // Damper compression bar, in the spring's colour.
     const glm::vec3 colour = springColour(c.compression);
@@ -665,8 +502,10 @@ void drawHud(const offroad::Buggy& buggy, const offroad::TerrainInfo& info, cons
     ImGui::Text("load   %5.2f kN", c.wheelLoad / 1000);
     ImGui::Text("tyre   %4.1f mm", c.tyreDeflection * 1000);
     ImGui::Text("camber %+4.1f deg", c.camber * 180 / M_PI);
-    if (i < 2) ImGui::Text("steer  %+4.1f deg", c.steerAngle * 180 / M_PI);
-    else ImGui::Text("slip   %+4.0f %%", c.slip * 100);
+    if (i < 2)
+      ImGui::Text("steer  %+4.1f deg", c.steerAngle * 180 / M_PI);
+    else
+      ImGui::Text("slip   %+4.0f %%", c.slip * 100);
     ImGui::EndGroup();
   }
   ImGui::SetCursorScreenPos(ImVec2(base.x, base.y + 2 * ch + 6));
@@ -686,14 +525,11 @@ void drawHud(const offroad::Buggy& buggy, const offroad::TerrainInfo& info, cons
     spin += c.wheelSpeed;
   }
   const double m = buggy.mass(), yawRate = buggy.system()->getGeneralizedVelocity()[5];
-  ImGui::Text("wheel loads %5.2f kN = %5.3f x weight", loads / 1000,
-              loads / (m * 9.81 * std::cos(t.rollAngle) * std::cos(t.pitchAngle)));
+  ImGui::Text("wheel loads %5.2f kN = %5.3f x weight", loads / 1000, loads / (m * 9.81 * std::cos(t.rollAngle) * std::cos(t.pitchAngle)));
   ImGui::TextDisabled("load transfer (equal in steady state): moments of the wheel loads");
   // Steady state: the tyre forces at the ground, h below the centre of mass, balance these.
-  ImGui::Text("  roll  %+6.2f kNm   m a_y h + I w r  %+6.2f kNm", -roll / 1000,
-              (m * t.acceleration.y() * t.comHeight + 1.25 * spin * yawRate) / 1000);
-  ImGui::Text("  pitch %+6.2f kNm   -m a_x h         %+6.2f kNm", pitch / 1000,
-              -m * t.acceleration.x() * t.comHeight / 1000);
+  ImGui::Text("  roll  %+6.2f kNm   m a_y h + I w r  %+6.2f kNm", -roll / 1000, (m * t.acceleration.y() * t.comHeight + 1.25 * spin * yawRate) / 1000);
+  ImGui::Text("  pitch %+6.2f kNm   -m a_x h         %+6.2f kNm", pitch / 1000, -m * t.acceleration.x() * t.comHeight / 1000);
   const auto& fl = t.corners[0];
   const auto& fr = t.corners[1];
   if (std::abs(fl.steerAngle) > 0.03) {
@@ -701,8 +537,7 @@ void drawHud(const offroad::Buggy& buggy, const offroad::TerrainInfo& info, cons
     const double inner = std::max(std::abs(fl.steerAngle), std::abs(fr.steerAngle));
     const double outer = std::min(std::abs(fl.steerAngle), std::abs(fr.steerAngle));
     const double ideal = std::atan(1.0 / (1.0 / std::tan(inner) + 2.0258 / 2.7142));
-    ImGui::Text("Ackermann: inner %4.1f, outer %4.1f (ideal %4.1f) deg", inner * 180 / M_PI, outer * 180 / M_PI,
-                ideal * 180 / M_PI);
+    ImGui::Text("Ackermann: inner %4.1f, outer %4.1f (ideal %4.1f) deg", inner * 180 / M_PI, outer * 180 / M_PI, ideal * 180 / M_PI);
   } else {
     ImGui::TextDisabled("Ackermann: steer to compare the front wheel angles");
   }
@@ -716,13 +551,10 @@ void drawHud(const offroad::Buggy& buggy, const offroad::TerrainInfo& info, cons
   const float map = 150;
   const ImVec2 p0 = ImGui::GetCursorScreenPos();
   ImGui::Dummy(ImVec2(map, map));
-  auto toMap = [&](double x, double y) {
-    return ImVec2(p0.x + float((x / info.extent + 0.5) * map), p0.y + float((0.5 - y / info.extent) * map));
-  };
+  auto toMap = [&](double x, double y) { return ImVec2(p0.x + float((x / info.extent + 0.5) * map), p0.y + float((0.5 - y / info.extent) * map)); };
   draw = ImGui::GetWindowDrawList();
   draw->AddRectFilled(p0, ImVec2(p0.x + map, p0.y + map), IM_COL32(48, 70, 40, 200), 6.f);
-  for (const auto* area : {&info.pit, &info.spectators})
-    draw->AddRectFilled(toMap(area->x0, area->y1), toMap(area->x1, area->y0), IM_COL32(150, 150, 140, 200), 2.f);
+  for (const auto* area : {&info.pit, &info.spectators}) draw->AddRectFilled(toMap(area->x0, area->y1), toMap(area->x1, area->y0), IM_COL32(150, 150, 140, 200), 2.f);
   std::vector<ImVec2> line;
   for (const auto& p : info.centre) line.push_back(toMap(p.x(), p.y()));
   draw->AddPolyline(line.data(), int(line.size()), IM_COL32(190, 150, 100, 255), ImDrawFlags_Closed, 3.f);
@@ -730,8 +562,8 @@ void drawHud(const offroad::Buggy& buggy, const offroad::TerrainInfo& info, cons
   const double heading = std::atan2(2 * (q[3] * q[6] + q[4] * q[5]), 1 - 2 * (q[5] * q[5] + q[6] * q[6]));
   const ImVec2 car = toMap(q[0], q[1]);
   const float c = float(std::cos(heading)), s = float(std::sin(heading));
-  draw->AddTriangleFilled(ImVec2(car.x + 7 * c, car.y - 7 * s), ImVec2(car.x - 5 * c + 4 * s, car.y + 5 * s + 4 * c),
-                          ImVec2(car.x - 5 * c - 4 * s, car.y + 5 * s - 4 * c), IM_COL32(255, 160, 40, 255));
+  draw->AddTriangleFilled(ImVec2(car.x + 7 * c, car.y - 7 * s), ImVec2(car.x - 5 * c + 4 * s, car.y + 5 * s + 4 * c), ImVec2(car.x - 5 * c - 4 * s, car.y + 5 * s - 4 * c),
+                          IM_COL32(255, 160, 40, 255));
   ImGui::End();
   ImGui::PopStyleColor();
   ImGui::PopStyleVar();
@@ -755,12 +587,9 @@ int runViewer(const Options& options, char* argv0) {
   const offroad::TrackLocator track(info);
   auto ground = [&](double x, double y) { return terrain->getHeight(x, y); };
   buggy.place(info.start.x(), info.start.y(), info.start.z(), ground);
-  std::cout << "Off-road buggy: " << buggy.system()->getDOF() << " degrees of freedom, " << scenery.trees.size()
-            << " trees, " << scenery.rocks.size() << " boulders, " << scenery.stones.size() << " stones, "
-            << scenery.grass.size() << " grass tufts\nVenue: " << venue.tyreStacks << " tyre stacks, " << venue.bales
-            << " hay bales, " << venue.cones << " cones and " << venue.markers << " marker posts (dynamic), "
-            << venue.pitBoxes << " pit boxes; "
-            << scenery.colliders + venue.colliders << " static colliders\n";
+  std::cout << "Off-road buggy: " << buggy.system()->getDOF() << " degrees of freedom, " << scenery.trees.size() << " trees, " << scenery.rocks.size() << " boulders, " << scenery.stones.size()
+            << " stones, " << scenery.grass.size() << " grass tufts\nVenue: " << venue.tyreStacks << " tyre stacks, " << venue.bales << " hay bales, " << venue.cones << " cones and " << venue.markers
+            << " marker posts (dynamic), " << venue.pitBoxes << " pit boxes; " << scenery.colliders + venue.colliders << " static colliders\n";
 
   ExampleApp app;
   const bool capture = !options.screenshot.empty();
@@ -775,22 +604,16 @@ int runViewer(const Options& options, char* argv0) {
     configureRendering(viewer, rsc / "city" / "sky" / "kloofendal_48d_partly_cloudy_puresky_4k.hdr");
     // The terrain is drawn by the visuals below; the height map stays the collision surface.
     viewer.setObjectHidden(terrain, true);
-    const auto terrainVisuals = addTerrainVisuals(viewer, info, heights, offroad::terrainColours(*terrain, info, surface),
-                                                  surface, root / "terrain" / "textures");
+    const auto terrainVisuals = addTerrainVisuals(viewer, info, heights, offroad::terrainColours(*terrain, info, surface), surface, root / "terrain" / "textures");
     std::vector<std::shared_ptr<raisin::InstancedVisuals>> instanced;
     std::vector<std::shared_ptr<raisin::Visuals>> singles;
     std::vector<GrassTile> grassTiles;
     addScenery(viewer, scenery, venue, rsc, instanced, singles, grassTiles);
     // Hay bales and cones: their visual meshes follow the bodies.
     std::vector<std::shared_ptr<raisin::Visuals>> looseVisuals;
-    for (size_t i = 0; i < venue.loose.size(); ++i)
-      looseVisuals.push_back(viewer.addVisualMesh("loose " + std::to_string(i), venue.loose[i].mesh.string()));
+    for (size_t i = 0; i < venue.loose.size(); ++i) looseVisuals.push_back(viewer.addVisualMesh("loose " + std::to_string(i), venue.loose[i].mesh.string()));
     for (auto& visual : looseVisuals) visual->setAutomaticMeshLodEnabled(true);
-    std::array<std::unique_ptr<CoilSpring>, 4> springs;
-    for (int i = 0; i < 4; ++i)
-      springs[i] = std::make_unique<CoilSpring>(viewer, std::string("spring ") + offroad::Buggy::kCornerNames[i]);
-    std::array<std::unique_ptr<HalfShaft>, 2> shafts = {std::make_unique<HalfShaft>(viewer, "half shaft left"),
-                                                       std::make_unique<HalfShaft>(viewer, "half shaft right")};
+    offroad::SuspensionVisuals suspension(*buggy.system());
     auto& camera = viewer.getCamera();
     camera.zoom = 50;
     camera.nearPlane = 0.05f;
@@ -852,29 +675,8 @@ int runViewer(const Options& options, char* argv0) {
         const auto& q = buggy.system()->getGeneralizedCoordinate();
         offroad::updateLooseProps(venue, Eigen::Vector3d(q[0], q[1], q[2]), steps * kTimeStep);
       }
-      // Springs and half shafts follow their links.
       auto* car = buggy.system();
-      const auto& telemetry = buggy.telemetry();
-      for (int i = 0; i < 4; ++i) {
-        raisim::Mat<3, 3> R;
-        raisim::Vec<3> p;
-        car->getBodyPose(buggy.shockBodyIndex(i), R, p);
-        springs[i]->update(telemetry.corners[i].shockExtension, springColour(telemetry.corners[i].compression), p.e(), R.e());
-      }
-      {
-        raisim::Mat<3, 3> chassisR;
-        raisim::Vec<3> chassisP;
-        car->getBodyPose(0, chassisR, chassisP);
-        for (int side = 0; side < 2; ++side) {
-          raisim::Mat<3, 3> R;
-          raisim::Vec<3> p;
-          car->getBodyPose(buggy.wheelBodyIndex(2 + side), R, p);
-          const double y = side ? -1.0 : 1.0;
-          const Eigen::Vector3d flange = chassisP.e() + chassisR.e() * Eigen::Vector3d(-1.3571, 0.30 * y, 0.0);
-          const Eigen::Vector3d hub = p.e() - R.e().col(1) * (0.115 * y);
-          shafts[side]->update(flange, hub);
-        }
-      }
+      suspension.update();
       for (size_t i = 0; i < venue.loose.size(); ++i) {
         const auto& prop = venue.loose[i];
         const Eigen::Matrix3d R = prop.body->getRotationMatrix();
@@ -961,12 +763,18 @@ int main(int argc, char* argv[]) {
   Options options;
   for (int i = 1; i < argc; ++i) {
     const std::string option = argv[i];
-    if (option == "--screenshot" && i + 1 < argc) options.screenshot = argv[++i];
-    else if (option == "--validate") options.validate = true;
-    else if (option == "--grass" && i + 1 < argc) options.grassDensity = std::stod(argv[++i]);
-    else if (option == "--frames" && i + 1 < argc) options.captureFrames = std::stoi(argv[++i]);
-    else if (option == "--camera" && i + 1 < argc) options.cameraMode = std::stoi(argv[++i]);
-    else if (option == "--hud") options.hud = true;
+    if (option == "--screenshot" && i + 1 < argc)
+      options.screenshot = argv[++i];
+    else if (option == "--validate")
+      options.validate = true;
+    else if (option == "--grass" && i + 1 < argc)
+      options.grassDensity = std::stod(argv[++i]);
+    else if (option == "--frames" && i + 1 < argc)
+      options.captureFrames = std::stoi(argv[++i]);
+    else if (option == "--camera" && i + 1 < argc)
+      options.cameraMode = std::stoi(argv[++i]);
+    else if (option == "--hud")
+      options.hud = true;
     else if (option == "--view" && i + 5 < argc)
       for (int k = 0; k < 5; ++k) options.view.push_back(std::stof(argv[++i]));
     else {

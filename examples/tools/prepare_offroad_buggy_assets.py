@@ -13,8 +13,8 @@ Usage: prepare_offroad_buggy_assets.py DIR [OUTPUT]
   simulated suspension replaces it.
 * The Sketchfab "Coilover Shock Absorber Damper" is split into the damper
   body with the top eye and the rod with the bottom eye, scaled to the
-  damper length of the design. Its coil spring is left out: rayrai_offroad_buggy
-  draws the spring at its simulated length.
+  damper length of the design. Its coil spring and rear drive shafts are procedural meshes referenced by
+  buggy.urdf; the examples animate these URDF visuals from the joint state.
 * The wishbones, uprights with brake calipers, brake discs, tie rods and the
   steering rack are generated from the hardpoints.
 * buggy.urdf is written with offroad_buggy_design.build_urdf(), the terrain
@@ -270,7 +270,42 @@ def tie_rod_parts(p):
             (ADJUSTER, [tube(0.30 * rod, 0.55 * rod, 0.014, 6)])]
 
 
+def coil_spring():
+    """A nominal coilover spring in the damper-body frame, with closed end coils."""
+    top, bottom, radius, wire = -0.1028, -0.3357, 0.0485, 0.0076
+    active, closed = 6.0, 0.75
+    pitch = max(2 * wire, (top - bottom - 2 * wire - 4 * closed * wire) / active)
+    turns = np.linspace(0.0, active + 2 * closed, int((active + 2 * closed) * 28) + 1)
+    angle = 2 * np.pi * turns
+    rise = np.where(turns < closed, turns * 2 * wire,
+                    np.where(turns < closed + active, closed * 2 * wire + (turns - closed) * pitch,
+                             closed * 2 * wire + active * pitch + (turns - closed - active) * 2 * wire))
+    centres = np.stack([radius * np.cos(angle), radius * np.sin(angle), bottom + wire + rise], 1)
+    tangent = np.gradient(centres, axis=0)
+    tangent /= np.linalg.norm(tangent, axis=1, keepdims=True)
+    radial = np.stack([np.cos(angle), np.sin(angle), np.zeros_like(angle)], 1)
+    binormal = np.cross(tangent, radial)
+    binormal /= np.linalg.norm(binormal, axis=1, keepdims=True)
+    normal = np.cross(binormal, tangent)
+    phi = np.arange(10) * 2 * np.pi / 10
+    normals = normal[:, None, :] * np.cos(phi)[None, :, None] + binormal[:, None, :] * np.sin(phi)[None, :, None]
+    positions = centres[:, None, :] + wire * normals
+    a = np.arange(len(turns) - 1)[:, None] * 10 + np.arange(10)[None, :]
+    b = (a // 10) * 10 + (a + 1) % 10
+    triangles = np.concatenate([np.stack([a, a + 10, b], -1).reshape(-1, 3),
+                                np.stack([b, a + 10, b + 10], -1).reshape(-1, 3)])
+    return positions.reshape(-1, 3), normals.reshape(-1, 3), triangles
+
+
+def generate_suspension_visuals(meshes):
+    meshes.mkdir(parents=True, exist_ok=True)
+    spring = pbr('coil_spring', (1.0, 1.0, 1.0), 0.05, 0.32)
+    write_parts(meshes / 'coil_spring.gltf', [(spring, [coil_spring()])])
+    write_parts(meshes / 'drive_shaft.gltf', [(STEEL, [tube([0, 0, -0.5], [0, 0, 0.5], 0.019)])])
+
+
 def generate_parts(meshes):
+    generate_suspension_visuals(meshes)
     for c, axle, side in design.CORNERS:
         p = design.corner_points(axle, side)
         write_parts(meshes / f'{c}_lower_arm.gltf',

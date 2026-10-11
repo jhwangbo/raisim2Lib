@@ -1,13 +1,12 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
+#include "example_resources.hpp"
+#include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
-#include "raisim/RaisimServer.hpp"
-#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-
   /// create raisim world
   raisim::World world;
   world.setTimeStep(0.003);
@@ -16,8 +15,7 @@ int main(int argc, char* argv[]) {
   /// create objects
   auto ground = world.addGround();
 
-  std::string monkeyFile =
-      exampleRscPath(argv[0], "monkey/monkey.obj");
+  std::string monkeyFile = exampleRscPath(argv[0], "monkey/monkey.obj");
 
   raisim::Mat<3, 3> inertia;
   inertia.setIdentity();
@@ -29,9 +27,7 @@ int main(int argc, char* argv[]) {
   for (int row = 0; row < N; row++) {
     for (int col = 0; col < N; col++) {
       auto monkey = world.addMesh(monkeyFile, 1.0, inertia, com);
-      monkey->setPosition(-gap * (N / 2) + gap * row,
-                          -gap * (N / 2) + gap * col,
-                          2.0 + gap * (row * N + col));
+      monkey->setPosition(-gap * (N / 2) + gap * row, -gap * (N / 2) + gap * col, 2.0 + gap * (row * N + col));
       monkey->setAppearance("blue");
     }
   }
@@ -40,10 +36,10 @@ int main(int argc, char* argv[]) {
   raisim::RaisimServer server(&world);
   server.launchServer();
   raisim_examples::warnIfNoClientConnected(server);
-  server.setCameraPositionAndLookAt({5,0,2}, {0,0,2});
+  server.setCameraPositionAndLookAt({5, 0, 2}, {0, 0, 2});
 
   while (1) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
     server.integrateWorldThreadSafe();
   }
 

@@ -2,12 +2,12 @@
 // Created by jemin on 2022-07-21.
 //
 
+#include "example_resources.hpp"
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
-#include "example_resources.hpp"
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   const int loopN = 200000000;
 
   raisim::World world;
@@ -26,8 +26,7 @@ int main(int argc, char **argv) {
 
   jointVelocityTarget.setZero();
 
-  jointConfig << 0, 0, 0.54, 1, 0, 0, 0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8,
-      0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
+  jointConfig << 0, 0, 0.54, 1, 0, 0, 0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
   jointVel << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
 
   auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal_c/urdf/anymal_sensored.urdf"));

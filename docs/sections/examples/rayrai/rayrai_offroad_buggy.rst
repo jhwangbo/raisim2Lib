@@ -14,7 +14,10 @@ a pit lane and paddock, tyre walls, hay bales and cones that the car can knock
 over, spectator stands, trees, boulders and grass.
 The whole car is one articulated system described by a URDF: the suspension,
 the coilovers and the rack-and-pinion steering are kinematic loops that the URDF
-closes with pin, equality and mimic constraints. The coil springs are drawn at
+closes with pin, equality and mimic constraints. The URDF also defines the
+coil spring meshes, rear drive shafts, and CV boots. The shared
+``offroad_buggy_visuals.hpp`` helper updates these visuals from the simulated
+links without adding scene objects or changing the physics. The coils are drawn at
 their simulated length and coloured by their compression, and the panels show
 the spring, damper and tyre forces of each corner next to Newton-Euler checks
 of the measured wheel loads.
@@ -23,8 +26,10 @@ The example renders in-process with ``raisin::RayraiWindow``; it needs no TCP
 viewer.
 
 .. image:: ../../../../rsc/docs/image/offroad_buggy_suspension.png
-   :alt: Rear suspension over the whoops: one wheel at full droop, coil springs blue, arms, toe links and half shaft
+   :alt: The URDF-defined rear suspension on deformable soil: coil springs, dampers, wishbones, toe links and drive shafts
    :width: 100%
+
+The same buggy URDF is shown here in the deformable terrain example.
 
 Run
 ===
@@ -286,7 +291,7 @@ Sketchfab models, licensed under
   `[Free] Coilover Shock Absorber Damper <https://sketchfab.com/3d-models/free-coilover-shock-absorber-damper-92e61757780840a683abdd38c4e8a700>`_
   by `Robert Prispilović <https://sketchfab.com/rprispil>`_. Scaled to 412 mm,
   split into body and rod, and with the original coil spring removed; the
-  example draws the spring at its simulated length.
+  URDF includes a procedural spring mesh that the example scales to its simulated length.
 * `Hay Bales <https://sketchfab.com/3d-models/hay-bales-6b775049e57e4d9da87977905493ebfb>`_
   by `FrodoUndead <https://sketchfab.com/FrodoUndead>`_. Scaled by 0.65 and
   split into round and square bales.

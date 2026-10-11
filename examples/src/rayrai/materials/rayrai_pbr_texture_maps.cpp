@@ -1,5 +1,5 @@
-#include <array>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstring>
 #include <filesystem>
@@ -17,14 +17,13 @@
 #include "stb/stb_image.h"
 #define STB_IMAGE_WRITE_STATIC
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb/stb_image_write.h"
-
-#include "rayrai/example_common.hpp"
 #include "example_resources.hpp"
-#include "rayrai_example_compat.hpp"
-#include "rayrai/Visuals.hpp"
-#include "raisim/math.hpp"
 #include "raisim/World.hpp"
+#include "raisim/math.hpp"
+#include "rayrai/Visuals.hpp"
+#include "rayrai/example_common.hpp"
+#include "rayrai_example_compat.hpp"
+#include "stb/stb_image_write.h"
 
 namespace {
 
@@ -41,14 +40,12 @@ void flipRows(std::vector<unsigned char>& rgba, int width, int height) {
 }
 
 void saveFinalTexturePng(raisin::Camera& camera, const std::filesystem::path& path) {
-  std::vector<unsigned char> rgba(
-    static_cast<size_t>(camera.rtWidth()) * static_cast<size_t>(camera.rtHeight()) * 4u);
+  std::vector<unsigned char> rgba(static_cast<size_t>(camera.rtWidth()) * static_cast<size_t>(camera.rtHeight()) * 4u);
   gl::glBindTexture(gl::GL_TEXTURE_2D, camera.getFinalTexture());
   gl::glGetTexImage(gl::GL_TEXTURE_2D, 0, gl::GL_RGBA, gl::GL_UNSIGNED_BYTE, rgba.data());
   gl::glBindTexture(gl::GL_TEXTURE_2D, 0);
   flipRows(rgba, camera.rtWidth(), camera.rtHeight());
-  stbi_write_png(path.string().c_str(), camera.rtWidth(), camera.rtHeight(), 4,
-    rgba.data(), camera.rtWidth() * 4);
+  stbi_write_png(path.string().c_str(), camera.rtWidth(), camera.rtHeight(), 4, rgba.data(), camera.rtWidth() * 4);
 }
 
 int wrapPixelX(int x, int width) {
@@ -86,9 +83,9 @@ glm::vec3 equirectangularDirection(float u, float v) {
   const float phi = v * kPi;
   const float sinPhi = std::sin(phi);
   return {
-    sinPhi * std::cos(theta),
-    sinPhi * std::sin(theta),
-    std::cos(phi),
+      sinPhi * std::cos(theta),
+      sinPhi * std::sin(theta),
+      std::cos(phi),
   };
 }
 
@@ -103,23 +100,19 @@ std::pair<float, float> directionToEquirectangularUv(const glm::vec3& direction)
 
 glm::vec3 inverseRotate(const raisim::Mat<3, 3>& rotation, const glm::vec3& direction) {
   return {
-    static_cast<float>(rotation[0] * direction.x + rotation[3] * direction.y + rotation[6] * direction.z),
-    static_cast<float>(rotation[1] * direction.x + rotation[4] * direction.y + rotation[7] * direction.z),
-    static_cast<float>(rotation[2] * direction.x + rotation[5] * direction.y + rotation[8] * direction.z),
+      static_cast<float>(rotation[0] * direction.x + rotation[3] * direction.y + rotation[6] * direction.z),
+      static_cast<float>(rotation[1] * direction.x + rotation[4] * direction.y + rotation[7] * direction.z),
+      static_cast<float>(rotation[2] * direction.x + rotation[5] * direction.y + rotation[8] * direction.z),
   };
 }
 
-std::string rotateHdrEnvironment(
-    const std::string& hdrPath,
-    const raisim::Mat<3, 3>& rotation,
-    const std::string& cacheName = "rayrai_pbr_texture_maps_hdr_rotated.hdr") {
+std::string rotateHdrEnvironment(const std::string& hdrPath, const raisim::Mat<3, 3>& rotation, const std::string& cacheName = "rayrai_pbr_texture_maps_hdr_rotated.hdr") {
   int width = 0;
   int height = 0;
   int channels = 0;
   float* pixels = stbi_loadf(hdrPath.c_str(), &width, &height, &channels, 3);
   if (!pixels || width <= 0 || height <= 0) {
-    if (pixels)
-      stbi_image_free(pixels);
+    if (pixels) stbi_image_free(pixels);
     return hdrPath;
   }
 
@@ -147,19 +140,11 @@ std::string rotateHdrEnvironment(
   return rotatedPath.string();
 }
 
-std::string rotateHdrEnvironment(
-    const std::string& hdrPath,
-    const raisim::Vec<4>& quaternionWxyz,
-    const std::string& cacheName = "rayrai_pbr_texture_maps_hdr_rotated.hdr") {
+std::string rotateHdrEnvironment(const std::string& hdrPath, const raisim::Vec<4>& quaternionWxyz, const std::string& cacheName = "rayrai_pbr_texture_maps_hdr_rotated.hdr") {
   raisim::Vec<4> unitQuaternion = quaternionWxyz;
-  const double norm = std::sqrt(
-    unitQuaternion[0] * unitQuaternion[0] +
-    unitQuaternion[1] * unitQuaternion[1] +
-    unitQuaternion[2] * unitQuaternion[2] +
-    unitQuaternion[3] * unitQuaternion[3]);
+  const double norm = std::sqrt(unitQuaternion[0] * unitQuaternion[0] + unitQuaternion[1] * unitQuaternion[1] + unitQuaternion[2] * unitQuaternion[2] + unitQuaternion[3] * unitQuaternion[3]);
   if (norm > 1.0e-12) {
-    for (size_t i = 0; i < 4; ++i)
-      unitQuaternion[i] /= norm;
+    for (size_t i = 0; i < 4; ++i) unitQuaternion[i] /= norm;
   }
 
   raisim::Mat<3, 3> rotation;
@@ -167,7 +152,7 @@ std::string rotateHdrEnvironment(
   return rotateHdrEnvironment(hdrPath, rotation, cacheName);
 }
 
-} // namespace
+}  // namespace
 
 int main(int argc, char* argv[]) {
   std::filesystem::path screenshotPath;
@@ -180,15 +165,13 @@ int main(int argc, char* argv[]) {
 
   ExampleApp app;
   const bool showWindow = screenshotPath.empty();
-  if (!app.init("rayrai_pbr_texture_maps", 1280, 720, showWindow))
-    return -1;
+  if (!app.init("rayrai_pbr_texture_maps", 1280, 720, showWindow)) return -1;
 
   auto world = std::make_shared<raisim::World>();
   world->addGround();
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
-  auto quality = raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Ultra);
+  auto quality = raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Ultra);
   quality.pbrExposure = 0.82f;
   quality.pbrEnvironmentIntensity = 0.28f;
   quality.pbrEnvironmentMaxLod = 5.0f;
@@ -237,13 +220,11 @@ int main(int argc, char* argv[]) {
   unsigned int irradiance = 0;
   unsigned int prefiltered = 0;
   unsigned int brdf = 0;
-  const std::string hdrPath =
-    exampleRscPath(argv[0], "rayrai/hdr/polyhaven/potsdamer_platz_1k.hdr");
+  const std::string hdrPath = exampleRscPath(argv[0], "rayrai/hdr/polyhaven/potsdamer_platz_1k.hdr");
   if (std::filesystem::exists(hdrPath)) {
     environment = raisin::RayraiWindow::loadHdrEquirectangularCubemap(hdrPath.c_str(), 128, true);
     irradiance = raisin::RayraiWindow::createHdrIrradianceCubemap(hdrPath.c_str(), 32, 64);
-    prefiltered =
-      raisin::RayraiWindow::createHdrPrefilteredEnvironmentCubemap(hdrPath.c_str(), 128, 6, 128);
+    prefiltered = raisin::RayraiWindow::createHdrPrefilteredEnvironmentCubemap(hdrPath.c_str(), 128, 6, 128);
     brdf = raisin::RayraiWindow::createSplitSumBrdfLut(128, 128);
   }
 
@@ -259,11 +240,7 @@ int main(int argc, char* argv[]) {
     const double halfYaw = 0.5 * yaw;
     const double cy = std::cos(halfYaw);
     const double sy = std::sin(halfYaw);
-    return glm::quat(
-      static_cast<float>(cy * kSqrtHalf),
-      static_cast<float>(cy * kSqrtHalf),
-      static_cast<float>(sy * kSqrtHalf),
-      static_cast<float>(sy * kSqrtHalf));
+    return glm::quat(static_cast<float>(cy * kSqrtHalf), static_cast<float>(cy * kSqrtHalf), static_cast<float>(sy * kSqrtHalf), static_cast<float>(sy * kSqrtHalf));
   };
 
   // Khronos glTF Sample Assets. Together these exercise base color, normal,
@@ -271,40 +248,31 @@ int main(int argc, char* argv[]) {
   // Scales normalize each asset's longest authored glTF extent to roughly the
   // same preview size; localCenter keeps offset mesh origins centered in slots.
   const std::vector<PbrAsset> assets = {
-    {"flight_helmet", "rayrai/pbr/FlightHelmet/glTF/FlightHelmet.gltf",
-      1.75, 0.10, {-0.0203510f, 0.3579895f, 0.0142417f}},
-    {"damaged_helmet", "rayrai/pbr/DamagedHelmet/glTF/DamagedHelmet.gltf",
-      0.63, 1.55, {-0.0024816f, 0.0000105f, -0.1871549f}},
-    {"sci_fi_helmet", "rayrai/pbr/SciFiHelmet/glTF/SciFiHelmet.gltf",
-      0.43, 3.24, {0.0000000f, 0.0000001f, -0.0000005f}},
-    {"antique_camera", "rayrai/pbr/AntiqueCamera/glTF/AntiqueCamera.gltf",
-      0.17, -0.15, {-0.3272680f, 3.6036221f, -0.1976599f}},
-    {"lantern", "rayrai/pbr/Lantern/glTF/Lantern.gltf",
-      0.049, 0.12, {3.8231542f, 13.0160300f, 0.0000000f}},
-    {"boombox", "rayrai/pbr/BoomBox/glTF/BoomBox.gltf",
-      62.0, 3.04, {0.0000000f, 0.0000000f, 0.0000000f}},
-    {"avocado", "rayrai/pbr/Avocado/glTF/Avocado.gltf",
-      19.9, 0.05, {0.0000000f, 0.0314002f, -0.0000000f}},
-    {"water_bottle", "rayrai/pbr/WaterBottle/glTF/WaterBottle.gltf",
-      4.8, -0.06, {0.0000000f, 0.0000000f, 0.0000000f}},
+      {"flight_helmet", "rayrai/pbr/FlightHelmet/glTF/FlightHelmet.gltf", 1.75, 0.10, {-0.0203510f, 0.3579895f, 0.0142417f}},
+      {"damaged_helmet", "rayrai/pbr/DamagedHelmet/glTF/DamagedHelmet.gltf", 0.63, 1.55, {-0.0024816f, 0.0000105f, -0.1871549f}},
+      {"sci_fi_helmet", "rayrai/pbr/SciFiHelmet/glTF/SciFiHelmet.gltf", 0.43, 3.24, {0.0000000f, 0.0000001f, -0.0000005f}},
+      {"antique_camera", "rayrai/pbr/AntiqueCamera/glTF/AntiqueCamera.gltf", 0.17, -0.15, {-0.3272680f, 3.6036221f, -0.1976599f}},
+      {"lantern", "rayrai/pbr/Lantern/glTF/Lantern.gltf", 0.049, 0.12, {3.8231542f, 13.0160300f, 0.0000000f}},
+      {"boombox", "rayrai/pbr/BoomBox/glTF/BoomBox.gltf", 62.0, 3.04, {0.0000000f, 0.0000000f, 0.0000000f}},
+      {"avocado", "rayrai/pbr/Avocado/glTF/Avocado.gltf", 19.9, 0.05, {0.0000000f, 0.0314002f, -0.0000000f}},
+      {"water_bottle", "rayrai/pbr/WaterBottle/glTF/WaterBottle.gltf", 4.8, -0.06, {0.0000000f, 0.0000000f, 0.0000000f}},
   };
 
   const std::array<glm::vec3, 8> previewCenters = {{
-    {-2.85f, 0.02f, 2.10f}, {-0.95f, 0.02f, 2.10f},
-    { 0.95f, 0.02f, 2.10f}, { 2.85f, 0.02f, 2.10f},
-    {-2.85f, -0.02f, 0.70f}, {-0.95f, -0.02f, 0.70f},
-    { 0.95f, -0.02f, 0.70f}, { 2.85f, -0.02f, 0.70f},
+      {-2.85f, 0.02f, 2.10f},
+      {-0.95f, 0.02f, 2.10f},
+      {0.95f, 0.02f, 2.10f},
+      {2.85f, 0.02f, 2.10f},
+      {-2.85f, -0.02f, 0.70f},
+      {-0.95f, -0.02f, 0.70f},
+      {0.95f, -0.02f, 0.70f},
+      {2.85f, -0.02f, 0.70f},
   }};
 
-  const auto setAssetPose = [&](const std::shared_ptr<raisin::Visuals>& visual,
-                                const PbrAsset& asset,
-                                const glm::vec3& previewCenter,
-                                double yaw) {
+  const auto setAssetPose = [&](const std::shared_ptr<raisin::Visuals>& visual, const PbrAsset& asset, const glm::vec3& previewCenter, double yaw) {
     const glm::quat orientation = uprightYawQuaternion(yaw);
-    visual->setOrientation(
-      orientation.w, orientation.x, orientation.y, orientation.z);
-    const glm::vec3 centerOffset =
-      orientation * (asset.localCenter * static_cast<float>(asset.scale));
+    visual->setOrientation(orientation.w, orientation.x, orientation.y, orientation.z);
+    const glm::vec3 centerOffset = orientation * (asset.localCenter * static_cast<float>(asset.scale));
     visual->setPosition(previewCenter - centerOffset);
   };
 
@@ -313,8 +281,7 @@ int main(int argc, char* argv[]) {
   for (size_t i = 0; i < assets.size(); ++i) {
     const auto& asset = assets[i];
     const std::string meshPath = exampleRscPath(argv[0], asset.path);
-    auto visual = viewer->addVisualMesh(asset.name, meshPath,
-      asset.scale, asset.scale, asset.scale, 1.0f, 1.0f, 1.0f, 1.0f);
+    auto visual = viewer->addVisualMesh(asset.name, meshPath, asset.scale, asset.scale, asset.scale, 1.0f, 1.0f, 1.0f, 1.0f);
     setAssetPose(visual, asset, previewCenters[i], asset.yaw);
     visual->setTwoSided(true);
     visual->setDetectable(true);
@@ -369,8 +336,7 @@ int main(int argc, char* argv[]) {
 
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     renderOneFrame();
   }

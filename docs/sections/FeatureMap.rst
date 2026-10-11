@@ -137,7 +137,8 @@ Visualization and tools
      - ``InstancedVisuals`` automatic mesh LOD, foliage wind, and shadow LOD;
        ``rayrai_forest``
      - :doc:`rayrai/Visuals`, :doc:`examples/rayrai/rayrai_forest`
-   * - Load a RaiSim Engine ``.rscene`` scene (from v2.7.1, not yet released)
+   * - Load a RaiSim Engine ``.rscene`` scene (from v2.8.0; the ``RayraiWindow``
+       display and ``setRsceneRenderSettings`` from v2.8.2, not yet released)
      - ``raisim::World(path)``, ``raisin::RayraiWindow``,
        ``raisin::setRsceneRenderSettings``; ``rayrai_forest_from_rscene``
      - :doc:`RsceneFile`, :doc:`WorldSystem`,

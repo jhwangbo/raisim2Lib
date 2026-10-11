@@ -2,14 +2,13 @@
 
 #include <glm/glm.hpp>
 
+#include "raisim/World.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
-#include "raisim/World.hpp"
 
 int main() {
   ExampleApp app;
-  if (!app.init("rayrai_runtime_scene_editing", 1280, 720))
-    return -1;
+  if (!app.init("rayrai_runtime_scene_editing", 1280, 720)) return -1;
 
   auto world = std::make_shared<raisim::World>();
   world->setTimeStep(0.005);
@@ -32,17 +31,14 @@ int main() {
     clone->setAppearance("0.95,0.52,0.24,1.0");
   }
 
-  auto* filtered = world->addSphere(0.18, 1.0, "default",
-                                    raisim::CollisionGroup(1),
-                                    raisim::CollisionGroup(-1));
+  auto* filtered = world->addSphere(0.18, 1.0, "default", raisim::CollisionGroup(1), raisim::CollisionGroup(-1));
   filtered->setName("filter_sphere");
   filtered->setPosition(0.58, 0.0, 1.25);
   filtered->setAppearance("0.24,0.84,0.38,1.0");
   const auto filteredId = filtered->getId();
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
-  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Balanced));
+  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {24, 26, 30, 255});
   raisim_examples::addRayraiBasicSceneLights(*viewer);
 
@@ -58,19 +54,14 @@ int main() {
   int step = 0;
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     if (step % 240 == 0) {
       filterDisabled = !filterDisabled;
       auto* object = dynamic_cast<raisim::SingleBodyObject*>(world->getObjectById(filteredId));
       if (object) {
-        world->setObjectCollisionFilter(object,
-                                        raisim::CollisionGroup(1),
-                                        filterDisabled ? raisim::CollisionGroup(0)
-                                                       : raisim::CollisionGroup(-1));
-        object->setAppearance(filterDisabled ? "0.45,0.45,0.48,0.38"
-                                             : "0.24,0.84,0.38,1.0");
+        world->setObjectCollisionFilter(object, raisim::CollisionGroup(1), filterDisabled ? raisim::CollisionGroup(0) : raisim::CollisionGroup(-1));
+        object->setAppearance(filterDisabled ? "0.45,0.45,0.48,0.38" : "0.24,0.84,0.38,1.0");
         object->setPosition(0.58, 0.0, 1.25);
         object->setVelocity(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
       }

@@ -2,13 +2,12 @@
 // (rsc/xmlScripts/rscene/anymal_in_city.xml) describes only the ANYmal C, its
 // initial state and its joint PD gains, and includes the city's .rscene file
 // for everything else, so the robot and the scene stay in separate files.
-#include "rayrai/example_common.hpp"
 #include "example_resources.hpp"
+#include "rayrai/example_common.hpp"
 #include "rayrai_loading_progress.hpp"
 
 int main(int argc, char* argv[]) {
-  auto world = std::make_shared<raisim::World>(
-    exampleRscPath(argv[0], "xmlScripts/rscene/anymal_in_city.xml"));
+  auto world = std::make_shared<raisim::World>(exampleRscPath(argv[0], "xmlScripts/rscene/anymal_in_city.xml"));
   ExampleApp app;
   if (!app.init("RaiSim world from XML", 1280, 800)) return 1;
   {
@@ -31,7 +30,7 @@ int main(int argc, char* argv[]) {
       loading.draw();
       app.endFrame();
     }
-  } // Release graphics resources before closing the OpenGL context.
+  }  // Release graphics resources before closing the OpenGL context.
   app.shutdown();
   return 0;
 }

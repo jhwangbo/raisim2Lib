@@ -3,21 +3,19 @@
 #include <memory>
 #include <vector>
 
+#include "raisim/World.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
-#include "raisim/World.hpp"
 
 int main(int argc, char* argv[]) {
   ExampleApp app;
-  if (!app.init("rayrai_example_pointcloud", 1280, 720))
-    return -1;
+  if (!app.init("rayrai_example_pointcloud", 1280, 720)) return -1;
 
   auto world = std::make_shared<raisim::World>();
   world->addGround();
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
-  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Balanced));
+  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {35, 35, 45, 255});
   auto& camera = viewer->getCamera();
   camera.target = {0.0f, 0.0f, 0.45f};
@@ -37,8 +35,7 @@ int main(int argc, char* argv[]) {
 
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     world->integrate();
     const double t = world->getWorldTime();
@@ -57,8 +54,7 @@ int main(int argc, char* argv[]) {
 
         for (int i = 0; i < pointsPerRing; ++i) {
           const float angle = float(i) * 2.0f * kPi / float(pointsPerRing) + float(t);
-          cloud->positions.emplace_back(
-            glm::vec3(std::cos(angle) * radius, std::sin(angle) * radius, z));
+          cloud->positions.emplace_back(glm::vec3(std::cos(angle) * radius, std::sin(angle) * radius, z));
           cloud->colors.emplace_back(color);
         }
       }

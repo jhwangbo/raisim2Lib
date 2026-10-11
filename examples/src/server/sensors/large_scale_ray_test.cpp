@@ -33,21 +33,17 @@ std::vector<Eigen::Vector3d> makeUniformDirections(size_t count) {
   // A Fibonacci sphere distributes directions evenly without over-sampling the poles.
   constexpr double goldenAngle = kPi * (3.0 - 2.23606797749978969641);
   for (size_t i = 0; i < count; ++i) {
-    const double z = 1.0 - 2.0 * (static_cast<double>(i) + 0.5) /
-                               static_cast<double>(count);
+    const double z = 1.0 - 2.0 * (static_cast<double>(i) + 0.5) / static_cast<double>(count);
     const double radialDistance = std::sqrt(std::max(0.0, 1.0 - z * z));
     const double azimuth = goldenAngle * static_cast<double>(i);
-    directions.emplace_back(radialDistance * std::cos(azimuth),
-                            radialDistance * std::sin(azimuth),
-                            z);
+    directions.emplace_back(radialDistance * std::cos(azimuth), radialDistance * std::sin(azimuth), z);
   }
 
   return directions;
 }
 
 Eigen::Vector4d alignCylinderWith(const Eigen::Vector3d& direction) {
-  const Eigen::Quaterniond quaternion =
-      Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitZ(), direction);
+  const Eigen::Quaterniond quaternion = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitZ(), direction);
   return {quaternion.w(), quaternion.x(), quaternion.y(), quaternion.z()};
 }
 
@@ -77,8 +73,7 @@ void addArena(raisim::World& world) {
   // Offset pillars produce hit points at a useful range before rays reach the walls.
   constexpr size_t pillarCount = 20;
   for (size_t i = 0; i < pillarCount; ++i) {
-    const double angle = 2.0 * kPi * static_cast<double>(i) /
-                         static_cast<double>(pillarCount);
+    const double angle = 2.0 * kPi * static_cast<double>(i) / static_cast<double>(pillarCount);
     const double radius = 9.0 + 4.0 * static_cast<double>(i % 3);
     const double height = 3.0 + static_cast<double>(i % 5);
     auto pillar = world.addCylinder(0.65, height, 1.0);
@@ -102,18 +97,8 @@ int main(int argc, char* argv[]) {
   auto sourceVisual = server.addVisualSphere("ray_source", 0.35, 1.0, 0.75, 0.05, 1.0);
   sourceVisual->setPosition(raySource);
 
-  auto rayVisuals = server.addInstancedVisuals(
-      "ray_cylinders",
-      raisim::Shape::Cylinder,
-      {kRayRadius, kRayRadius, 1.0},
-      {0.05, 0.55, 1.0, 0.35},
-      {0.15, 0.95, 1.0, 0.35});
-  auto hitVisuals = server.addInstancedVisuals(
-      "ray_hit_spheres",
-      raisim::Shape::Sphere,
-      {kHitRadius, kHitRadius, kHitRadius},
-      {1.0, 0.85, 0.05, 1.0},
-      {1.0, 0.15, 0.05, 1.0});
+  auto rayVisuals = server.addInstancedVisuals("ray_cylinders", raisim::Shape::Cylinder, {kRayRadius, kRayRadius, 1.0}, {0.05, 0.55, 1.0, 0.35}, {0.15, 0.95, 1.0, 0.35});
+  auto hitVisuals = server.addInstancedVisuals("ray_hit_spheres", raisim::Shape::Sphere, {kHitRadius, kHitRadius, kHitRadius}, {1.0, 0.85, 0.05, 1.0}, {1.0, 0.15, 0.05, 1.0});
 
   std::vector<RayVisual> rays;
   std::vector<Eigen::Vector3d> hitPoints;
@@ -134,15 +119,11 @@ int main(int argc, char* argv[]) {
 
       Eigen::Vector3d endpoint = raySource + direction * kRayLength;
       const bool hit = collisions.size() > 0;
-      if (hit)
-        endpoint = collisions[0].getPosition();
+      if (hit) endpoint = collisions[0].getPosition();
 
       const double rayDistance = (endpoint - raySource).norm();
       const float distanceWeight = static_cast<float>(rayDistance / kRayLength);
-      rays.push_back({(raySource + endpoint) * 0.5,
-                      alignCylinderWith(direction),
-                      {1.0, 1.0, rayDistance},
-                      distanceWeight});
+      rays.push_back({(raySource + endpoint) * 0.5, alignCylinderWith(direction), {1.0, 1.0, rayDistance}, distanceWeight});
 
       if (hit) {
         hitPoints.push_back(endpoint);
@@ -153,16 +134,13 @@ int main(int argc, char* argv[]) {
     server.lockVisualizationServerMutex();
     rayVisuals->clearInstances();
     hitVisuals->clearInstances();
-    for (const auto& ray : rays)
-      rayVisuals->addInstance(ray.midpoint, ray.orientation, ray.scale, ray.colorWeight);
-    for (size_t i = 0; i < hitPoints.size(); ++i)
-      hitVisuals->addInstance(hitPoints[i], hitColorWeights[i]);
+    for (const auto& ray : rays) rayVisuals->addInstance(ray.midpoint, ray.orientation, ray.scale, ray.colorWeight);
+    for (size_t i = 0; i < hitPoints.size(); ++i) hitVisuals->addInstance(hitPoints[i], hitColorWeights[i]);
     server.unlockVisualizationServerMutex();
   };
 
   updateScan(0.0);
-  std::cout << "Large-scale ray test: " << kRayCount << " rays, "
-            << hitPoints.size() << " initial hits" << std::endl;
+  std::cout << "Large-scale ray test: " << kRayCount << " rays, " << hitPoints.size() << " initial hits" << std::endl;
 
   server.launchServer();
   raisim_examples::warnIfNoClientConnected(server);

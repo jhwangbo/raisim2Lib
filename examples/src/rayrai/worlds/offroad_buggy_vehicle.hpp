@@ -18,7 +18,6 @@
 #include <Eigen/Geometry>
 
 #include "raisim/World.hpp"
-#include "tinyxml_rai/tinyxml_rai.h"
 
 namespace offroad {
 
@@ -33,53 +32,53 @@ struct DriverInput {
 
 /// Telemetry of one corner, averaged over the steps of a frame.
 struct CornerTelemetry {
-  double shockExtension = 0;  ///< damper extension from the design length [m] (+ = droop)
-  double compression = 0;     ///< 0 at full droop .. 1 on the bump stop
-  double springLength = 0;    ///< coil spring length between its seats [m]
-  double springForce = 0;     ///< [N], positive pushes the seats apart
-  double damperVelocity = 0;  ///< [m/s], positive extends
-  double damperForce = 0;     ///< [N], positive pushes the eyes apart
-  double wheelLoad = 0;       ///< normal force of the ground on the tyre [N]
-  double wheelSpeed = 0;      ///< [rad/s]
-  double slip = 0;            ///< longitudinal slip ratio
-  double steerAngle = 0;      ///< wheel yaw relative to the chassis [rad]
-  double camber = 0;          ///< wheel camber relative to the chassis [rad], negative = top inwards
-  double driveTorque = 0;     ///< [Nm]
-  double tyreDeflection = 0;  ///< radial compression of the tyre [m]
-  double tyreLateral = 0;     ///< lateral deflection of the tyre [m]
+  double shockExtension = 0;                            ///< damper extension from the design length [m] (+ = droop)
+  double compression = 0;                               ///< 0 at full droop .. 1 on the bump stop
+  double springLength = 0;                              ///< coil spring length between its seats [m]
+  double springForce = 0;                               ///< [N], positive pushes the seats apart
+  double damperVelocity = 0;                            ///< [m/s], positive extends
+  double damperForce = 0;                               ///< [N], positive pushes the eyes apart
+  double wheelLoad = 0;                                 ///< normal force of the ground on the tyre [N]
+  double wheelSpeed = 0;                                ///< [rad/s]
+  double slip = 0;                                      ///< longitudinal slip ratio
+  double steerAngle = 0;                                ///< wheel yaw relative to the chassis [rad]
+  double camber = 0;                                    ///< wheel camber relative to the chassis [rad], negative = top inwards
+  double driveTorque = 0;                               ///< [Nm]
+  double tyreDeflection = 0;                            ///< radial compression of the tyre [m]
+  double tyreLateral = 0;                               ///< lateral deflection of the tyre [m]
   Eigen::Vector2d contact2d = Eigen::Vector2d::Zero();  ///< load centre of the contact patch in the heading frame (x, y) [m]
   bool contact = false;
 };
 
 struct Telemetry {
   std::array<CornerTelemetry, 4> corners;
-  double speed = 0;               ///< forward speed [m/s]
+  double speed = 0;  ///< forward speed [m/s]
   Eigen::Vector3d velocity = Eigen::Vector3d::Zero();
   Eigen::Vector3d acceleration = Eigen::Vector3d::Zero();  ///< chassis-frame acceleration of the centre of mass
-  double rollAngle = 0, pitchAngle = 0;   ///< chassis attitude [rad]
-  double motorPower = 0;           ///< [W]
-  double maxLoopError = 0;         ///< largest anchor separation of the loop constraints [m]
-  double steeringWheelAngle = 0;   ///< [rad]
-  double rackPosition = 0;         ///< [m]
-  double comHeight = 0;            ///< centre of mass above the mean contact point [m]
-  Eigen::Vector2d com2d = Eigen::Vector2d::Zero();  ///< centre of mass in the heading frame (x, y) [m]
+  double rollAngle = 0, pitchAngle = 0;                    ///< chassis attitude [rad]
+  double motorPower = 0;                                   ///< [W]
+  double maxLoopError = 0;                                 ///< largest anchor separation of the loop constraints [m]
+  double steeringWheelAngle = 0;                           ///< [rad]
+  double rackPosition = 0;                                 ///< [m]
+  double comHeight = 0;                                    ///< centre of mass above the mean contact point [m]
+  Eigen::Vector2d com2d = Eigen::Vector2d::Zero();         ///< centre of mass in the heading frame (x, y) [m]
 };
 
 class Buggy {
  public:
   static constexpr const char* kCornerNames[4] = {"fl", "fr", "rl", "rr"};
   // Electric drive unit on the rear axle, torques at the wheels.
-  static constexpr double kMaxAxleTorque = 1500.0;   // [Nm]
-  static constexpr double kMaxPower = 75000.0;       // [W]
-  static constexpr double kMaxWheelSpeed = 78.0;     // [rad/s], about 100 km/h
-  static constexpr double kReverseTorque = 600.0;    // [Nm]
-  static constexpr double kLsdCoupling = 60.0;       // viscous limited-slip coupling [Nm s/rad]
+  static constexpr double kMaxAxleTorque = 1500.0;  // [Nm]
+  static constexpr double kMaxPower = 75000.0;      // [W]
+  static constexpr double kMaxWheelSpeed = 78.0;    // [rad/s], about 100 km/h
+  static constexpr double kReverseTorque = 600.0;   // [Nm]
+  static constexpr double kLsdCoupling = 60.0;      // viscous limited-slip coupling [Nm s/rad]
   // Brakes: implicit viscous brake torque per wheel per rad/s, 60/40 front/rear,
   // and a held wheel (stiff PD on the wheel angle) near standstill.
   static constexpr double kBrakeDamping[2] = {420.0, 280.0};
-  static constexpr double kHoldSpeed = 0.6;          // [m/s]
+  static constexpr double kHoldSpeed = 0.6;  // [m/s]
   static constexpr double kHoldStiffness = 6000.0, kHoldDamping = 400.0;
-  static constexpr double kDragArea = 0.95;          // Cd A [m^2]
+  static constexpr double kDragArea = 0.95;  // Cd A [m^2]
   static constexpr double kRollingResistance = 0.018;
   static constexpr double kSteeringWheelLock = 5.8;  // [rad], 332 degrees: the rack travel over the pinion radius
   static constexpr double kSteeringRate = 7.0;       // [rad/s] of the steering wheel
@@ -89,7 +88,7 @@ class Buggy {
     system_->setName("offroad_buggy");
     dof_ = system_->getDOF();
     for (size_t i = 0; i < system_->getMass().size(); ++i) mass_ += system_->getMass()[i];
-    baseDamping_ = readJointDamping(urdf);
+    baseDamping_ = system_->getJointDamping().e();
     for (int i = 0; i < 4; ++i) {
       const std::string c = kCornerNames[i];
       Corner& k = corners_[i];
@@ -122,9 +121,7 @@ class Buggy {
       system_->ignoreCollisionBetween(0, k.wheelBody);
     }
     system_->updateSelfCollisionCache(world);
-    for (int i = 0; i < 4; ++i)
-      wheelRadius_ = std::max(wheelRadius_,
-                              system_->getCollisionBody(std::string(kCornerNames[i]) + "_wheel/0").shapeParam[0]);
+    for (int i = 0; i < 4; ++i) wheelRadius_ = std::max(wheelRadius_, system_->getCollisionBody(std::string(kCornerNames[i]) + "_wheel/0").shapeParam[0]);
     steeringGc_ = system_->getJoint("steering_wheel").getIdxInGeneralizedCoordinate();
     steeringGv_ = system_->getGeneralizedVelocityIndex("steering_wheel");
     rackGc_ = system_->getJoint("steering_rack").getIdxInGeneralizedCoordinate();
@@ -164,8 +161,7 @@ class Buggy {
     // Lift the car so that the highest ground under its wheels is just below the tyres.
     double z = -1e9;
     for (double dx : {-1.4, 1.4})
-      for (double dy : {-1.1, 1.1})
-        z = std::max(z, ground(x + c * dx - s * dy, y + s * dx + c * dy));
+      for (double dy : {-1.1, 1.1}) z = std::max(z, ground(x + c * dx - s * dy, y + s * dx + c * dy));
     q[0] = x;
     q[1] = y;
     q[2] = z + wheelRadius_ + 0.015;
@@ -206,8 +202,7 @@ class Buggy {
       const double omega = std::abs(wheelSpeed);
       const double peak = input.reverse ? kReverseTorque : kMaxAxleTorque;
       double available = std::min(peak, kMaxPower / std::max(omega, 1.0));
-      if (direction * wheelSpeed > 0)
-        available *= std::clamp((kMaxWheelSpeed - omega) / 8.0, 0.0, 1.0);
+      if (direction * wheelSpeed > 0) available *= std::clamp((kMaxWheelSpeed - omega) / 8.0, 0.0, 1.0);
       axle = direction * input.throttle * available;
     }
     // Open differential (equal torques) with a viscous limited-slip coupling.
@@ -271,8 +266,7 @@ class Buggy {
         }
     }
     for (const auto& problem : *world_.getContactProblem())
-      if (problem.rank == raisim::contact::rank::PROJECTED_PIN_CONSTRAINT)
-        loopError_ = std::max(loopError_, problem.pinError_W.e().norm());
+      if (problem.rank == raisim::contact::rank::PROJECTED_PIN_CONSTRAINT) loopError_ = std::max(loopError_, problem.pinError_W.e().norm());
     ++steps_;
   }
 
@@ -368,23 +362,6 @@ class Buggy {
     double load = 0, loadSum = 0, contactZ = 0;
     int contactCount = 0;
   };
-
-  /// Joint damping of the URDF, per generalized velocity, so that the brakes can add to it.
-  Eigen::VectorXd readJointDamping(const std::string& urdf) const {
-    Eigen::VectorXd damping = Eigen::VectorXd::Zero(dof_);
-    raisim::TiXmlDocument doc(urdf);
-    if (!doc.LoadFile()) throw std::runtime_error("Cannot read " + urdf);
-    const auto* robot = doc.FirstChildElement("robot");
-    for (const auto* joint = robot->FirstChildElement("joint"); joint; joint = joint->NextSiblingElement("joint")) {
-      const auto* dynamics = joint->FirstChildElement("dynamics");
-      const char* value = dynamics ? dynamics->Attribute("damping") : nullptr;
-      if (!value) continue;
-      const std::string type = joint->Attribute("type");
-      const size_t index = system_->getGeneralizedVelocityIndex(joint->Attribute("name"));
-      for (int i = 0; i < (type == "spherical" ? 3 : 1); ++i) damping[index + i] = std::stod(value);
-    }
-    return damping;
-  }
 
   raisim::World& world_;
   raisim::ArticulatedSystem* system_ = nullptr;

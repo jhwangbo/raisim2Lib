@@ -8,18 +8,16 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "rayrai/example_common.hpp"
 #include "example_resources.hpp"
-#include "rayrai_example_compat.hpp"
+#include "raisim/World.hpp"
 #include "rayrai/Camera.hpp"
 #include "rayrai/CameraFrustum.hpp"
-#include "raisim/World.hpp"
+#include "rayrai/example_common.hpp"
+#include "rayrai_example_compat.hpp"
 
-namespace
-{
+namespace {
 ImVec2 fitToAspect(ImVec2 avail, float aspect) {
-  if (aspect <= 0.0f)
-    return avail;
+  if (aspect <= 0.0f) return avail;
   ImVec2 size = avail;
   size.y = size.x / aspect;
   if (size.y > avail.y) {
@@ -28,20 +26,15 @@ ImVec2 fitToAspect(ImVec2 avail, float aspect) {
   }
   return size;
 }
-} // namespace
+}  // namespace
 
-static inline glm::vec3 toGlm(const raisim::Vec<3>& v) {
-  return glm::vec3(v[0], v[1], v[2]);
-}
+static inline glm::vec3 toGlm(const raisim::Vec<3>& v) { return glm::vec3(v[0], v[1], v[2]); }
 
-static inline glm::mat3 toGlm(const raisim::Mat<3, 3>& R) {
-  return glm::make_mat3(R.ptr());
-}
+static inline glm::mat3 toGlm(const raisim::Mat<3, 3>& R) { return glm::make_mat3(R.ptr()); }
 
 int main(int argc, char* argv[]) {
   ExampleApp app;
-  if (!app.init("rayrai_example_depth", 1280, 720))
-    return -1;
+  if (!app.init("rayrai_example_depth", 1280, 720)) return -1;
 
   auto world = std::make_shared<raisim::World>();
   world->addGround();
@@ -50,8 +43,7 @@ int main(int argc, char* argv[]) {
   const std::string go1Dir = exampleRscPath(argv[0], "go1");
   std::vector<std::string> modules = {"d455"};
   auto go1 = world->addArticulatedSystem(go1Dir + sep + "go1.urdf", modules, go1Dir);
-  go1->setGeneralizedCoordinate({0, 0, 0.32, 1.0, 0.0, 0.0, 0.0, 0, 0.67, -1.3, 0, 0.67, -1.3, 0,
-    0.67, -1.3, 0, 0.67, -1.3});
+  go1->setGeneralizedCoordinate({0, 0, 0.32, 1.0, 0.0, 0.0, 0.0, 0, 0.67, -1.3, 0, 0.67, -1.3, 0, 0.67, -1.3, 0, 0.67, -1.3});
 
   auto depthCam = go1->getSensorSet("d455_front")->getSensor<raisim::DepthCamera>("depth");
 
@@ -62,8 +54,7 @@ int main(int argc, char* argv[]) {
   box->setAppearance("0.2,0.7,0.9,1.0");
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
-  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Balanced));
+  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {35, 35, 45, 255});
   auto& camera = viewer->getCamera();
   camera.position = {3.2f, 2.6f, 2.2f};
@@ -86,16 +77,13 @@ int main(int argc, char* argv[]) {
   constexpr int kPointStride = 4;
   constexpr float kPointCubeSize = 0.015f;
   constexpr float kPointColorRange = 3.0f;
-  auto depthPoints = viewer->addInstancedVisuals("depth_points", raisim::Shape::Box,
-    glm::vec3(kPointCubeSize), glm::vec4(1.0f, 0.85f, 0.2f, 1.0f),
-    glm::vec4(0.2f, 0.4f, 1.0f, 1.0f));
+  auto depthPoints = viewer->addInstancedVisuals("depth_points", raisim::Shape::Box, glm::vec3(kPointCubeSize), glm::vec4(1.0f, 0.85f, 0.2f, 1.0f), glm::vec4(0.2f, 0.4f, 1.0f, 1.0f));
   depthPoints->setDetectable(false);
   depthPoints->setCastsShadows(false);
   const float clipNear = float(depthProp.clipNear);
   std::vector<raisim::Vec<3>> sensedPoints;
   std::vector<raisin::InstancedVisuals::InstanceSpec> pointInstances;
-  pointInstances.reserve(size_t((depthWidth + kPointStride - 1) / kPointStride) *
-                         size_t((depthHeight + kPointStride - 1) / kPointStride));
+  pointInstances.reserve(size_t((depthWidth + kPointStride - 1) / kPointStride) * size_t((depthHeight + kPointStride - 1) / kPointStride));
 
   depthCam->updatePose();
   const glm::vec3 sensorPos = toGlm(depthCam->getPosition());
@@ -116,18 +104,14 @@ int main(int argc, char* argv[]) {
 
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     world->integrate();
 
     viewer->renderWithExternalCamera(*depthCam, *depthCamera, {});
     viewer->renderDepthPlaneDistance(*depthCam, *depthCamera);
     // Flip so rows run top to bottom, the pixel layout DepthCamera uses for its rays.
-    depthCamera->getRawImage(*depthCam,
-                             raisin::Camera::SensorStorageMode::CUSTOM_BUFFER,
-                             rayraiDepth.data(),
-                             rayraiDepth.size(),
+    depthCamera->getRawImage(*depthCam, raisin::Camera::SensorStorageMode::CUSTOM_BUFFER, rayraiDepth.data(), rayraiDepth.size(),
                              /*flipVertical=*/true);
     centerRayraiDepth = rayraiDepth[size_t(depthHeight / 2) * size_t(depthWidth) + size_t(depthWidth / 2)];
 
@@ -139,8 +123,7 @@ int main(int argc, char* argv[]) {
         const size_t pixel = size_t(row) * size_t(depthWidth) + size_t(col);
         const float depth = rayraiDepth[pixel];
         // rayrai writes 0 where the ray hit nothing.
-        if (!(depth > 0.0f))
-          continue;
+        if (!(depth > 0.0f)) continue;
         raisin::InstancedVisuals::InstanceSpec point;
         point.position = toGlm(sensedPoints[pixel]);
         point.colorWeight = (depth - clipNear) / kPointColorRange;

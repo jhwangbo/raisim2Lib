@@ -2,14 +2,13 @@
 
 #include <glm/glm.hpp>
 
+#include "raisim/World.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
-#include "raisim/World.hpp"
 
 int main() {
   ExampleApp app;
-  if (!app.init("rayrai_swept_ccd", 1280, 720))
-    return -1;
+  if (!app.init("rayrai_swept_ccd", 1280, 720)) return -1;
 
   auto world = std::make_shared<raisim::World>();
   world->setTimeStep(0.02);
@@ -34,8 +33,7 @@ int main() {
   referencePost->setAppearance("0.25,0.30,0.36,0.6");
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
-  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Balanced));
+  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {24, 26, 30, 255});
   raisim_examples::addRayraiBasicSceneLights(*viewer);
 
@@ -50,8 +48,7 @@ int main() {
   int step = 0;
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     if (step % 120 == 0) {
       fastSphere->setPosition(0.0, 0.0, 3.0);

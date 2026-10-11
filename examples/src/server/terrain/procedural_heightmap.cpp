@@ -1,13 +1,12 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
+#include "example_resources.hpp"
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
-#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-
   /// create raisim world
   raisim::World world;
   world.setTimeStep(0.002);
@@ -31,8 +30,7 @@ int main(int argc, char* argv[]) {
 
   /// ANYmal joint PD controller
   Eigen::VectorXd jointNominalConfig(19), jointVelocityTarget(18);
-  Eigen::VectorXd jointState(18), jointForce(18), jointPgain(18),
-      jointDgain(18);
+  Eigen::VectorXd jointState(18), jointForce(18), jointPgain(18), jointDgain(18);
   jointPgain.setZero();
   jointDgain.setZero();
   jointVelocityTarget.setZero();
@@ -43,15 +41,10 @@ int main(int argc, char* argv[]) {
 
   for (size_t i = 0; i < N; i++) {
     for (size_t j = 0; j < N; j++) {
-      anymals.push_back(world.addArticulatedSystem(
-          exampleRscPath(argv[0], "anymal/urdf/anymal.urdf")));
-      anymals.back()->setGeneralizedCoordinate(
-          {double(2 * i)-1, double(j), 2.5, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8,
-           -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8});
-      anymals.back()->setGeneralizedForce(
-          Eigen::VectorXd::Zero(anymals.back()->getDOF()));
-      anymals.back()->setControlMode(
-          raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
+      anymals.push_back(world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf")));
+      anymals.back()->setGeneralizedCoordinate({double(2 * i) - 1, double(j), 2.5, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8});
+      anymals.back()->setGeneralizedForce(Eigen::VectorXd::Zero(anymals.back()->getDOF()));
+      anymals.back()->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
       anymals.back()->setPdGains(jointPgain, jointDgain);
       anymals.back()->setName("anymal" + std::to_string(j + i * N));
     }
@@ -61,10 +54,9 @@ int main(int argc, char* argv[]) {
   raisim::RaisimServer server(&world);
   server.launchServer();
 
-
   raisim_examples::warnIfNoClientConnected(server);
-  for (int i=0; i<1000000; i++) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+  for (int i = 0; i < 1000000; i++) {
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
     server.integrateWorldThreadSafe();
   }
 

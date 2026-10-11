@@ -17,8 +17,10 @@ numbers separated by whitespace or by commas, e.g. ``pos="0 0 1"`` or
 ``pos="0, 0, 1"``. The token ``[THIS_DIR]`` anywhere in the file is replaced by
 the directory that contains the file, so resource paths can be written relative
 to the file, e.g. ``urdf_path="[THIS_DIR]/../anymal/urdf/anymal.urdf"``.
-Relative paths without ``[THIS_DIR]`` are resolved against the process working
-directory.
+A relative ``urdf_path`` or ``include`` path names a file in the process working
+directory or, if there is none, a file relative to the folder of the XML file
+that names it. Other relative paths without ``[THIS_DIR]`` are resolved against
+the process working directory.
 
 1. ``raisim``: the root element.
 
@@ -277,7 +279,9 @@ link and its parent,
 (optional, default=0) ``convexify_meshes`` [int]: 1 treats the URDF collision
 meshes as convex shapes
 
-Use an absolute ``urdf_path`` or one that starts with ``[THIS_DIR]``.
+A relative ``urdf_path`` is looked up in the working directory first and then
+relative to the folder of the XML file, also when that file is included by
+another. A URDF found in neither place is a fatal error.
 
 1. <child> ``state``: <attribute> ``qpos`` [VecDyn], the generalized coordinate,
    (optional, default=zeros) ``qvel`` [VecDyn], the generalized velocity
@@ -296,7 +300,8 @@ attributes ``xx``, ``xy``, ``xz``, ``yy``, ``yz``, and ``zz``.
 Primitive classes use the child ``dimension`` with the same shape parameters as
 ``dim``. Mesh classes use the child ``file`` with the attribute ``name`` and the
 child ``scale`` with the attributes ``x``, ``y``, and ``z`` (only ``x`` is used).
-Articulated-system classes use the attributes ``urdf_path`` and optional
+Articulated-system classes use the attributes ``urdf_path``, resolved like an
+articulated system's against the file that defines the class, and optional
 ``res_dir``. Compound classes use the child ``children``; each child element is
 named after a primitive type or another compound class and uses the attributes
 ``object_param`` [VecDyn] (the shape parameters: radius; radius and height; or
@@ -379,7 +384,10 @@ file into the same world before the including file's own content. Use it to
 combine sub-worlds. Included files load in document order, and the settings of
 the including file (``material``, ``gravity``, ``timeStep``, ``erp``,
 ``simulation``) override theirs; a setting it does not name keeps the included
-file's value. The ``value`` may contain ``@@`` parameters.
+file's value. The ``value`` may contain ``@@`` parameters. A relative path
+names a file in the working directory or, if there is none, a file relative to
+the folder of the including file, also inside a nested include. A missing
+file is a fatal error.
 
 An include whose path ends in ``.rscene`` (in any letter case) builds a RaiSim
 Engine scene into the world, as ``World("scene.rscene")`` does, so a robot and

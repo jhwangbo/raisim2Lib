@@ -1,20 +1,18 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
-#include "benchmarkCommon.hpp"
-
-#include <Eigen/Dense>
-#include <raisim/World.hpp>
-
 #include <chrono>
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include <Eigen/Dense>
+#include <raisim/World.hpp>
+
+#include "benchmarkCommon.hpp"
 #include "example_resources.hpp"
 
-namespace {
-
-}  // namespace
+namespace {}  // namespace
 
 int main(int argc, char* argv[]) {
   (void)argc;
@@ -40,8 +38,7 @@ int main(int argc, char* argv[]) {
 
   jointVelocityTarget.setZero();
 
-  jointConfig << 0, 0, 0.54, 1, 0, 0, 0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4,
-      0.8, -0.03, -0.4, 0.8;
+  jointConfig << 0, 0, 0.54, 1, 0, 0, 0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
   jointVel.setZero();
 
   auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
@@ -81,9 +78,8 @@ int main(int argc, char* argv[]) {
   /// create objects
   auto* ground2 = world2.addGround();
   auto atlas = world2.addArticulatedSystem(exampleRscPath(argv[0], "atlas/robot.urdf"));
-  atlas->setGeneralizedCoordinate({0, 0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                   0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                   0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  atlas->setGeneralizedCoordinate(
+      {0, 0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   atlas->setGeneralizedForce(Eigen::VectorXd::Zero(atlas->getDOF()));
 
   size_t contactSize = 0;

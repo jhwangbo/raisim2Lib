@@ -36,15 +36,16 @@ a path chooses the loader from the file extension and content.
    formats. See :doc:`WorldConfigurationFile` for the RaiSim XML schema and
    the MJCF notes below.
 
-#. **From a RaiSim Engine scene file** (from v2.7.1, not yet released; the
-   v2.7.0 package does not include the reader). Pass a ``.rscene`` path to the
+#. **From a RaiSim Engine scene file** (from v2.8.0; earlier packages do not
+   include the reader). Pass a ``.rscene`` path to the
    same constructor. RaiSim reads the solver settings and contact materials,
    sampled terrain, primitive, mesh and ``.rasset`` bodies, and wires;
    :doc:`RsceneFile` documents the format. The parsed scene stays available
    through ``World::getRscene()``, so rayrai can apply the rest of the scene,
    as RaiSim Engine 2's viewport shows it (render settings, sky, lights, fog,
    visual-only objects, instanced visuals, terrain foliage and textures, and
-   the camera). A ``RayraiWindow`` applies it when it is constructed:
+   the camera). From v2.8.2 (not yet released), a ``RayraiWindow`` applies it
+   when it is constructed:
 
    .. code-block:: cpp
 

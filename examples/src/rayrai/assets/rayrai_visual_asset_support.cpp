@@ -6,15 +6,14 @@
 
 #include <Eigen/Core>
 
+#include "example_resources.hpp"
+#include "raisim/World.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
-#include "raisim/World.hpp"
-#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
   ExampleApp app;
-  if (!app.init("rayrai_visual_asset_support", 1280, 720))
-    return -1;
+  if (!app.init("rayrai_visual_asset_support", 1280, 720)) return -1;
 
   const std::filesystem::path anymalUrdf = exampleRscPath(argv[0], "anymal_c/urdf/anymal.urdf");
   const std::filesystem::path ycbDir = exampleRscPath(argv[0], "ycb");
@@ -30,8 +29,7 @@ int main(int argc, char* argv[]) {
   robot->setName("anymal_c_textured_urdf");
 
   Eigen::VectorXd q0(robot->getGeneralizedCoordinateDim());
-  q0 << 0.0, 0.0, 0.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8,
-    -0.03, -0.4, 0.8;
+  q0 << 0.0, 0.0, 0.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
   robot->setGeneralizedCoordinate(q0);
   robot->setGeneralizedVelocity(Eigen::VectorXd::Zero(robot->getDOF()));
 
@@ -41,16 +39,16 @@ int main(int argc, char* argv[]) {
   };
   std::vector<TexturedObject> texturedObjects;
   const std::vector<std::string> ycbUrdfs = {
-    "002_master_chef_can.urdf",
-    "007_tuna_fish_can.urdf",
-    "012_strawberry.urdf",
-    "013_apple.urdf",
+      "002_master_chef_can.urdf",
+      "007_tuna_fish_can.urdf",
+      "012_strawberry.urdf",
+      "013_apple.urdf",
   };
   const std::vector<Eigen::Vector3d> ycbPositions = {
-    {0.70, -0.26, 0.10},
-    {0.76, -0.07, 0.08},
-    {0.78, 0.12, 0.07},
-    {0.72, 0.30, 0.08},
+      {0.70, -0.26, 0.10},
+      {0.76, -0.07, 0.08},
+      {0.78, 0.12, 0.07},
+      {0.72, 0.30, 0.08},
   };
   for (size_t i = 0; i < ycbUrdfs.size(); ++i) {
     auto* object = world->addArticulatedSystem((ycbDir / ycbUrdfs[i]).string());
@@ -61,8 +59,7 @@ int main(int argc, char* argv[]) {
   }
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
-  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::High));
+  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::High));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {22, 24, 28, 255});
   raisim_examples::addRayraiPbrSceneLights(*viewer);
   viewer->setFogDensity(0.0f);
@@ -79,8 +76,7 @@ int main(int argc, char* argv[]) {
 
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     const double t = world->getWorldTime();
     Eigen::VectorXd q = q0;

@@ -2,10 +2,10 @@
 #include <filesystem>
 #include <iostream>
 
+#include "example_resources.hpp"
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
-#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
   raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
@@ -37,8 +37,7 @@ int main(int argc, char* argv[]) {
 
     Eigen::VectorXd tau = Eigen::VectorXd::Zero(walker->getDOF());
     const double phase = double(step) * world.getTimeStep();
-    for (int i = 3; i < walker->getDOF(); ++i)
-      tau[i] = 20.0 * std::sin(phase * 2.5 + 0.5 * double(i));
+    for (int i = 3; i < walker->getDOF(); ++i) tau[i] = 20.0 * std::sin(phase * 2.5 + 0.5 * double(i));
 
     walker->setGeneralizedForce(tau);
     server.integrateWorldThreadSafe();

@@ -1,16 +1,16 @@
 // Benchmark sleeping islands with stacked box clusters.
 
-#include "raisim/RaisimServer.hpp"
-#include "raisim/World.hpp"
-#include "rayrai_tcp_viewer_hint.hpp"
-
 #include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <string>
 #include <thread>
 #include <vector>
+
 #include "example_resources.hpp"
+#include "raisim/RaisimServer.hpp"
+#include "raisim/World.hpp"
+#include "rayrai_tcp_viewer_hint.hpp"
 
 namespace {
 
@@ -72,7 +72,6 @@ void runBench(int steps, int hitStep) {
   raisim::RaisimServer server(&world);
   server.launchServer();
 
-
   raisim_examples::warnIfNoClientConnected(server);
   const auto start = std::chrono::steady_clock::now();
   const int safeHitStep = (steps > 0) ? std::min(hitStep, steps - 1) : -1;
@@ -95,8 +94,7 @@ void runBench(int steps, int hitStep) {
     for (size_t i = 0; i < objects.size(); ++i) {
       const bool sleeping = world.isObjectSleeping(objects[i]);
       if (sleeping != lastSleeping[i]) {
-        objects[i]->setAppearance(sleeping ? "0.2, 0.6, 1.0, 1.0"
-                                           : "0.9, 0.2, 0.2, 1.0");
+        objects[i]->setAppearance(sleeping ? "0.2, 0.6, 1.0, 1.0" : "0.9, 0.2, 0.2, 1.0");
         lastSleeping[i] = sleeping;
       }
     }
@@ -105,12 +103,9 @@ void runBench(int steps, int hitStep) {
 
   server.killServer();
 
-  const double seconds =
-      std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count();
+  const double seconds = std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count();
   if (seconds > 0.0) {
-    std::cout << "[sleep_bench] simulated " << steps << " steps in "
-              << seconds << " s (" << (static_cast<double>(steps) / seconds)
-              << " Hz)\n";
+    std::cout << "[sleep_bench] simulated " << steps << " steps in " << seconds << " s (" << (static_cast<double>(steps) / seconds) << " Hz)\n";
   }
 }
 

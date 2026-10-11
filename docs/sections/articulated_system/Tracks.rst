@@ -37,7 +37,8 @@ Tracks are written in the URDF with the ``<track>`` element, a child of ``<robot
      - Track name (unique in the robot).
    * - ``link``
      - The link that carries the belt. The belt is rigidly attached to it; a link fixed to its parent
-       is merged into the parent as usual.
+       is merged into the parent as usual. It can be the fixed base of the robot (see
+       `Conveyors`_).
    * - ``width``
      - Belt width along the axis [m].
    * - ``thickness``
@@ -88,7 +89,9 @@ a wheel inside another, a wheel inside the belt (a rigid belt wraps the convex h
 a wheel joint whose axis is not parallel to the track's, a missing ``<drive>``, a zero gain, and a
 wheel link with its own collision geometry. The belt is the contact surface; a wheel that also
 collided would touch the ground beside it, so remove the wheel's ``<collision>`` (keep its
-``<visual>``).
+``<visual>``). The belt of another track on the wheel link, such as that of a flipper pivoting about
+the wheel's axis, is not the wheel's own geometry; the order of the ``<track>`` elements does not
+matter.
 
 Geometry
 ========
@@ -156,6 +159,36 @@ one contact: the deepest of them carries the impulse, and the others report a ze
 (their rows in :code:`World::getContactProblem()` have rank
 :code:`raisim::contact::rank::OBJECT_SOLVED_CONTACT`). The motion is the same; the step is faster.
 
+Conveyors
+---------
+
+A track on the fixed base of a robot, or on a link fixed to it, is a conveyor: the belt stays in
+place and only its surface moves. It carries the dynamic objects that touch it, and they load its
+drives like the ground loads the drives of a vehicle:
+
+.. code-block:: xml
+
+    <robot name="conveyor">
+        <link name="world"/>
+        <joint name="mount" type="fixed">
+            <parent link="world"/><child link="frame"/><origin xyz="0 0 0.5"/>
+        </joint>
+        <link name="frame"/>
+        <link name="roller_link"> ... </link>
+        <joint name="roller" type="continuous">
+            <parent link="frame"/><child link="roller_link"/><origin xyz="1 0 0"/><axis xyz="0 1 0"/>
+        </joint>
+        <track name="belt" link="frame" width="0.5" thickness="0.02">
+            <axis xyz="0 1 0"/>
+            <wheel joint="roller" radius="0.1"/>
+            <wheel xyz="-1 0 0" radius="0.1"/>
+            <drive joint="roller" gain="0.1"/>
+        </track>
+    </robot>
+
+The belt moves the dynamic objects it touches; the other links of its own robot touch it as a fixed
+surface.
+
 Limitations
 -----------
 
@@ -206,7 +239,10 @@ The drives are ordinary joints. Velocity control of the sprockets drives the rob
 
 The traction a drive delivers is its joint's generalized force (:code:`getGeneralizedForce()`), and the
 contacts on a belt are the contacts of its link whose collision body is one of
-:code:`Track::collisionBodies`.
+:code:`Track::collisionBodies`. With :code:`setComputeInverseDynamics(true)`, the torque at a drive
+joint (:code:`getTorqueAtJointInWorldFrame()`) includes the pull of the belt,
+:math:`g\,(\boldsymbol{t}^T\boldsymbol{\lambda})/\Delta t` over the contacts on it: a stalled
+sprocket reads the torque it transmits to the belt.
 
 Example
 =======

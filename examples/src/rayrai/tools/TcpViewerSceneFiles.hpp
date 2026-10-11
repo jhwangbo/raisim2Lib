@@ -9,6 +9,7 @@
 
 #include <imgui/imgui.h>
 
+#include "rayrai/RaisimTcpCommon.hpp"
 #include "rayrai/RsceneVisuals.hpp"
 #include "rayrai/TcpSceneSync.hpp"
 
@@ -36,10 +37,14 @@ class ViewerSceneFiles {
   /// Disconnect: removes the applied scene from @p viewer and forgets it.
   void reset(RayraiWindow& viewer, RemoteScene& scene);
 
-  /// See SceneSync::setServerPathsTrusted(): true for a server on this computer.
-  void setServerPathsTrusted(bool trusted) { sync_.setServerPathsTrusted(trusted); }
-  /// Scene-file block of a live response (not of a replayed one).
-  void receive(SceneFileBlock&& block) { sync_.receive(std::move(block)); }
+  /// Scene-file block of a live response (not of a replayed one) from @p server. A server on
+  /// this computer, such as a --simulate child, names this computer's files, so they load in
+  /// place without a prompt (SceneSync::setServerPathsTrusted()). The socket's peer address
+  /// decides it (TcpClient::peerIsLoopback()), not the host name the user typed.
+  void receive(SceneFileBlock&& block, const TcpClient& server) {
+    sync_.setServerPathsTrusted(server.peerIsLoopback());
+    sync_.receive(std::move(block));
+  }
   /// Requests for the next update.
   void appendRequests(std::vector<ClientRequest>& requests) { sync_.appendRequests(requests); }
   /**

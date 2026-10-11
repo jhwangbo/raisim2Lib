@@ -3196,10 +3196,7 @@ int main(int argc, char* argv[]) {
             break;
         }
       }
-      // A server on this computer, such as a --simulate child, names this computer's files.
-      // The socket's peer address decides it, not the host name the user typed.
-      sceneFiles.setServerPathsTrusted(client.peerIsLoopback());
-      sceneFiles.receive(scene.takeSceneFileBlock());
+      sceneFiles.receive(scene.takeSceneFileBlock(), client);
     } else {
       static_cast<void>(scene.takeViewerCommands());
     }

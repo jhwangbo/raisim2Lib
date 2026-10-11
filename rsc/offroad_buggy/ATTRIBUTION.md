@@ -47,8 +47,9 @@ front fenders are split off into the frames of the links that carry them, and
 the rims get a satin finish instead of their mirror-like metal-roughness map.
 The coilover is scaled to the 412 mm damper of the simulated suspension and
 split into the damper body with its top eye and the rod with its bottom eye;
-its coil spring is left out, because the example draws the spring at its
-simulated length. The venue props are baked into Z-up meshes in metres, one
+its original coil spring is replaced by a procedural spring mesh in the
+URDF, whose length follows the simulated shock travel. The procedural rear
+drive shafts and CV boot visuals are also defined in the URDF. The venue props are baked into Z-up meshes in metres, one
 primitive per material, with textures reduced to 1K JPEG files; the hay bales
 are scaled by 0.65 and split into a round and a square bale, and the water
 barriers into a red and a white one.

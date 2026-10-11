@@ -1,9 +1,9 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
-#include "raisim/World.hpp"
-#include "raisim/RaisimServer.hpp"
 #include "example_resources.hpp"
+#include "raisim/RaisimServer.hpp"
+#include "raisim/World.hpp"
 
 int main(int argc, char* argv[]) {
   raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
@@ -20,8 +20,8 @@ int main(int argc, char* argv[]) {
   raisim::World world(exampleRscPath(argv[0], "xmlScripts/templatedWorld/templatedWorld.xml"), params);
   raisim::RaisimServer server(&world);
   server.launchServer();
-  for (int i=0; i<10000000; i++) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+  for (int i = 0; i < 10000000; i++) {
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
     server.integrateWorldThreadSafe();
   }
 

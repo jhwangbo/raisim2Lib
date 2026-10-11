@@ -21,11 +21,11 @@
 #include <string>
 #include <vector>
 
+#include "offroad_buggy_scene.hpp"
 #include "raisim/Rasset.hpp"
 #include "raisim/World.hpp"
 #include "raisim/object/singleBodies/Mesh.hpp"
 #include "raisim/object/terrain/HeightMap.hpp"
-#include "offroad_buggy_scene.hpp"
 
 namespace offroad {
 
@@ -55,7 +55,7 @@ struct Venue {
 
 namespace venue {
 // Sizes of the prepared props [m].
-constexpr double kTyreStack = 0.63;            // diameter
+constexpr double kTyreStack = 0.63;  // diameter
 constexpr double kBaleWidth = 0.46, kBaleLength = 0.96, kBaleHeight = 0.33;
 constexpr double kWaterBarrier = 1.98, kFence = 2.0;
 constexpr double kGantrySpan = 12.6, kCanopy = 3.0;
@@ -93,8 +93,7 @@ inline void setMaterials(raisim::World& world) {
 
 /// Build the venue, add its colliders and dynamic props to the world and mark it in occupied.
 /// rsc is the folder with offroad_buggy, city and warehouse. Deterministic.
-inline Venue buildVenue(raisim::World& world, const raisim::HeightMap& terrain, const TerrainInfo& info,
-                        const std::filesystem::path& rsc, PlacementGrid& occupied) {
+inline Venue buildVenue(raisim::World& world, const raisim::HeightMap& terrain, const TerrainInfo& info, const std::filesystem::path& rsc, PlacementGrid& occupied) {
   using namespace venue;
   const TrackLocator track(info);
   const auto props = rsc / "offroad_buggy" / "props";
@@ -119,8 +118,7 @@ inline Venue buildVenue(raisim::World& world, const raisim::HeightMap& terrain, 
     return low;
   };
   // A static prop from its .rasset, standing on the lowest ground under its footprint radius.
-  auto fixed = [&](const std::filesystem::path& rasset, double x, double y, double yaw, double radius,
-                   bool instanced = true, double z = std::numeric_limits<double>::quiet_NaN()) {
+  auto fixed = [&](const std::filesystem::path& rasset, double x, double y, double yaw, double radius, bool instanced = true, double z = std::numeric_limits<double>::quiet_NaN()) {
     auto it = assets.find(rasset.string());
     if (it == assets.end()) it = assets.emplace(rasset.string(), raisim::Rasset::load(rasset)).first;
     if (std::isnan(z)) z = lowest(x, y, radius * 0.7);
@@ -129,25 +127,18 @@ inline Venue buildVenue(raisim::World& world, const raisim::HeightMap& terrain, 
     occupied.add(x, y, radius);
   };
   // A visual-only prop (small gear in the pits).
-  auto decor = [&](const std::filesystem::path& mesh, double x, double y, double yaw,
-                   double z = std::numeric_limits<double>::quiet_NaN()) {
+  auto decor = [&](const std::filesystem::path& mesh, double x, double y, double yaw, double z = std::numeric_limits<double>::quiet_NaN()) {
     record(mesh, true, {x, y, std::isnan(z) ? terrain.getHeight(x, y) : z, yaw, 1.0, 0});
   };
   // Dynamic props stand on the local slope of the ground, tilted onto its normal.
   auto onGround = [&](double x, double y, double yaw) {
     const double e = 0.3;
-    const Eigen::Vector3d normal(terrain.getHeight(x - e, y) - terrain.getHeight(x + e, y),
-                                 terrain.getHeight(x, y - e) - terrain.getHeight(x, y + e), 2 * e);
-    return Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitZ(), normal.normalized()) *
-           Eigen::Quaterniond(Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()));
+    const Eigen::Vector3d normal(terrain.getHeight(x - e, y) - terrain.getHeight(x + e, y), terrain.getHeight(x, y - e) - terrain.getHeight(x, y + e), 2 * e);
+    return Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitZ(), normal.normalized()) * Eigen::Quaterniond(Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()));
   };
-  auto slopeAt = [&](double x, double y) {
-    return std::hypot(terrain.getHeight(x + 0.3, y) - terrain.getHeight(x - 0.3, y),
-                      terrain.getHeight(x, y + 0.3) - terrain.getHeight(x, y - 0.3)) / 0.6;
-  };
+  auto slopeAt = [&](double x, double y) { return std::hypot(terrain.getHeight(x + 0.3, y) - terrain.getHeight(x - 0.3, y), terrain.getHeight(x, y + 0.3) - terrain.getHeight(x, y - 0.3)) / 0.6; };
   // A body whose base (lift below its origin) is height above the ground at (x, y).
-  auto loose = [&](raisim::SingleBodyObject* body, const std::filesystem::path& mesh, double lift, double x, double y,
-                   double yaw, double height) {
+  auto loose = [&](raisim::SingleBodyObject* body, const std::filesystem::path& mesh, double lift, double x, double y, double yaw, double height) {
     const Eigen::Quaterniond q = onGround(x, y, yaw);
     body->setPosition(Eigen::Vector3d(x, y, terrain.getHeight(x, y)) + q * Eigen::Vector3d(0, 0, height + lift + 0.004));
     body->setOrientation(q);
@@ -157,8 +148,7 @@ inline Venue buildVenue(raisim::World& world, const raisim::HeightMap& terrain, 
     occupied.add(x, y, 0.4);
   };
   auto bale = [&](double x, double y, double yaw, double height) {
-    loose(world.addBox(kBaleWidth, kBaleLength, kBaleHeight, kBaleMass, "hay"), props / "hay_bales" / "square.gltf",
-          kBaleHeight / 2, x, y, yaw, height);
+    loose(world.addBox(kBaleWidth, kBaleLength, kBaleHeight, kBaleMass, "hay"), props / "hay_bales" / "square.gltf", kBaleHeight / 2, x, y, yaw, height);
     ++venue.bales;
   };
   // Cones and marker posts stand on heavy rubber bases: their centre of mass is low, not at the middle
@@ -173,13 +163,11 @@ inline Venue buildVenue(raisim::World& world, const raisim::HeightMap& terrain, 
     return world.addMesh(hull.string(), mass, inertia, com, 1.0, "plastic", raisim::MeshCollisionMode::CONVEX_HULL);
   };
   auto cone = [&](double x, double y, double yaw) {
-    loose(baseHeavy(props / "traffic_cone" / "collision.obj", kConeMass, 0.08, 0.15, 0.53),
-          props / "traffic_cone" / "model.gltf", 0.0, x, y, yaw, 0.0);
+    loose(baseHeavy(props / "traffic_cone" / "collision.obj", kConeMass, 0.08, 0.15, 0.53), props / "traffic_cone" / "model.gltf", 0.0, x, y, yaw, 0.0);
     ++venue.cones;
   };
   auto marker = [&](double x, double y) {
-    loose(baseHeavy(props / "marker_post" / "collision.obj", kMarkerMass, 0.06, 0.13, 1.0),
-          props / "marker_post" / "model.gltf", 0.0, x, y, 0.0, 0.0);
+    loose(baseHeavy(props / "marker_post" / "collision.obj", kMarkerMass, 0.06, 0.13, 1.0), props / "marker_post" / "model.gltf", 0.0, x, y, 0.0, 0.0);
     ++venue.markers;
   };
   auto along = [&](double station, double lateral, double& heading) { return track.offset(station, lateral, &heading); };
@@ -218,8 +206,7 @@ inline Venue buildVenue(raisim::World& world, const raisim::HeightMap& terrain, 
     const Eigen::Vector2d p = along(s, w + 3.0, heading);
     if (!clearOfGate(s, 3)) continue;
     const bool orange = int((s - s0) / 13) % 2 == 0;
-    record(props / "feather_flag" / (orange ? "orange.gltf" : "blue.gltf"), false,
-           {p.x(), p.y(), terrain.getHeight(p.x(), p.y()), heading - M_PI / 2 - 0.35, 1.0, 0});
+    record(props / "feather_flag" / (orange ? "orange.gltf" : "blue.gltf"), false, {p.x(), p.y(), terrain.getHeight(p.x(), p.y()), heading - M_PI / 2 - 0.35, 1.0, 0});
   }
 
   // Corners, found from the curvature of the centre line: a tyre wall on the outside of the tight
@@ -293,10 +280,8 @@ inline Venue buildVenue(raisim::World& world, const raisim::HeightMap& terrain, 
     fixed(props / "tyre_stack" / "model.rasset", cx + 1.0, cy - 1.0, unit() * 2 * M_PI, 0.32);
     if (b % 2 == 0) fixed(props / "tyre_stack" / "model.rasset", cx + 1.0, cy - 0.35, unit() * 2 * M_PI, 0.32);
     decor(props / "plastic_crate_03" / "model.gltf", cx - 1.2, cy + 0.2, 1.4 + 0.2 * unit());
-    decor(props / "plastic_crate_03" / "model.gltf", cx - 1.2, cy + 0.2, 1.5 + 0.2 * unit(),
-          terrain.getHeight(cx - 1.2, cy + 0.2) + 0.266);
-    for (int k = 0; k < 2; ++k)
-      decor(props / "plastic_monobloc_chair_01" / "model.gltf", cx - 0.4 + 0.8 * k, cy + 0.9, M_PI / 2 + 0.5 * (unit() - 0.5));
+    decor(props / "plastic_crate_03" / "model.gltf", cx - 1.2, cy + 0.2, 1.5 + 0.2 * unit(), terrain.getHeight(cx - 1.2, cy + 0.2) + 0.266);
+    for (int k = 0; k < 2; ++k) decor(props / "plastic_monobloc_chair_01" / "model.gltf", cx - 0.4 + 0.8 * k, cy + 0.9, M_PI / 2 + 0.5 * (unit() - 0.5));
     decor(props / "metal_jerrycan" / "model.gltf", cx + 1.25, cy + 0.8, 0.3 * unit());
     decor(props / "metal_jerrycan" / "model.gltf", cx + 1.25, cy + 1.2, 0.3 * unit());
     if (b % 3 != 1) fixed(props / "portable_generator" / "model.rasset", cx + 2.4, cy + 1.0, unit() * 2 * M_PI, 0.5);
@@ -304,14 +289,10 @@ inline Venue buildVenue(raisim::World& world, const raisim::HeightMap& terrain, 
     fixed(warehouse / (b % 2 ? "Barrel_01" : "barrel_03") / "model.rasset", cx - 2.2, cy - 1.2, unit() * 2 * M_PI, 0.32);
   }
   // Paddock behind the pits: the teams' cars and a stack of round bales.
-  const std::array<std::array<const char*, 2>, 4> cars = {{{"fairheaven_lt80", "model.rasset"}, {"kiri86", "model.rasset"},
-                                                          {"fairheaven_sw84", "model.rasset"},
-                                                          {"fairheaven_lt80", "model_paint1.rasset"}}};
-  for (int c = 0; c < 4; ++c)
-    fixed(city / "cars" / cars[c][0] / cars[c][1], pit.x0 + 10 + c * 15 + 3 * unit(), pit.y0 + 5 + unit(),
-          M_PI / 2 + 0.25 * (unit() - 0.5), 2.6, false);
-  for (int k = 0; k < 3; ++k)
-    fixed(props / "hay_bales" / "round.rasset", pit.x1 - 4 - 1.6 * k, pit.y0 + 3, M_PI / 2, 0.8);
+  const std::array<std::array<const char*, 2>, 4> cars = {
+      {{"fairheaven_lt80", "model.rasset"}, {"kiri86", "model.rasset"}, {"fairheaven_sw84", "model.rasset"}, {"fairheaven_lt80", "model_paint1.rasset"}}};
+  for (int c = 0; c < 4; ++c) fixed(city / "cars" / cars[c][0] / cars[c][1], pit.x0 + 10 + c * 15 + 3 * unit(), pit.y0 + 5 + unit(), M_PI / 2 + 0.25 * (unit() - 0.5), 2.6, false);
+  for (int k = 0; k < 3; ++k) fixed(props / "hay_bales" / "round.rasset", pit.x1 - 4 - 1.6 * k, pit.y0 + 3, M_PI / 2, 0.8);
 
   // Spectators: bleachers facing the track, the fence in front of them, toilets and picnic tables.
   const Area& stand = info.spectators;
@@ -320,19 +301,15 @@ inline Venue buildVenue(raisim::World& world, const raisim::HeightMap& terrain, 
     const double x = stand.x0 + 8 + k * 4.35 + (k >= 4 ? 2.0 : 0.0);
     fixed(props / "bleacher" / "model.rasset", x, rowY, 0, 2.2);
   }
-  for (int k = 0; k < 4; ++k)
-    fixed(props / "porta_potty" / "model.rasset", stand.x1 - 2 - 1.25 * k, stand.y1 - 1.5, M_PI, 0.6);
+  for (int k = 0; k < 4; ++k) fixed(props / "porta_potty" / "model.rasset", stand.x1 - 2 - 1.25 * k, stand.y1 - 1.5, M_PI, 0.6);
   for (int k = 0; k < 3; ++k) {
     const double x = stand.x0 + 1.5, y = stand.y0 + 6.0 + 3.6 * k;
     fixed(props / "wooden_picnic_table" / "model.rasset", x + 0.4 * unit(), y, M_PI / 2 + 0.2 * (unit() - 0.5), 1.4);
   }
-  for (int k = 0; k < 6; ++k)
-    decor(props / "plastic_monobloc_chair_01" / "model.gltf", stand.x0 + 5 + 1.1 * k + 0.3 * unit(),
-          stand.y1 - 1.6 - 0.8 * unit(), unit() * 2 * M_PI);
+  for (int k = 0; k < 6; ++k) decor(props / "plastic_monobloc_chair_01" / "model.gltf", stand.x0 + 5 + 1.1 * k + 0.3 * unit(), stand.y1 - 1.6 - 0.8 * unit(), unit() * 2 * M_PI);
   for (int k = 0; k < 4; ++k) {
     const double x = stand.x0 + 6 + k * 16;
-    record(props / "feather_flag" / (k % 2 ? "orange.gltf" : "blue.gltf"), false,
-           {x, stand.y1 + 1.0, terrain.getHeight(x, stand.y1 + 1.0), -M_PI / 2 + 0.4, 1.0, 0});
+    record(props / "feather_flag" / (k % 2 ? "orange.gltf" : "blue.gltf"), false, {x, stand.y1 + 1.0, terrain.getHeight(x, stand.y1 + 1.0), -M_PI / 2 + 0.4, 1.0, 0});
   }
   // Keep the trees and boulders off the pads.
   for (const Area* area : {&info.pit, &info.spectators})

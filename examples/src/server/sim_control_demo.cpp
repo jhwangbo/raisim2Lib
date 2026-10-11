@@ -13,24 +13,20 @@
 // control. Keep the default loopback bind unless you trust every host on the
 // reachable network.
 
+#include "example_resources.hpp"
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
-#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-
   raisim::World world;
   world.setTimeStep(0.003);
   world.addGround();
 
   // A simple PD-controlled ANYmal so CR_SET_GC has something interesting to drive.
-  auto anymal = world.addArticulatedSystem(
-      exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
-  Eigen::VectorXd nominal(anymal->getGeneralizedCoordinateDim()),
-      target(anymal->getDOF());
-  nominal << 0, 0, 0.54, 1, 0, 0, 0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03,
-      -0.4, 0.8, -0.03, -0.4, 0.8;
+  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
+  Eigen::VectorXd nominal(anymal->getGeneralizedCoordinateDim()), target(anymal->getDOF());
+  nominal << 0, 0, 0.54, 1, 0, 0, 0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
   target.setZero();
   Eigen::VectorXd pGain(anymal->getDOF()), dGain(anymal->getDOF());
   pGain.tail(12).setConstant(200.0);

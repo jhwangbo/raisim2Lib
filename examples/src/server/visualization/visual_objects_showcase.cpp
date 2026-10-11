@@ -1,13 +1,12 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
+#include "example_resources.hpp"
+#include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
-#include "raisim/RaisimServer.hpp"
-#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-
   /// create raisim world
   raisim::World world;
   world.setTimeStep(0.003);
@@ -36,7 +35,7 @@ int main(int argc, char* argv[]) {
   std::vector<double> height(10000, 0.);
   std::vector<raisim::ColorRGB> colorMap(10000, {0, 0, 0});
   colorMap.resize(10000);
-  raisim::Vec<3> color1{1,0,0}, color2{0,0,1};
+  raisim::Vec<3> color1{1, 0, 0}, color2{0, 0, 1};
   auto hm = server.addVisualHeightMap("dynamic_visual_heightmap", 100, 100, 10., 10., 0., 10., height);
 
   /// positions and orientations
@@ -44,14 +43,14 @@ int main(int argc, char* argv[]) {
   quat = quat / quat.norm();
   mesh->setOrientation(quat);
   visMesh->setOrientation(quat.e());
-  mesh->setPosition(2,-2,1.1);
-  visSphere->setPosition(2,0,0);
-  visCylinder->setPosition(0,2,0);
-  visCapsule->setPosition(2,2,0);
-  visMesh->setPosition(2,-2,1);
-  varrow_x->setPosition(0,0,4);
-  varrow_y->setPosition(0,0,4);
-  varrow_z->setPosition(0,0,4);
+  mesh->setPosition(2, -2, 1.1);
+  visSphere->setPosition(2, 0, 0);
+  visCylinder->setPosition(0, 2, 0);
+  visCapsule->setPosition(2, 2, 0);
+  visMesh->setPosition(2, -2, 1);
+  varrow_x->setPosition(0, 0, 4);
+  varrow_y->setPosition(0, 0, 4);
+  varrow_z->setPosition(0, 0, 4);
   Eigen::Vector4d xDir = {0.70710678118, 0, 0.70710678118, 0};
   Eigen::Vector4d yDir = {0.70710678118, -0.70710678118, 0, 0};
   varrow_x->setOrientation(xDir);
@@ -66,62 +65,59 @@ int main(int argc, char* argv[]) {
 
   /// poly lines
   auto lines = server.addVisualPolyLine("lines");
-  lines->color = {0,0,1,1};
+  lines->color = {0, 0, 1, 1};
   auto lines2 = server.addVisualPolyLine("lines2");
-  lines2->color = {0,0,1,1};
+  lines2->color = {0, 0, 1, 1};
 
-  for( int i = 0; i < 100; i++)
-    lines->points.push_back({sin(i*0.1), cos(i*0.1), i*0.01});
+  for (int i = 0; i < 100; i++) lines->points.push_back({sin(i * 0.1), cos(i * 0.1), i * 0.01});
 
-  for( int i = 0; i < 100; i++)
-    lines2->points.push_back({sin(i*0.1)+2, cos(i*0.1), i*0.01});
+  for (int i = 0; i < 100; i++) lines2->points.push_back({sin(i * 0.1) + 2, cos(i * 0.1), i * 0.01});
 
   /// dynamic mesh
   std::vector<float> vertices;
   std::vector<int32_t> index;
   std::vector<uint8_t> color;
-  vertices = {0.5f,0.5f,0.f, 0.0f,-1.f,0.f, -0.5f,0.5f,0.f, 0.f,0.f,1.f};
-  index = {0,3,1, 1,3,2, 2,3,0, 0,1,2};
-  color = {255,0,0, 0,255,0, 0,0,255, 0,0,126};
+  vertices = {0.5f, 0.5f, 0.f, 0.0f, -1.f, 0.f, -0.5f, 0.5f, 0.f, 0.f, 0.f, 1.f};
+  index = {0, 3, 1, 1, 3, 2, 2, 3, 0, 0, 1, 2};
+  color = {255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 126};
   auto dynamicMesh = server.addVisualMesh("custom mesh", vertices, color, index, 1., 1., 1., 1.);
-  dynamicMesh->setPosition(-2,0,0);
+  dynamicMesh->setPosition(-2, 0, 0);
 
   server.launchServer();
 
-
   raisim_examples::warnIfNoClientConnected(server);
   size_t counter = 0;
-  for (int i=0; i<500000; i++) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+  for (int i = 0; i < 500000; i++) {
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
     counter++;
 
-    for (int k=0; k<100; k++) {
-      for (int j=0; j<100; j++) {
-        height[k*100+j] = std::sin(0.01f * float(i) + 0.05 * float(k+j)) + 1.2;
-        colorMap[k*100+j] = {uint8_t((std::sin(0.02f * float(i) + 0.05 * float(2*k+j)) * 0.5f + 0.5f)*255.f),
-                             uint8_t((std::cos(0.02f * float(i) + 0.07 * float(2*k+j)) * 0.5f + 0.5f)*255.f),
-                             uint8_t((std::sin(0.02f * float(i) + 0.09 * float(2*k+j)) * 0.5f + 0.5f)*255.f)};
+    for (int k = 0; k < 100; k++) {
+      for (int j = 0; j < 100; j++) {
+        height[k * 100 + j] = std::sin(0.01f * float(i) + 0.05 * float(k + j)) + 1.2;
+        colorMap[k * 100 + j] = {uint8_t((std::sin(0.02f * float(i) + 0.05 * float(2 * k + j)) * 0.5f + 0.5f) * 255.f),
+                                 uint8_t((std::cos(0.02f * float(i) + 0.07 * float(2 * k + j)) * 0.5f + 0.5f) * 255.f),
+                                 uint8_t((std::sin(0.02f * float(i) + 0.09 * float(2 * k + j)) * 0.5f + 0.5f) * 255.f)};
       }
     }
 
     server.lockVisualizationServerMutex();
-    visBox->color[2] = double((counter)%255+1)/256.;
-    visBox->setBoxSize(1, double((counter)%255+1)/256.+0.01, 1);
-    visCapsule->setCapsuleSize(double((counter)%255+1)/256.+0.01, 1);
-    visCylinder->setCapsuleSize(double((counter)%255+1)/256.+0.01, 1);
-    visSphere->color[1] = double((counter)%255+1)/256.;
-    lines->color[2] = double((counter)%255+1)/256.;
+    visBox->color[2] = double((counter) % 255 + 1) / 256.;
+    visBox->setBoxSize(1, double((counter) % 255 + 1) / 256. + 0.01, 1);
+    visCapsule->setCapsuleSize(double((counter) % 255 + 1) / 256. + 0.01, 1);
+    visCylinder->setCapsuleSize(double((counter) % 255 + 1) / 256. + 0.01, 1);
+    visSphere->color[1] = double((counter) % 255 + 1) / 256.;
+    lines->color[2] = double((counter) % 255 + 1) / 256.;
     lines->color[0] = 1. - lines->color[2];
 
-    vertices[0] = 0.5f * (2.+sin(counter*0.01));
-    color[10] = uint8_t(counter/5%255);
+    vertices[0] = 0.5f * (2. + sin(counter * 0.01));
+    color[10] = uint8_t(counter / 5 % 255);
     dynamicMesh->updateMesh(vertices, color);
 
     hm->update(0., 10., 10., 10., height);
     hm->setColor(colorMap);
 
     server.unlockVisualizationServerMutex();
-//    server.integrateWorldThreadSafe();
+    //    server.integrateWorldThreadSafe();
   }
 
   server.killServer();

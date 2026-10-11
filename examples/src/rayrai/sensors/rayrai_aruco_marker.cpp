@@ -1,25 +1,23 @@
-#include <memory>
 #include <iostream>
+#include <memory>
 #include <string>
 
-#include "rayrai/example_common.hpp"
-#include "rayrai/Camera.hpp"
 #include "example_resources.hpp"
-#include "rayrai_example_compat.hpp"
 #include "raisim/World.hpp"
+#include "rayrai/Camera.hpp"
+#include "rayrai/example_common.hpp"
+#include "rayrai_example_compat.hpp"
 
 int main(int argc, char* argv[]) {
   ExampleApp app;
-  if (!app.init("rayrai_aruco_marker", 1024, 1024))
-    return -1;
+  if (!app.init("rayrai_aruco_marker", 1024, 1024)) return -1;
 
   auto world = std::make_shared<raisim::World>();
   world->setTimeStep(0.01);
   world->setGravity({0, 0, 0});
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1024, 1024);
-  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Balanced));
+  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   // Use a slightly gray background so untextured meshes don't disappear on white.
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {235, 235, 235, 255});
   viewer->setFogDensity(0.0f);
@@ -35,14 +33,12 @@ int main(int argc, char* argv[]) {
     light.setShadowsEnabled(false);
   }
 
-  const std::string markerMesh =
-    exampleRscPath(argv[0], "aruco_marker/aruco_marker.dae");
+  const std::string markerMesh = exampleRscPath(argv[0], "aruco_marker/aruco_marker.dae");
   auto marker = viewer->addVisualMesh("aruco_marker", markerMesh, 1.0, 1.0, 1.0);
   if (!marker) {
     std::cerr << "[rayrai_aruco_marker] Failed to load marker mesh: " << markerMesh << std::endl;
   } else {
-    std::cerr << "[rayrai_aruco_marker] Loaded mesh: " << markerMesh
-              << " (textures=" << (marker->hasTextures() ? "yes" : "no") << ")\n";
+    std::cerr << "[rayrai_aruco_marker] Loaded mesh: " << markerMesh << " (textures=" << (marker->hasTextures() ? "yes" : "no") << ")\n";
     marker->setPosition(0.0, 0.0, 1.0);
     // The Collada marker plane lies in XY with +Z normal. With the default camera here
     // (looking along -Y), the plane is edge-on. Rotate it so it faces the camera.
@@ -58,7 +54,7 @@ int main(int argc, char* argv[]) {
   if (frame) {
     raisin::CoordinateFrame::Pose pose;
     pose.position = glm::vec3(0.0f, 0.0f, 1.0f);
-    pose.quaternion = glm::quat(1.0f, 0.0f, 0.0f, 0.0f); // w,x,y,z
+    pose.quaternion = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);  // w,x,y,z
     frame->poses.push_back(pose);
     frame->frameSize = 0.25;
   }
@@ -75,8 +71,7 @@ int main(int argc, char* argv[]) {
 
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     world->integrate();
 

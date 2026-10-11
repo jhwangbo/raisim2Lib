@@ -1,20 +1,28 @@
 // Copyright (c) 2026 Raion Robotics Inc. All rights reserved.
 #include <algorithm>
-#include <array>
+#include <cmath>
 #include <cstdio>
 #include <filesystem>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "rayrai/example_common.hpp"
-#include "rayrai/Camera.hpp"
+#include "example_resources.hpp"
+#include "rayrai_loading_progress.hpp"
+#include "deformable_terrain_scene.hpp"
+#include "../worlds/offroad_buggy_vehicle.hpp"
+#include "../worlds/offroad_buggy_visuals.hpp"
 #include "raisim/World.hpp"
+#include "rayrai/Camera.hpp"
+#include "rayrai/example_common.hpp"
 
 namespace {
 constexpr size_t kXSamples = 201;
-constexpr size_t kYSamples = 101;
-constexpr int kStepsPerFrame = 8;
+constexpr size_t kYSamples = 76;
+constexpr int kStepsPerFrame = 16;
+constexpr double kTimeStep = 0.001;
+constexpr const char* kWheelNames[] = {"fl_wheel", "fr_wheel", "rl_wheel", "rr_wheel"};
 
 struct Options {
   bool headless = false;
@@ -38,94 +46,105 @@ bool parseOptions(int argc, char* argv[], Options& options) {
     else if (arg.rfind("--export=", 0) == 0)
       options.exportPath = arg.substr(9);
     else {
-      std::fprintf(stderr, "Usage: %s [--headless|--hidden] [--steps=N] "
-                           "[--export=DIR] [--activation-key=FILE]\n", argv[0]);
+      std::fprintf(stderr,
+                   "Usage: %s [--headless|--hidden] [--steps=N] "
+                   "[--export=DIR] [--activation-key=FILE]\n",
+                   argv[0]);
       return false;
     }
   }
-  if (options.headless && options.steps < 0)
-    options.steps = 3000;
+  if (options.headless && options.steps < 0) options.steps = 3000;
   return true;
 }
 
-void dragBlocks(raisim::World& world, const std::array<raisim::Box*, 3>& blocks) {
-  for (auto* block : blocks) {
-    // Apply a speed controller; the terrain solver supplies the contact friction.
-    const double velocity = block->getLinearVelocity()[0];
-    const double target = block->getPosition()[0] < 2.8 ? 0.4 : 0.0;
-    const double force = target > 0.0
-      ? 6.0 * block->getMass(0) + 100.0 * (target - velocity)
-      : -100.0 * velocity;
-    block->setExternalForce(0, raisim::Vec<3>{force, 0.0, 0.0});
+void driveCar(raisim::World& world, offroad::Buggy& buggy) {
+  offroad::DriverInput input;
+  const auto* car = buggy.system();
+  if (car->getGeneralizedCoordinate()[0] < 4.5) {
+    const double speed = car->getGeneralizedVelocity()[0];
+    input.throttle = std::clamp(0.20 + 0.60 * (0.8 - speed), 0.0, 0.65);
+    input.brake = std::clamp(0.50 * (speed - 0.8), 0.0, 1.0);
+  } else {
+    input.brake = 1.0;
   }
+  buggy.applyControls(input, kTimeStep);
   world.integrate();
+  buggy.accumulate(kTimeStep);
 }
-} // namespace
+}  // namespace
 
 int main(int argc, char* argv[]) {
   Options options;
-  if (!parseOptions(argc, argv, options))
-    return 1;
-  if (!options.activationKey.empty())
-    raisim::World::setActivationKey(options.activationKey);
+  if (!parseOptions(argc, argv, options)) return 1;
+  if (!options.activationKey.empty()) raisim::World::setActivationKey(options.activationKey);
 
   auto world = std::make_shared<raisim::World>();
-  world->setTimeStep(0.002);
+  world->setTimeStep(kTimeStep);
 
   raisim::DeformableTerrain::Material material;
-  material.bekkerKphi = 4.0e4;
+  material.bekkerKphi = 2.0e6;
   material.sinkageExponent = 1.1;
-  material.damping = 2000.0;
+  material.elasticStiffness = 2.0e7;
+  material.damping = 4.0e4;
   material.cohesion = 100.0;
 
-  auto* soil = world->addDeformableTerrain(kXSamples, kYSamples, 8.0, 4.0, 0.0, 0.0,
-    std::vector<double>(kXSamples * kYSamples, 0.0), material);
+  auto* soil = world->addDeformableTerrain(kXSamples, kYSamples, 16.0, 6.0, 0.0, 0.0, std::vector<double>(kXSamples * kYSamples, 0.0), material);
   soil->setName("soil");
   soil->setAppearance("0.49 0.325 0.188 1");
   soil->setColor(std::vector<raisim::ColorRGB>(kXSamples * kYSamples, {125, 83, 48}));
 
-  constexpr const char* appearances[] = {"0.2 0.5 0.9 1", "0.9 0.5 0.1 1", "0.8 0.2 0.2 1"};
-  std::array<raisim::Box*, 3> blocks;
-  for (size_t i = 0; i < blocks.size(); ++i) {
-    blocks[i] = world->addBox(0.3, 0.3, 0.2, 10.0 * (i + 1));
-    blocks[i]->setPosition(-2.8, 0.8 * (double(i) - 1.0), 0.1);
-    blocks[i]->setName("block_" + std::to_string(i));
-    blocks[i]->setAppearance(appearances[i]);
-  }
-
-  // Settle under gravity before dragging to distinguish weight loading from impact.
-  for (int i = 0; i < 1000; ++i)
-    world->integrate();
+  offroad::Buggy buggy(*world, exampleRscPath(argv[0], "offroad_buggy/buggy.urdf"));
+  buggy.place(-5.5, 0.0, 0.0, [](double, double) { return 0.0; });
+  auto* car = buggy.system();
+  car->setName("terrain_car");
 
   ExampleApp app;
+  RayraiLoadingProgress loading("Loading buggy assets");
   std::shared_ptr<raisin::RayraiWindow> viewer;
+  std::unique_ptr<offroad::SuspensionVisuals> suspension;
   if (!options.headless) {
-    if (!app.init("Mesh soil: 10 / 20 / 30 kg blocks", 1280, 720, !options.hidden))
-      return 1;
+    if (!app.init("Wheeled car on deformable mesh soil", 1280, 720, !options.hidden)) return 1;
+    ImGui::GetIO().IniFilename = nullptr;
     viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
+    viewer->setAsyncMeshLoadingEnabled(true);
+    deformable_terrain::configureLighting(*viewer);
+    suspension = std::make_unique<offroad::SuspensionVisuals>(*car);
     auto& camera = viewer->getCamera();
-    camera.position = {4.0f, -5.0f, 3.0f};
+    const auto position = car->getBasePosition();
+    camera.position = {float(position[0]) + 4.5f, -5.5f, 2.8f};
     camera.yaw = 140.0f;
-    camera.pitch = -25.0f;
+    camera.pitch = -18.0f;
+    camera.setTargetObject(car);
+    camera.setCameraFixedDistance(true);
+    loading.update(viewer->pendingAsyncMeshLoadCount());
   }
 
+  // The first render discovers the world meshes and starts their asynchronous imports.
+  bool sceneReady = options.headless;
   int step = 0;
   while (options.steps < 0 || step < options.steps) {
     if (!options.headless) {
       app.processEvents();
-      if (app.quit)
-        break;
+      if (app.quit) break;
     }
 
-    int batch = options.headless ? 1 : kStepsPerFrame;
-    if (options.steps >= 0)
-      batch = std::min(batch, options.steps - step);
-    for (int i = 0; i < batch; ++i, ++step)
-      dragBlocks(*world, blocks);
+    if (sceneReady) {
+      int batch = kStepsPerFrame;
+      if (options.steps >= 0) batch = std::min(batch, options.steps - step);
+      for (int i = 0; i < batch; ++i, ++step) driveCar(*world, buggy);
+      buggy.updateTelemetry(batch * kTimeStep);
+    }
 
     if (!options.headless) {
+      suspension->update();
       app.beginFrame();
       app.renderViewer(*viewer);
+      const bool wasLoading = loading.visible();
+      loading.update(viewer->pendingAsyncMeshLoadCount());
+      sceneReady = !loading.visible();
+      if (wasLoading && !loading.visible())
+        std::printf("assets: %zu meshes ready; simulation time=%.6f s\n", loading.total, world->getWorldTime());
+      loading.draw();
       app.endFrame();
     }
   }
@@ -135,18 +154,24 @@ int main(int argc, char* argv[]) {
     world->exportToXml(options.exportPath, "world.xml");
   }
 
-  bool finite = true;
-  for (auto* block : blocks) {
-    finite = finite && block->getPosition().allFinite();
-    std::printf("%s: x=%.3f m, bottom=%.4f m\n", block->getName().c_str(),
-      block->getPosition()[0], block->getPosition()[2] - 0.1);
+  bool finite = car->getGeneralizedCoordinate().e().allFinite() && car->getGeneralizedVelocity().e().allFinite();
+  const auto& state = soil->getSoilState();
+  for (const auto* values : {&state.sinkage, &state.plasticSinkage, &state.shear})
+    finite = finite && std::all_of(values->begin(), values->end(), [](double value) { return std::isfinite(value); });
+  std::printf("simulation: %d steps, time=%.6f s\n", step, world->getWorldTime());
+  std::printf("car: x=%.3f m, speed=%.3f m/s\n", car->getGeneralizedCoordinate()[0], car->getGeneralizedVelocity()[0]);
+  for (size_t i = 0; i < std::size(kWheelNames); ++i) {
+    const auto& corner = buggy.telemetry().corners[i];
+    std::printf("%s: speed=%.3f rad/s, shock=%.5f m, load=%.1f N\n", kWheelNames[i], corner.wheelSpeed, corner.shockExtension, corner.wheelLoad);
   }
+  std::printf("suspension: maximum loop error=%.8f m\n", buggy.telemetry().maxLoopError);
   const auto& stats = soil->getSoilStepStats();
-  std::printf("mesh: %zu vertices; last step: %zu contact rows, %zu changed vertices\n",
-    kXSamples * kYSamples, stats.contacts, stats.updatedVertices);
+  const double rut = *std::max_element(state.plasticSinkage.begin(), state.plasticSinkage.end());
+  std::printf("mesh: %zu vertices; last step: %zu contact rows, %zu changed vertices; maximum permanent rut=%.4f m\n",
+              kXSamples * kYSamples, stats.contacts, stats.updatedVertices, rut);
 
+  suspension.reset();
   viewer.reset();
-  if (!options.headless)
-    app.shutdown();
+  if (!options.headless) app.shutdown();
   return finite ? 0 : 1;
 }

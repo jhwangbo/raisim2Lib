@@ -6,9 +6,9 @@
 
 #include <glm/glm.hpp>
 
+#include "raisim/World.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
-#include "raisim/World.hpp"
 
 namespace {
 
@@ -25,10 +25,8 @@ int readIntArg(int argc, char** argv, const char* name, int fallback) {
   const std::string prefix = std::string(name) + "=";
   for (int i = 1; i < argc; ++i) {
     const std::string arg(argv[i]);
-    if (arg == name && i + 1 < argc)
-      return std::max(1, std::atoi(argv[++i]));
-    if (arg.rfind(prefix, 0) == 0)
-      return std::max(1, std::atoi(arg.c_str() + prefix.size()));
+    if (arg == name && i + 1 < argc) return std::max(1, std::atoi(argv[++i]));
+    if (arg.rfind(prefix, 0) == 0) return std::max(1, std::atoi(arg.c_str() + prefix.size()));
   }
   return fallback;
 }
@@ -88,8 +86,7 @@ std::vector<DemoBody> createBodies(raisim::World& world, int grid) {
 
 void resetDemo(raisim::World& world, std::vector<DemoBody>& bodies, int grid) {
   world.setWorldTime(0.0);
-  for (auto& body : bodies)
-    resetBody(world, body, grid);
+  for (auto& body : bodies) resetBody(world, body, grid);
   world.wakeAll();
 }
 
@@ -106,8 +103,7 @@ void updateSleepingAppearance(raisim::World& world, std::vector<DemoBody>& bodie
 void computeMeanSpeeds(const std::vector<DemoBody>& bodies, double& linearSpeed, double& angularSpeed) {
   linearSpeed = 0.0;
   angularSpeed = 0.0;
-  if (bodies.empty())
-    return;
+  if (bodies.empty()) return;
 
   for (const auto& body : bodies) {
     linearSpeed += body.object->getLinearVelocity().norm();
@@ -127,8 +123,7 @@ int main(int argc, char* argv[]) {
   const int holdFrames = readIntArg(argc, argv, "--hold-frames", 120);
 
   ExampleApp app;
-  if (!app.init("rayrai_rolling_spinning_friction", 1280, 720))
-    return -1;
+  if (!app.init("rayrai_rolling_spinning_friction", 1280, 720)) return -1;
 
   auto world = std::make_shared<raisim::World>();
   world->setTimeStep(0.001);
@@ -139,21 +134,12 @@ int main(int argc, char* argv[]) {
   world->setSleepingParameters(0.012, 0.03, 25);
   auto* ground = world->addGround(0.0, "ground");
   ground->setAppearance("checkerboard");
-  world->setMaterialPairProp("ground",
-                             "body",
-                             1.0,
-                             0.0,
-                             0.0,
-                             1.0,
-                             1e-3,
-                             0.12,
-                             0.08);
+  world->setMaterialPairProp("ground", "body", 1.0, 0.0, 0.0, 1.0, 1e-3, 0.12, 0.08);
 
   std::vector<DemoBody> bodies = createBodies(*world, grid);
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
-  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Balanced));
+  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {24, 26, 30, 255});
   raisim_examples::addRayraiBasicSceneLights(*viewer);
 
@@ -178,8 +164,7 @@ int main(int argc, char* argv[]) {
 
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     if (stepInCycle < cycleSteps) {
       const int frameSteps = std::min(stepsPerFrame, cycleSteps - stepInCycle);
@@ -206,14 +191,11 @@ int main(int argc, char* argv[]) {
 
     ImGui::SetNextWindowPos(ImVec2(12, 12), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.72f);
-    ImGui::Begin("Rolling friction", nullptr,
-                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize |
-                   ImGuiWindowFlags_NoCollapse);
+    ImGui::Begin("Rolling friction", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
     ImGui::Text("step %d / %d", stepInCycle, cycleSteps);
     ImGui::Text("bodies: %zu", bodies.size());
     ImGui::Text("contacts: %zu", lastContacts);
-    ImGui::Text("average contacts: %.2f",
-                stepInCycle > 0 ? double(contactTotal) / double(stepInCycle) : 0.0);
+    ImGui::Text("average contacts: %.2f", stepInCycle > 0 ? double(contactTotal) / double(stepInCycle) : 0.0);
     ImGui::Text("mean linear speed: %.3f m/s", meanLinearSpeed);
     ImGui::Text("mean angular speed: %.3f rad/s", meanAngularSpeed);
     ImGui::End();

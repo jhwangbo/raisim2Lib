@@ -15,19 +15,18 @@ inline std::string exampleRscPath(char* argv0, const std::string& relative) {
   const std::string sep = raisim::Path::separator();
   const std::string binaryDir = raisim::Path::setFromArgv(argv0).getDirectory().getString();
   const std::vector<std::string> candidates = {
-    binaryDir + sep + "rsc" + sep + relative,
-    binaryDir + sep + "examples" + sep + "rsc" + sep + relative,
-    binaryDir + sep + ".." + sep + "rsc" + sep + relative,
-    binaryDir + sep + ".." + sep + ".." + sep + "rsc" + sep + relative,
-    std::string("rsc") + sep + relative,
-    std::string("..") + sep + "rsc" + sep + relative,
-    std::string("..") + sep + ".." + sep + "rsc" + sep + relative,
+      binaryDir + sep + "rsc" + sep + relative,
+      binaryDir + sep + "examples" + sep + "rsc" + sep + relative,
+      binaryDir + sep + ".." + sep + "rsc" + sep + relative,
+      binaryDir + sep + ".." + sep + ".." + sep + "rsc" + sep + relative,
+      std::string("rsc") + sep + relative,
+      std::string("..") + sep + "rsc" + sep + relative,
+      std::string("..") + sep + ".." + sep + "rsc" + sep + relative,
   };
 
   for (const auto& candidate : candidates) {
     raisim::Path path(candidate);
-    if (path.fileExists() || path.directoryExists())
-      return path.getString();
+    if (path.fileExists() || path.directoryExists()) return path.getString();
   }
 
   return raisim::Path(candidates.front()).getString();

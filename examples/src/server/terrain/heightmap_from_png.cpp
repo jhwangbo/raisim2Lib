@@ -1,13 +1,13 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
-#include <raisim/World.hpp>
-#include "rayrai_tcp_viewer_hint.hpp"
 #include <raisim/RaisimServer.hpp>
+#include <raisim/World.hpp>
+
 #include "example_resources.hpp"
+#include "rayrai_tcp_viewer_hint.hpp"
 
 int main(int argc, char* argv[]) {
-
   /// create raisim world
   raisim::World world;
   world.setTimeStep(0.001);
@@ -23,10 +23,9 @@ int main(int argc, char* argv[]) {
   raisim::RaisimServer server(&world);
   server.launchServer();
 
-
   raisim_examples::warnIfNoClientConnected(server);
   for (int i = 0; i < 50000; i++) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
     server.integrateWorldThreadSafe();
   }
 

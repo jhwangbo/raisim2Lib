@@ -1,10 +1,11 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
-#include "raisim/World.hpp"
-#include "raisim/RaisimServer.hpp"
 #include <iostream>
+
 #include "example_resources.hpp"
+#include "raisim/RaisimServer.hpp"
+#include "raisim/World.hpp"
 #if WIN32
 #include <timeapi.h>
 #endif
@@ -34,8 +35,8 @@ int main(int argc, char* argv[]) {
   raisim::World world(xmlPath.getString());
   raisim::RaisimServer server(&world);
   server.launchServer();
-  for (int i=0; i<10000000; i++) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+  for (int i = 0; i < 10000000; i++) {
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
     server.integrateWorldThreadSafe();
   }
 

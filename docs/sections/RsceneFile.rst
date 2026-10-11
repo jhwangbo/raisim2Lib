@@ -14,8 +14,11 @@ are resolved, and what they reject or ignore.
 Availability
 ============
 
-The reader is new in v2.7.1, which is not released yet (see
-:doc:`changelog/v2.7`). It is part of the RaiSim and rayrai libraries:
+The reader is new in v2.8.0. XML includes, a ``RayraiWindow`` that shows its
+world's scene by itself, ``raisin::setRsceneRenderSettings`` and
+``raisin::rsceneVisuals`` are new in v2.8.2, which is not released yet; v2.8.0
+and v2.8.1 show a scene with ``raisin::applyRscene`` (see
+:doc:`changelog/v2.8`). It is part of the RaiSim and rayrai libraries:
 
 * ``raisim/Rscene.hpp`` (RaiSim): ``raisim::World(path)`` for a path that ends
   in ``.rscene`` (in any letter case), ``<include value="scene.rscene"/>`` in
@@ -213,8 +216,10 @@ runs and shows it, the scene included.
 * An ``<include>`` whose path ends in ``.rscene`` (in any letter case) loads
   the scene with the same checks as ``World(path)``. Like any include, it loads
   before the including file's own content, so the scene's bodies precede the
-  robot in the world's object list. Relative paths are resolved against the
-  working directory, so write ``[THIS_DIR]`` in front of them.
+  robot in the world's object list. A relative path names a file in the
+  working directory or, if there is none, a file relative to the folder of
+  the including XML file. ``[THIS_DIR]`` in front of the path selects the
+  folder explicitly.
 * The scene's solver settings and contact materials apply first. Elements in
   the XML file (``timeStep``, ``gravity``, ``erp``, ``simulation``,
   ``material``) override them; the settings the XML file does not name stay as

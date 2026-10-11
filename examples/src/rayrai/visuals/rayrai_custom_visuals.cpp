@@ -2,22 +2,20 @@
 #include <memory>
 #include <string>
 
-#include "rayrai/example_common.hpp"
 #include "example_resources.hpp"
-#include "rayrai_example_compat.hpp"
 #include "raisim/World.hpp"
+#include "rayrai/example_common.hpp"
+#include "rayrai_example_compat.hpp"
 
 int main(int argc, char* argv[]) {
   ExampleApp app;
-  if (!app.init("rayrai_example_visuals", 1280, 720))
-    return -1;
+  if (!app.init("rayrai_example_visuals", 1280, 720)) return -1;
 
   auto world = std::make_shared<raisim::World>();
   world->addGround();
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
-  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Balanced));
+  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {77, 77, 77, 255});
   auto& camera = viewer->getCamera();
   camera.target = {0.0f, -0.2f, 0.45f};
@@ -40,14 +38,12 @@ int main(int argc, char* argv[]) {
   vizCapsule->setPosition(0.0, 1.5, 0.3);
 
   const std::string monkeyFile = exampleRscPath(argv[0], "monkey/monkey.obj");
-  auto vizMesh =
-    viewer->addVisualMesh("viz_mesh", monkeyFile, 0.5, 0.5, 0.5, 0.8f, 0.8f, 0.9f, 1.0f);
+  auto vizMesh = viewer->addVisualMesh("viz_mesh", monkeyFile, 0.5, 0.5, 0.5, 0.8f, 0.8f, 0.9f, 1.0f);
   vizMesh->setPosition(1.5, 1.0, 0.4);
 
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     world->integrate();
     const double t = world->getWorldTime();

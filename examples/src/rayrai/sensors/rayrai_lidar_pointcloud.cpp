@@ -5,24 +5,18 @@
 
 #include <glm/glm.hpp>
 
-#include "rayrai/example_common.hpp"
 #include "example_resources.hpp"
-#include "rayrai_example_compat.hpp"
 #include "raisim/World.hpp"
+#include "rayrai/example_common.hpp"
+#include "rayrai_example_compat.hpp"
 
-static inline glm::dvec3 toGlm(const raisim::Vec<3>& v) {
-  return glm::dvec3(v[0], v[1], v[2]);
-}
+static inline glm::dvec3 toGlm(const raisim::Vec<3>& v) { return glm::dvec3(v[0], v[1], v[2]); }
 
-static inline glm::dmat3 toGlm(const raisim::Mat<3, 3>& R) {
-  return glm::dmat3(glm::dvec3(R(0, 0), R(1, 0), R(2, 0)), glm::dvec3(R(0, 1), R(1, 1), R(2, 1)),
-    glm::dvec3(R(0, 2), R(1, 2), R(2, 2)));
-}
+static inline glm::dmat3 toGlm(const raisim::Mat<3, 3>& R) { return glm::dmat3(glm::dvec3(R(0, 0), R(1, 0), R(2, 0)), glm::dvec3(R(0, 1), R(1, 1), R(2, 1)), glm::dvec3(R(0, 2), R(1, 2), R(2, 2))); }
 
 int main(int argc, char* argv[]) {
   ExampleApp app;
-  if (!app.init("rayrai_example_lidar", 1280, 720))
-    return -1;
+  if (!app.init("rayrai_example_lidar", 1280, 720)) return -1;
 
   auto world = std::make_shared<raisim::World>();
   world->addGround();
@@ -31,8 +25,7 @@ int main(int argc, char* argv[]) {
   const std::string go1Dir = exampleRscPath(argv[0], "go1");
   std::vector<std::string> modules = {"livox_lidar"};
   auto go1 = world->addArticulatedSystem(go1Dir + sep + "go1.urdf", modules, go1Dir);
-  go1->setGeneralizedCoordinate({0, 0, 0.32, 1.0, 0.0, 0.0, 0.0, 0, 0.67, -1.3, 0, 0.67, -1.3, 0,
-    0.67, -1.3, 0, 0.67, -1.3});
+  go1->setGeneralizedCoordinate({0, 0, 0.32, 1.0, 0.0, 0.0, 0.0, 0, 0.67, -1.3, 0, 0.67, -1.3, 0, 0.67, -1.3, 0, 0.67, -1.3});
 
   auto lidar = go1->getSensorSet("livox_lidar_0")->getSensor<raisim::SpinningLidar>("lidar");
 
@@ -56,15 +49,13 @@ int main(int argc, char* argv[]) {
   raisim::Mat<3, 3> inertia;
   inertia.setIdentity();
   const raisim::Vec<3> com = {0, 0, 0};
-  auto monkey = world->addMesh(monkeyFile, 1.0, inertia, com, 1.0, "",
-                               raisim::MeshCollisionMode::ORIGINAL_MESH);
+  auto monkey = world->addMesh(monkeyFile, 1.0, inertia, com, 1.0, "", raisim::MeshCollisionMode::ORIGINAL_MESH);
   monkey->setPosition(0.8, 2.2, 0.35);
   monkey->setAppearance("0.8,0.8,0.9,1.0");
   monkey->setBodyType(raisim::BodyType::STATIC);
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
-  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Balanced));
+  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {25, 25, 35, 255});
   auto& camera = viewer->getCamera();
   camera.position = {5.0f, 4.0f, 3.5f};
@@ -79,8 +70,7 @@ int main(int argc, char* argv[]) {
 
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     world->integrate();
 

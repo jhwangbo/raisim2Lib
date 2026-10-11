@@ -23,8 +23,7 @@ int main(int argc, char* argv[]) {
   for (size_t i = 0; i < N; i++) {
     for (size_t j = 0; j < N; j++) {
       for (size_t k = 0; k < N; k++) {
-        std::string number =
-            std::to_string(i) + std::to_string(j) + std::to_string(k);
+        std::string number = std::to_string(i) + std::to_string(j) + std::to_string(k);
         raisim::SingleBodyObject* ob = nullptr;
         switch ((i + j + k) % 4) {
           case 0:
@@ -57,10 +56,9 @@ int main(int argc, char* argv[]) {
   raisim::RaisimServer server(&world);
   server.launchServer();
 
-
   raisim_examples::warnIfNoClientConnected(server);
   while (1) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
     server.integrateWorldThreadSafe();
   }
 

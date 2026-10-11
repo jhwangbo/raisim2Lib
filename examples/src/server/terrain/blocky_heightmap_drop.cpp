@@ -6,10 +6,10 @@
 #include <string>
 #include <vector>
 
+#include "example_resources.hpp"
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
-#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
   raisim::World world;
@@ -26,8 +26,7 @@ int main(int argc, char* argv[]) {
   constexpr double heightRange = 0.15;
 
   std::mt19937 generator(2024);
-  std::uniform_real_distribution<double> heightDistribution(-heightRange,
-                                                            heightRange);
+  std::uniform_real_distribution<double> heightDistribution(-heightRange, heightRange);
 
   std::vector<double> blockHeights(blocks * blocks);
   for (auto& height : blockHeights) height = heightDistribution(generator);
@@ -35,14 +34,12 @@ int main(int argc, char* argv[]) {
   std::vector<double> height(samples * samples);
   for (size_t yIndex = 0; yIndex < samples; ++yIndex) {
     for (size_t xIndex = 0; xIndex < samples; ++xIndex) {
-      const size_t block =
-          (yIndex / blockSize) * blocks + (xIndex / blockSize);
+      const size_t block = (yIndex / blockSize) * blocks + (xIndex / blockSize);
       height[yIndex * samples + xIndex] = blockHeights[block];
     }
   }
 
-  auto* heightMap = world.addHeightMap(samples, samples, mapSize, mapSize, 0.0,
-                                       0.0, height);
+  auto* heightMap = world.addHeightMap(samples, samples, mapSize, mapSize, 0.0, 0.0, height);
   heightMap->setName("blocky_terrain");
   heightMap->setAppearance("soil1");
 
@@ -58,10 +55,8 @@ int main(int argc, char* argv[]) {
   constexpr double dropHeight = 3.0;
   constexpr double maxBodyRadius = 0.5;
   static_assert(gridRows * gridColumns == 900);
-  static_assert(0.5 * (gridColumns - 1) * spacing + maxBodyRadius <
-                0.5 * mapSize);
-  static_assert(0.5 * (gridRows - 1) * spacing + maxBodyRadius <
-                0.5 * mapSize);
+  static_assert(0.5 * (gridColumns - 1) * spacing + maxBodyRadius < 0.5 * mapSize);
+  static_assert(0.5 * (gridRows - 1) * spacing + maxBodyRadius < 0.5 * mapSize);
 
   int meshCount = 0;
   for (int row = 0; row < gridRows; ++row) {
@@ -89,16 +84,12 @@ int main(int argc, char* argv[]) {
         default: {
           /// a convex hull keeps 180 mesh bodies cheap to load and to collide
           const double scale = 0.13 + 0.01 * (meshCount % 4);
-          object = world.addMesh(monkeyPath, 1.0, scale, "",
-                                 raisim::MeshCollisionMode::CONVEX_HULL);
+          object = world.addMesh(monkeyPath, 1.0, scale, "", raisim::MeshCollisionMode::CONVEX_HULL);
           object->setAppearance("0.75, 0.45, 0.25, 1.0");
 
           /// tilt each monkey differently so that they do not land identically
           const double angle = 0.37 * meshCount;
-          object->setOrientation(std::cos(0.5 * angle),
-                                 std::sin(0.5 * angle) * std::cos(0.7 * meshCount),
-                                 std::sin(0.5 * angle) * std::sin(0.7 * meshCount),
-                                 0.0);
+          object->setOrientation(std::cos(0.5 * angle), std::sin(0.5 * angle) * std::cos(0.7 * meshCount), std::sin(0.5 * angle) * std::sin(0.7 * meshCount), 0.0);
           ++meshCount;
           break;
         }
@@ -106,11 +97,9 @@ int main(int argc, char* argv[]) {
 
       const double x = spacing * (column - 0.5 * (gridColumns - 1));
       const double y = spacing * (row - 0.5 * (gridRows - 1));
-      const double z = heightMap->getHeight(x, y) + dropHeight +
-                       0.05 * ((7 * row + 3 * column) % 5);
+      const double z = heightMap->getHeight(x, y) + dropHeight + 0.05 * ((7 * row + 3 * column) % 5);
 
-      object->setName((shape == 4 ? "monkey_" : "primitive_") +
-                      std::to_string(row) + "_" + std::to_string(column));
+      object->setName((shape == 4 ? "monkey_" : "primitive_") + std::to_string(row) + "_" + std::to_string(column));
       object->setPosition(x, y, z);
     }
   }

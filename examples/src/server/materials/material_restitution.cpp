@@ -16,9 +16,9 @@ int main(int argc, char* argv[]) {
   auto sphere2 = world.addSphere(0.5, 1.0, "rubber");
   auto sphere3 = world.addSphere(0.5, 1.0, "copper");
 
-  sphere1->setPosition(-2,0,5);
-  sphere2->setPosition(0,0,5);
-  sphere3->setPosition(2,0,5);
+  sphere1->setPosition(-2, 0, 5);
+  sphere2->setPosition(0, 0, 5);
+  sphere3->setPosition(2, 0, 5);
 
   world.setMaterialPairProp("steel", "steel", 0.8, 0.95, 0.001);
   world.setMaterialPairProp("steel", "rubber", 0.8, 0.15, 0.001);
@@ -28,10 +28,9 @@ int main(int argc, char* argv[]) {
   raisim::RaisimServer server(&world);
   server.launchServer();
 
-
   raisim_examples::warnIfNoClientConnected(server);
   for (int i = 0; i < 5000; i++) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
     server.integrateWorldThreadSafe();
   }
 

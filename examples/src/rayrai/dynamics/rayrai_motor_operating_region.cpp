@@ -26,14 +26,14 @@
 
 #include <glm/glm.hpp>
 
-#include "rayrai/example_common.hpp"
-#include "rayrai_example_compat.hpp"
 #include "example_resources.hpp"
 #include "raisim/World.hpp"
+#include "rayrai/example_common.hpp"
+#include "rayrai_example_compat.hpp"
 
 namespace {
 
-constexpr double kTolerance = 0.01;    // operating points outside by more than this x peak torque
+constexpr double kTolerance = 0.01;  // operating points outside by more than this x peak torque
 
 // Random commands: position targets, velocity sweeps beyond the no-load speed, or raw torques.
 enum class Mode : int { MIXED = 0, POSITION = 1, VELOCITY = 2, TORQUE = 3 };
@@ -42,8 +42,7 @@ enum class Mode : int { MIXED = 0, POSITION = 1, VELOCITY = 2, TORQUE = 3 };
 // operating region clips exactly these torques. Actuator i drives joint i of the rig.
 class RandomActuator {
  public:
-  explicit RandomActuator(raisim::ArticulatedSystem* robot)
-      : robot_(robot), kp_(Eigen::VectorXd::Zero(robot->getDOF())), kd_(kp_), q_(kp_), u_(kp_), tau_(kp_) {}
+  explicit RandomActuator(raisim::ArticulatedSystem* robot) : robot_(robot), kp_(Eigen::VectorXd::Zero(robot->getDOF())), kd_(kp_), q_(kp_), u_(kp_), tau_(kp_) {}
 
   Mode mode = Mode::MIXED;
   float period = 0.4f;
@@ -150,13 +149,11 @@ struct MotorStatistics {
 // RaiSim setup, actuator commands, integration, and measurement. No viewer or ImGui calls.
 class MotorOperatingRegionSimulation {
  public:
-  explicit MotorOperatingRegionSimulation(const std::string& modelPath)
-      : world_(createWorld()), robot_(world_->addArticulatedSystem(modelPath)), actuator_(robot_) {
+  explicit MotorOperatingRegionSimulation(const std::string& modelPath) : world_(createWorld()), robot_(world_->addArticulatedSystem(modelPath)), actuator_(robot_) {
     const auto& names = robot_->getActuatorNames();
     const auto& actuators = robot_->getActuators();
     motors_.reserve(actuators.size());
-    for (size_t m = 0; m < actuators.size(); ++m)
-      motors_.push_back({names[m], actuators[m].motor, actuators[m].motor.busVoltage, {}});
+    for (size_t m = 0; m < actuators.size(); ++m) motors_.push_back({names[m], actuators[m].motor, actuators[m].motor.busVoltage, {}});
     settings_.busVoltage = float(actuators[0].motor.busVoltage);
   }
 
@@ -247,8 +244,7 @@ ImU32 sampleColor(const Sample& sample) {
 }
 
 // fileVoltage fixes the speed axis, so that a lower bus voltage visibly shrinks the region.
-void drawMotorPlot(const std::string& name, const raisim::DcMotorParameters& motor,
-                   double fileVoltage, const MotorTrace& trace, size_t trail, ImVec2 size) {
+void drawMotorPlot(const std::string& name, const raisim::DcMotorParameters& motor, double fileVoltage, const MotorTrace& trace, size_t trail, ImVec2 size) {
   ImDrawList* draw = ImGui::GetWindowDrawList();
   const ImVec2 origin = ImGui::GetCursorScreenPos();
   const ImVec2 lo(origin.x + 4.f, origin.y + ImGui::GetTextLineHeightWithSpacing());
@@ -260,8 +256,7 @@ void drawMotorPlot(const std::string& name, const raisim::DcMotorParameters& mot
   const double yRange = 1.4 * peak;
   const auto toScreen = [&](double speed, double torque) {
     const double x = std::clamp(speed / xRange, -1., 1.), y = std::clamp(torque / yRange, -1., 1.);
-    return ImVec2(float(0.5 * (lo.x + hi.x) + 0.5 * x * (hi.x - lo.x)),
-                  float(0.5 * (lo.y + hi.y) - 0.5 * y * (hi.y - lo.y)));
+    return ImVec2(float(0.5 * (lo.x + hi.x) + 0.5 * x * (hi.x - lo.x)), float(0.5 * (lo.y + hi.y) - 0.5 * y * (hi.y - lo.y)));
   };
 
   const ImU32 axisColor = IM_COL32(120, 125, 135, 120), labelColor = IM_COL32(150, 155, 165, 255);
@@ -272,9 +267,7 @@ void drawMotorPlot(const std::string& name, const raisim::DcMotorParameters& mot
   // EM-MOR: the bus-voltage band cut by the peak torque, a parallelogram.
   const double volt = motor.busVoltage;
   const double margin = peak / perVolt;
-  const ImVec2 region[4] = {
-      toScreen(kv * (-volt - margin), peak), toScreen(kv * (volt - margin), peak),
-      toScreen(kv * (volt + margin), -peak), toScreen(kv * (-volt + margin), -peak)};
+  const ImVec2 region[4] = {toScreen(kv * (-volt - margin), peak), toScreen(kv * (volt - margin), peak), toScreen(kv * (volt + margin), -peak), toScreen(kv * (-volt + margin), -peak)};
   draw->AddConvexPolyFilled(region, 4, IM_COL32(70, 190, 105, 55));
   draw->AddPolyline(region, 4, IM_COL32(95, 215, 125, 255), ImDrawFlags_Closed, 1.5f);
   // Beyond the overspeed limit, where even full reverse voltage drives more than the peak current,
@@ -284,14 +277,11 @@ void drawMotorPlot(const std::string& name, const raisim::DcMotorParameters& mot
 
   // Box-MOR: peak torque and no-load speed, dashed.
   const double noLoad = motor.noLoadSpeed();
-  const ImVec2 box[4] = {toScreen(-noLoad, peak), toScreen(noLoad, peak), toScreen(noLoad, -peak),
-                         toScreen(-noLoad, -peak)};
+  const ImVec2 box[4] = {toScreen(-noLoad, peak), toScreen(noLoad, peak), toScreen(noLoad, -peak), toScreen(-noLoad, -peak)};
   for (int side = 0; side < 4; ++side) {
     const ImVec2 a = box[side], b = box[(side + 1) % 4];
     for (float t = 0.f; t < 1.f; t += 0.04f)
-      draw->AddLine(ImVec2(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t),
-                    ImVec2(a.x + (b.x - a.x) * (t + 0.02f), a.y + (b.y - a.y) * (t + 0.02f)),
-                    IM_COL32(210, 210, 210, 150));
+      draw->AddLine(ImVec2(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t), ImVec2(a.x + (b.x - a.x) * (t + 0.02f), a.y + (b.y - a.y) * (t + 0.02f)), IM_COL32(210, 210, 210, 150));
   }
 
   const size_t shown = std::min(trail, trace.count);
@@ -304,14 +294,10 @@ void drawMotorPlot(const std::string& name, const raisim::DcMotorParameters& mot
   }
 
   char text[160];
-  std::snprintf(text, sizeof(text), "%s  max out %.2f%%  sat %.0f%%", name.c_str(),
-                100. * trace.maxOutside / peak,
-                trace.samples ? 100. * double(trace.saturated) / double(trace.samples) : 0.);
-  draw->AddText(origin, trace.outside ? IM_COL32(255, 110, 110, 255) : IM_COL32(225, 228, 235, 255),
-                text);
+  std::snprintf(text, sizeof(text), "%s  max out %.2f%%  sat %.0f%%", name.c_str(), 100. * trace.maxOutside / peak, trace.samples ? 100. * double(trace.saturated) / double(trace.samples) : 0.);
+  draw->AddText(origin, trace.outside ? IM_COL32(255, 110, 110, 255) : IM_COL32(225, 228, 235, 255), text);
   std::snprintf(text, sizeof(text), "%.0f rad/s", xRange);
-  draw->AddText(ImVec2(hi.x - ImGui::CalcTextSize(text).x - 2.f,
-                       hi.y - ImGui::GetTextLineHeight() - 1.f), labelColor, text);
+  draw->AddText(ImVec2(hi.x - ImGui::CalcTextSize(text).x - 2.f, hi.y - ImGui::GetTextLineHeight() - 1.f), labelColor, text);
   std::snprintf(text, sizeof(text), "%.1f Nm", yRange);
   draw->AddText(ImVec2(0.5f * (lo.x + hi.x) + 3.f, lo.y + 1.f), labelColor, text);
   ImGui::Dummy(size);
@@ -346,11 +332,9 @@ class MotorOperatingRegionVisualization {
     initialized_ = true;
     ImGui::GetIO().IniFilename = nullptr;  // keep ImGui scratch files out of the source tree
     for (auto* object : world->getObjList())
-      if (object->getObjectType() == raisim::ObjectType::HALFSPACE)
-        static_cast<raisim::Ground*>(object)->setAppearance("checkerboard");
+      if (object->getObjectType() == raisim::ObjectType::HALFSPACE) static_cast<raisim::Ground*>(object)->setAppearance("checkerboard");
     viewer_ = std::make_shared<raisin::RayraiWindow>(world, 1600, 900);
-    viewer_->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-        raisin::RayraiWindow::RenderQualityPreset::Balanced));
+    viewer_->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
     raisim_examples::setRayraiBackgroundColorRgb255(*viewer_, {30, 34, 42, 255});
     raisim_examples::addRayraiBasicSceneLights(*viewer_);
     positionCamera(*viewer_);
@@ -378,8 +362,7 @@ class MotorOperatingRegionVisualization {
     ImGui::SetNextWindowPos(ImVec2(12, 12), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowBgAlpha(0.88f);
     ImGui::Begin("Motor operating region", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-    if (ImGui::Combo("Actuation", &mode,
-                     "Mixed\0Random position targets\0Random velocity sweeps\0Random torques\0")) {
+    if (ImGui::Combo("Actuation", &mode, "Mixed\0Random position targets\0Random velocity sweeps\0Random torques\0")) {
       settings.mode = static_cast<Mode>(mode);
     }
     ImGui::SliderFloat("Command period [s]", &settings.period, 0.05f, 2.f, "%.2f");
@@ -395,14 +378,13 @@ class MotorOperatingRegionVisualization {
     simulation.applySettings(settings, resetStatistics);
     ImGui::Separator();
     const MotorStatistics statistics = simulation.statistics();
-    ImGui::Text("%s: worst point %.2f%% of peak torque outside", settings.enforce ? "EM-MOR" : "unclipped",
-                100. * statistics.worst);
-    ImGui::TextColored(statistics.outside ? ImVec4(1.f, 0.45f, 0.45f, 1.f) : ImVec4(0.55f, 0.9f, 0.6f, 1.f),
-                       "%zu of %zu samples outside by > %.0f%%", statistics.outside, statistics.samples,
+    ImGui::Text("%s: worst point %.2f%% of peak torque outside", settings.enforce ? "EM-MOR" : "unclipped", 100. * statistics.worst);
+    ImGui::TextColored(statistics.outside ? ImVec4(1.f, 0.45f, 0.45f, 1.f) : ImVec4(0.55f, 0.9f, 0.6f, 1.f), "%zu of %zu samples outside by > %.0f%%", statistics.outside, statistics.samples,
                        100. * kTolerance);
-    ImGui::TextDisabled("Green: EM-MOR. Dashed: Box-MOR (peak torque, no-load speed).\n"
-                        "Points: blue inside, orange at the peak torque,\n"
-                        "purple at the voltage limit, red outside.");
+    ImGui::TextDisabled(
+        "Green: EM-MOR. Dashed: Box-MOR (peak torque, no-load speed).\n"
+        "Points: blue inside, orange at the peak torque,\n"
+        "purple at the voltage limit, red outside.");
     ImGui::End();
   }
 
@@ -413,12 +395,10 @@ class MotorOperatingRegionVisualization {
     ImGui::SetNextWindowPos(ImVec2(display.x - plotWidth - 10.f, 10.f), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(plotWidth, display.y - 20.f), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.82f);
-    ImGui::Begin("Motor torque [Nm] vs. motor speed [rad/s]", nullptr,
-                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+    ImGui::Begin("Motor torque [Nm] vs. motor speed [rad/s]", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
     const int columns = 3, rows = int((motors.size() + columns - 1) / columns);
     const ImVec2 available = ImGui::GetContentRegionAvail();
-    const ImVec2 cell((available.x - (columns - 1) * ImGui::GetStyle().ItemSpacing.x) / columns,
-                      (available.y - (rows - 1) * ImGui::GetStyle().ItemSpacing.y) / rows);
+    const ImVec2 cell((available.x - (columns - 1) * ImGui::GetStyle().ItemSpacing.x) / columns, (available.y - (rows - 1) * ImGui::GetStyle().ItemSpacing.y) / rows);
     const size_t trail = size_t(kTrailSeconds / simulation.settings().timeStep);
     for (size_t m = 0; m < motors.size(); ++m) {
       if (m % columns != 0) ImGui::SameLine();
@@ -435,8 +415,7 @@ class MotorOperatingRegionVisualization {
 }  // namespace
 
 int main(int, char** argv) {
-  MotorOperatingRegionSimulation simulation(
-      exampleRscPath(argv[0], "motorOperatingRegion/quadruped_rig.urdf"));
+  MotorOperatingRegionSimulation simulation(exampleRscPath(argv[0], "motorOperatingRegion/quadruped_rig.urdf"));
   MotorOperatingRegionVisualization visualization;
   if (!visualization.init(simulation.world())) return -1;
 

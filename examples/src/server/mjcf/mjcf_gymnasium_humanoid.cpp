@@ -1,10 +1,10 @@
 #include <filesystem>
 #include <iostream>
 
+#include "example_resources.hpp"
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
-#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
   raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));

@@ -1,13 +1,14 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
+#include <mutex>
+
+#include "example_resources.hpp"
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
-#include <mutex>
-#include "example_resources.hpp"
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   const int loopN = 200000000;
 
   raisim::World world;
@@ -28,8 +29,7 @@ int main(int argc, char **argv) {
 
   jointVelocityTarget.setZero();
 
-  jointConfig << 0, 0, 0.54, 1, 0, 0, 0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8,
-      0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
+  jointConfig << 0, 0, 0.54, 1, 0, 0, 0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
   jointVel << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
 
   auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal_c/urdf/anymal_sensored.urdf"));
@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
 
   auto depthSensor1 = anymal->getSensorSet("depth_camera_front_camera_parent")->getSensor<raisim::DepthCamera>("depth");
   depthSensor1->setMeasurementSource(raisim::Sensor::MeasurementSource::MANUAL);
-//  depthSensor1->setMeasurementSource(raisim::Sensor::MeasurementSource::RAISIM); // uncomment this line if you want to update the sensor using Raisim (CPU)
+  //  depthSensor1->setMeasurementSource(raisim::Sensor::MeasurementSource::RAISIM); // uncomment this line if you want to update the sensor using Raisim (CPU)
 
   auto rgbCamera1 = anymal->getSensorSet("depth_camera_front_camera_parent")->getSensor<raisim::RGBCamera>("color");
   rgbCamera1->setMeasurementSource(raisim::Sensor::MeasurementSource::MANUAL);
@@ -65,10 +65,9 @@ int main(int argc, char **argv) {
 
   server.launchServer();
 
-
   raisim_examples::warnIfNoClientConnected(server);
   for (int k = 0; k < loopN; k++) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
     server.integrateWorldThreadSafe([&]() {
       /// Replace the point cloud with the most recent lidar read. Keeping this
       /// inside the server lock also prevents the TCP thread from serializing it
@@ -77,21 +76,19 @@ int main(int argc, char **argv) {
       const auto& ori = lidar->getOrientation();
       const auto& scan = lidar->getScan();
       scans->resize(scan.size());
-      for (size_t i = 0; i < scan.size(); ++i)
-        scans->position[i] = pos + (ori * scan[i]);
+      for (size_t i = 0; i < scan.size(); ++i) scans->position[i] = pos + (ori * scan[i]);
     });
 
     {
       std::lock_guard<raisim::Sensor> sensorLock(*depthSensor1);
-      const auto &depth = depthSensor1->getDepthArray();
-      depthSensor1->depthToPointCloud(depth, pointCloudFromConversion, false); // this method lets you convert depth values to 3D points
-      auto& pointsFromRaisim = depthSensor1->get3DPoints(); // this method returns garbage if the update is done by the visualizer
+      const auto& depth = depthSensor1->getDepthArray();
+      depthSensor1->depthToPointCloud(depth, pointCloudFromConversion, false);  // this method lets you convert depth values to 3D points
+      auto& pointsFromRaisim = depthSensor1->get3DPoints();                     // this method returns garbage if the update is done by the visualizer
       posFromRaisim = pointsFromRaisim[0];
     }
 
     dummySphere1->setPosition(posFromRaisim.e());
     dummySphere2->setPosition(pointCloudFromConversion[400].e());
-
   }
 
   server.killServer();

@@ -16,10 +16,10 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <complex>
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
-#include <complex>
 #include <numeric>
 #include <string>
 #include <vector>
@@ -59,8 +59,7 @@ class Autopilot {
   /// The speed from which the car can still brake to every limit within the next 60 m.
   double targetSpeed(double station) const {
     double target = kTopSpeed;
-    for (double d = 0; d <= 60; d += 2)
-      target = std::min(target, std::sqrt(limit(station + d) * limit(station + d) + 2 * kBraking * d));
+    for (double d = 0; d <= 60; d += 2) target = std::min(target, std::sqrt(limit(station + d) * limit(station + d) + 2 * kBraking * d));
     return target;
   }
 
@@ -124,9 +123,8 @@ struct Flat {
 inline void heading(const std::string& title) { std::cout << "\n" << title << "\n"; }
 inline void row(const std::string& what, double sim, double reference, const std::string& unit, int digits = 2) {
   const double error = reference != 0 ? 100 * (sim - reference) / std::abs(reference) : 0.0;
-  std::cout << "  " << std::left << std::setw(46) << what << std::right << std::fixed << std::setprecision(digits)
-            << std::setw(10) << sim << std::setw(10) << reference << " " << std::setw(6) << unit << std::setprecision(2)
-            << std::setw(8) << error << " %\n";
+  std::cout << "  " << std::left << std::setw(46) << what << std::right << std::fixed << std::setprecision(digits) << std::setw(10) << sim << std::setw(10) << reference << " " << std::setw(6) << unit
+            << std::setprecision(2) << std::setw(8) << error << " %\n";
 }
 
 /// Mean contact x of each corner and the system centre of mass, in the chassis frame.
@@ -146,8 +144,7 @@ inline Statics measureStatics(Buggy& buggy, raisim::World& world, double duratio
     raisim::Vec<3> p;
     system->getBodyPose(0, R, p);
     for (auto& contact : system->getContacts()) {
-      if (contact.skip() || contact.getPairObjectIndex() == system->getIndexInWorld() || !contact.getImpulsePtr())
-        continue;
+      if (contact.skip() || contact.getPairObjectIndex() == system->getIndexInWorld() || !contact.getImpulsePtr()) continue;
       for (int i = 0; i < 4; ++i)
         if (contact.getlocalBodyIndex() == buggy.wheelBodyIndex(i)) {
           Eigen::Vector3d f = contact.getContactFrame().e().transpose() * contact.getImpulse().e() / 0.001;
@@ -180,8 +177,7 @@ inline Statics measureStatics(Buggy& buggy, raisim::World& world, double duratio
 inline int validate(const std::filesystem::path& root) {
   using namespace validation;
   std::cout << "rayrai_offroad_buggy physics checks (time step 1 ms)\n";
-  std::cout << "  " << std::left << std::setw(46) << "quantity" << std::right << std::setw(10) << "sim" << std::setw(10)
-            << "reference" << " " << std::setw(6) << "unit" << std::setw(10) << "error\n";
+  std::cout << "  " << std::left << std::setw(46) << "quantity" << std::right << std::setw(10) << "sim" << std::setw(10) << "reference" << " " << std::setw(6) << "unit" << std::setw(10) << "error\n";
   int failures = 0;
   auto check = [&](bool ok) { failures += ok ? 0 : 1; };
 
@@ -201,8 +197,7 @@ inline int validate(const std::filesystem::path& root) {
     // The radial tyre spring carries the wheel load less the weight of the wheel below it.
     const double wheelWeight = buggy.system()->getMass()[buggy.wheelBodyIndex(0)] * 9.81;
     for (int i = 0; i < 4; i += 2)
-      row(std::string("tyre spring force vs load - wheel weight, ") + Buggy::kCornerNames[i],
-          buggy.tyreStiffness(i) * t.corners[i].tyreDeflection, s.load[i] - wheelWeight, "N");
+      row(std::string("tyre spring force vs load - wheel weight, ") + Buggy::kCornerNames[i], buggy.tyreStiffness(i) * t.corners[i].tyreDeflection, s.load[i] - wheelWeight, "N");
     double sag = 0;
     for (int i = 0; i < 4; ++i) sag = std::max(sag, std::abs(t.corners[i].shockExtension));
     std::cout << "  ride height: largest damper offset from the design pose " << std::setprecision(2) << sag * 1000 << " mm\n";
@@ -222,10 +217,8 @@ inline int validate(const std::filesystem::path& root) {
     const std::array<double, 2> mr = {0.6318, 0.6648}, scrub = {0.1071, 0.1131};
     double unsprung = 0;
     const std::string c0 = Buggy::kCornerNames[0];
-    for (const char* body : {"_wheel", "_upright", "_tyre_radial", "_tyre_lateral"})
-      unsprung += system->getMass()[system->getBodyIdx(c0 + body)];
-    for (const char* body : {"_lower_arm", "_upper_arm", "_tie_rod", "_shock_body", "_shock_rod"})
-      unsprung += 0.5 * system->getMass()[system->getBodyIdx(c0 + body)];
+    for (const char* body : {"_wheel", "_upright", "_tyre_radial", "_tyre_lateral"}) unsprung += system->getMass()[system->getBodyIdx(c0 + body)];
+    for (const char* body : {"_lower_arm", "_upper_arm", "_tie_rod", "_shock_body", "_shock_rod"}) unsprung += 0.5 * system->getMass()[system->getBodyIdx(c0 + body)];
     const double kLat = 110e3, cLat = 600.0;  // offroad_buggy_design.TYRE
     std::array<double, 2> kw, cw, kt, ct, x;
     for (int axle = 0; axle < 2; ++axle) {
@@ -287,15 +280,13 @@ inline int validate(const std::filesystem::path& root) {
     const auto sim = firstSwing(simulated), lin = firstSwing(linear);
     double rms = 0;
     size_t count = 0;
-    for (size_t k = 0; k < time.size() && time[k] <= lin[2]; ++k, ++count)
-      rms += (simulated[k] - linear[k]) * (simulated[k] - linear[k]);
+    for (size_t k = 0; k < time.size() && time[k] <= lin[2]; ++k, ++count) rms += (simulated[k] - linear[k]) * (simulated[k] - linear[k]);
     rms = std::sqrt(rms / std::max<size_t>(count, 1));
     heading("2. Heave: body pushed down and released vs a linear half-car model (heave, pitch, unsprung masses)");
     row("deepest compression", sim[0] * 1000, lin[0] * 1000, "mm", 2);
     row("time of the deepest compression", sim[1], lin[1], "s", 3);
     row("time back at rest height (quarter period after)", sim[2], lin[2], "s", 3);
-    std::cout << "  RMS difference over that half cycle " << std::setprecision(2) << rms * 1000 << " mm ("
-              << std::setprecision(1) << 100 * rms / lin[0] << " % of the peak)\n";
+    std::cout << "  RMS difference over that half cycle " << std::setprecision(2) << rms * 1000 << " mm (" << std::setprecision(1) << 100 * rms / lin[0] << " % of the peak)\n";
     check(std::abs(sim[0] / lin[0] - 1) < 0.06 && std::abs(sim[2] / lin[2] - 1) < 0.06);
   }
 
@@ -308,16 +299,17 @@ inline int validate(const std::filesystem::path& root) {
     for (double steer : {0.25, 0.5, 0.75, 1.0}) {
       DriverInput input;
       input.steer = steer;
-      flat.run(1.0, [&] { return input; }, [&](double) {
-        const auto& t = buggy.telemetry();
-        worstRack = std::max(worstRack, std::abs(t.rackPosition + 0.0095 * t.steeringWheelAngle));
-      });
+      flat.run(
+          1.0, [&] { return input; },
+          [&](double) {
+            const auto& t = buggy.telemetry();
+            worstRack = std::max(worstRack, std::abs(t.rackPosition + 0.0095 * t.steeringWheelAngle));
+          });
       const auto& t = buggy.telemetry();
       const double inner = t.corners[0].steerAngle, outer = t.corners[1].steerAngle;
       // Ackermann: cot(outer) - cot(inner) = kingpin track / wheelbase (offroad_buggy_design.py).
       const double ideal = std::atan(1.0 / (1.0 / std::tan(inner) + 2.0258 / 2.7142));
-      row("outer angle at inner " + std::to_string(int(std::round(inner * 180 / M_PI))) + " deg (design)",
-          outer * 180 / M_PI, ideal * 180 / M_PI, "deg", 2);
+      row("outer angle at inner " + std::to_string(int(std::round(inner * 180 / M_PI))) + " deg (design)", outer * 180 / M_PI, ideal * 180 / M_PI, "deg", 2);
     }
     std::cout << "  largest rack-and-pinion error " << std::setprecision(3) << worstRack * 1e6 << " um\n";
     check(worstRack < 1e-5);
@@ -359,8 +351,7 @@ inline int validate(const std::filesystem::path& root) {
     });
     rollMoment /= n, pitchMoment /= n, ay /= n, ax /= n, h /= n, gyro /= n;
     heading("4. Steady cornering at 8 m/s: moments of the vertical wheel loads about the centre of mass");
-    std::cout << "  lateral acceleration " << std::setprecision(2) << ay << " m/s^2, centre of mass " << h
-              << " m above the ground\n";
+    std::cout << "  lateral acceleration " << std::setprecision(2) << ay << " m/s^2, centre of mass " << h << " m above the ground\n";
     // The tyres' lateral forces act at the ground, h below the centre of mass.
     row("roll moment of the loads vs m a_y h + I w Omega", -rollMoment, buggy.mass() * ay * h + gyro, "Nm", 1);
     check(std::abs(-rollMoment / (buggy.mass() * ay * h + gyro) - 1) < 0.02);
@@ -425,20 +416,17 @@ inline int validate(const std::filesystem::path& root) {
     }
     const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
     heading("5. A lap of the circuit (tabletop jump, whoops, washboard, rock garden), autopilot");
-    std::cout << std::setprecision(1) << "  distance " << travelled << " m in " << world.getWorldTime() << " s, top speed "
-              << maxSpeed * 3.6 << " km/h, " << (upset ? "rolled over" : "stayed upright") << "\n";
-    std::cout << "  air time with all four wheels off the ground " << airTime << " s, peak wheel load " << maxLoad / 1000
-              << " kN, " << std::setprecision(2) << bumpStop << " s on the bump stops\n";
+    std::cout << std::setprecision(1) << "  distance " << travelled << " m in " << world.getWorldTime() << " s, top speed " << maxSpeed * 3.6 << " km/h, " << (upset ? "rolled over" : "stayed upright")
+              << "\n";
+    std::cout << "  air time with all four wheels off the ground " << airTime << " s, peak wheel load " << maxLoad / 1000 << " kN, " << std::setprecision(2) << bumpStop << " s on the bump stops\n";
     for (int i = 0; i < 4; ++i)
-      std::cout << "  damper travel used " << Buggy::kCornerNames[i] << ": " << std::setprecision(0) << minExt[i] * 1000
-                << " .. " << maxExt[i] * 1000 << " mm (stroke " << buggy.shockLimits(i)[0] * 1000 << " .. "
-                << buggy.shockLimits(i)[1] * 1000 << ")\n";
+      std::cout << "  damper travel used " << Buggy::kCornerNames[i] << ": " << std::setprecision(0) << minExt[i] * 1000 << " .. " << maxExt[i] * 1000 << " mm (stroke "
+                << buggy.shockLimits(i)[0] * 1000 << " .. " << buggy.shockLimits(i)[1] * 1000 << ")\n";
     std::cout << std::setprecision(2) << "  largest loop-closure error " << maxError * 1e6 << " um\n";
     int moved = 0;
     for (size_t i = 0; i < placed.size(); ++i) moved += (venue.loose[i].body->getPosition() - placed[i]).norm() > 0.1;
     std::cout << "  " << moved << " of " << placed.size() << " hay bales and cones moved more than 10 cm\n";
-    std::cout << std::setprecision(1) << "  " << seconds / steps * 1e6 << " us per step with "
-              << world.getObjList().size() << " objects, " << world.getWorldTime() / seconds << "x real time\n";
+    std::cout << std::setprecision(1) << "  " << seconds / steps * 1e6 << " us per step with " << world.getObjList().size() << " objects, " << world.getWorldTime() / seconds << "x real time\n";
     check(!upset && travelled > 0.95 * info.length && maxError < 1e-3);
   }
   std::cout << "\n" << (failures ? "FAILED " + std::to_string(failures) + " check(s)" : std::string("all checks passed")) << "\n";

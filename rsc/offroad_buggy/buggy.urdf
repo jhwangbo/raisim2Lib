@@ -9,11 +9,41 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/chassis.gltf"/></geometry>
+      <geometry><mesh filename="meshes/chassis.gltf" scale="1 1 1"/></geometry>
+    </visual>
+    <visual>
+      <origin xyz="-1.3571 0.6345 0" rpy="0 1.5708 1.5708"/>
+      <geometry><mesh filename="meshes/drive_shaft.gltf" scale="1 1 0.569"/></geometry>
+      <material name="rl_shaft"><color rgba="0.55 0.56 0.58 1"/></material>
+    </visual>
+    <visual>
+      <origin xyz="-1.3571 0.345 0" rpy="0 1.5708 1.5708"/>
+      <geometry><capsule radius="0.042" length="0.06"/></geometry>
+      <material name="rl_inner_boot"><color rgba="0.02 0.02 0.02 1"/></material>
+    </visual>
+    <visual>
+      <origin xyz="-1.3571 0.924 0" rpy="0 1.5708 1.5708"/>
+      <geometry><capsule radius="0.042" length="0.06"/></geometry>
+      <material name="rl_outer_boot"><color rgba="0.02 0.02 0.02 1"/></material>
+    </visual>
+    <visual>
+      <origin xyz="-1.3571 -0.6345 0" rpy="0 1.5708 -1.5708"/>
+      <geometry><mesh filename="meshes/drive_shaft.gltf" scale="1 1 0.569"/></geometry>
+      <material name="rr_shaft"><color rgba="0.55 0.56 0.58 1"/></material>
+    </visual>
+    <visual>
+      <origin xyz="-1.3571 -0.345 0" rpy="0 1.5708 -1.5708"/>
+      <geometry><capsule radius="0.042" length="0.06"/></geometry>
+      <material name="rr_inner_boot"><color rgba="0.02 0.02 0.02 1"/></material>
+    </visual>
+    <visual>
+      <origin xyz="-1.3571 -0.924 0" rpy="0 1.5708 -1.5708"/>
+      <geometry><capsule radius="0.042" length="0.06"/></geometry>
+      <material name="rr_outer_boot"><color rgba="0.02 0.02 0.02 1"/></material>
     </visual>
     <visual>
       <origin xyz="1.2271 0 -0.02" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/steering_rack_housing.gltf"/></geometry>
+      <geometry><mesh filename="meshes/steering_rack_housing.gltf" scale="1 1 1"/></geometry>
     </visual>
     <collision>
       <origin xyz="-0.12 0 0.06" rpy="0 0 0"/>
@@ -44,7 +74,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/steering_wheel.gltf"/></geometry>
+      <geometry><mesh filename="meshes/steering_wheel.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="steering_rack">
@@ -55,7 +85,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/steering_rack.gltf"/></geometry>
+      <geometry><mesh filename="meshes/steering_rack.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="fl_lower_arm">
@@ -66,7 +96,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fl_lower_arm.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fl_lower_arm.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="fl_upright">
@@ -77,11 +107,11 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fl_upright.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fl_upright.gltf" scale="1 1 1"/></geometry>
     </visual>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fl_fender.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fl_fender.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="fl_tyre_radial">
@@ -106,11 +136,11 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fl_wheel.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fl_wheel.gltf" scale="1 1 1"/></geometry>
     </visual>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fl_disc.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fl_disc.gltf" scale="1 1 1"/></geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
@@ -126,7 +156,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fl_upper_arm.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fl_upper_arm.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="fl_tie_rod">
@@ -137,7 +167,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fl_tie_rod.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fl_tie_rod.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="fl_shock_body">
@@ -148,7 +178,12 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/coilover_body.gltf"/></geometry>
+      <geometry><mesh filename="meshes/coilover_body.gltf" scale="1 1 1"/></geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="meshes/coil_spring.gltf" scale="1 1 1"/></geometry>
+      <material name="fl_coil"><color rgba="0.1 0.8 0.3 1"/></material>
     </visual>
   </link>
   <link name="fl_shock_rod">
@@ -159,7 +194,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/coilover_rod.gltf"/></geometry>
+      <geometry><mesh filename="meshes/coilover_rod.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="fr_lower_arm">
@@ -170,7 +205,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fr_lower_arm.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fr_lower_arm.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="fr_upright">
@@ -181,11 +216,11 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fr_upright.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fr_upright.gltf" scale="1 1 1"/></geometry>
     </visual>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fr_fender.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fr_fender.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="fr_tyre_radial">
@@ -210,11 +245,11 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fr_wheel.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fr_wheel.gltf" scale="1 1 1"/></geometry>
     </visual>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fr_disc.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fr_disc.gltf" scale="1 1 1"/></geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
@@ -230,7 +265,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fr_upper_arm.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fr_upper_arm.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="fr_tie_rod">
@@ -241,7 +276,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/fr_tie_rod.gltf"/></geometry>
+      <geometry><mesh filename="meshes/fr_tie_rod.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="fr_shock_body">
@@ -252,7 +287,12 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/coilover_body.gltf"/></geometry>
+      <geometry><mesh filename="meshes/coilover_body.gltf" scale="1 1 1"/></geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="meshes/coil_spring.gltf" scale="1 1 1"/></geometry>
+      <material name="fr_coil"><color rgba="0.1 0.8 0.3 1"/></material>
     </visual>
   </link>
   <link name="fr_shock_rod">
@@ -263,7 +303,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/coilover_rod.gltf"/></geometry>
+      <geometry><mesh filename="meshes/coilover_rod.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="rl_lower_arm">
@@ -274,7 +314,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/rl_lower_arm.gltf"/></geometry>
+      <geometry><mesh filename="meshes/rl_lower_arm.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="rl_upright">
@@ -285,7 +325,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/rl_upright.gltf"/></geometry>
+      <geometry><mesh filename="meshes/rl_upright.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="rl_tyre_radial">
@@ -310,11 +350,11 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/rl_wheel.gltf"/></geometry>
+      <geometry><mesh filename="meshes/rl_wheel.gltf" scale="1 1 1"/></geometry>
     </visual>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/rl_disc.gltf"/></geometry>
+      <geometry><mesh filename="meshes/rl_disc.gltf" scale="1 1 1"/></geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
@@ -330,7 +370,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/rl_upper_arm.gltf"/></geometry>
+      <geometry><mesh filename="meshes/rl_upper_arm.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="rl_tie_rod">
@@ -341,7 +381,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/rl_tie_rod.gltf"/></geometry>
+      <geometry><mesh filename="meshes/rl_tie_rod.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="rl_shock_body">
@@ -352,7 +392,12 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/coilover_body.gltf"/></geometry>
+      <geometry><mesh filename="meshes/coilover_body.gltf" scale="1 1 1"/></geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="meshes/coil_spring.gltf" scale="1 1 1"/></geometry>
+      <material name="rl_coil"><color rgba="0.1 0.8 0.3 1"/></material>
     </visual>
   </link>
   <link name="rl_shock_rod">
@@ -363,7 +408,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/coilover_rod.gltf"/></geometry>
+      <geometry><mesh filename="meshes/coilover_rod.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="rr_lower_arm">
@@ -374,7 +419,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/rr_lower_arm.gltf"/></geometry>
+      <geometry><mesh filename="meshes/rr_lower_arm.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="rr_upright">
@@ -385,7 +430,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/rr_upright.gltf"/></geometry>
+      <geometry><mesh filename="meshes/rr_upright.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="rr_tyre_radial">
@@ -410,11 +455,11 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/rr_wheel.gltf"/></geometry>
+      <geometry><mesh filename="meshes/rr_wheel.gltf" scale="1 1 1"/></geometry>
     </visual>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/rr_disc.gltf"/></geometry>
+      <geometry><mesh filename="meshes/rr_disc.gltf" scale="1 1 1"/></geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
@@ -430,7 +475,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/rr_upper_arm.gltf"/></geometry>
+      <geometry><mesh filename="meshes/rr_upper_arm.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="rr_tie_rod">
@@ -441,7 +486,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/rr_tie_rod.gltf"/></geometry>
+      <geometry><mesh filename="meshes/rr_tie_rod.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <link name="rr_shock_body">
@@ -452,7 +497,12 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/coilover_body.gltf"/></geometry>
+      <geometry><mesh filename="meshes/coilover_body.gltf" scale="1 1 1"/></geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="meshes/coil_spring.gltf" scale="1 1 1"/></geometry>
+      <material name="rr_coil"><color rgba="0.1 0.8 0.3 1"/></material>
     </visual>
   </link>
   <link name="rr_shock_rod">
@@ -463,7 +513,7 @@
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry><mesh filename="meshes/coilover_rod.gltf"/></geometry>
+      <geometry><mesh filename="meshes/coilover_rod.gltf" scale="1 1 1"/></geometry>
     </visual>
   </link>
   <joint name="steering_wheel" type="revolute">

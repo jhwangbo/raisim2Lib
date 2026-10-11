@@ -35,9 +35,7 @@ struct TrackFeature {
 /// An axis-aligned rectangle of the ground [m].
 struct Area {
   double x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-  bool contains(double x, double y, double margin = 0) const {
-    return x > x0 - margin && x < x1 + margin && y > y0 - margin && y < y1 + margin;
-  }
+  bool contains(double x, double y, double margin = 0) const { return x > x0 - margin && x < x1 + margin && y > y0 - margin && y < y1 + margin; }
 };
 
 struct TerrainInfo {
@@ -46,7 +44,7 @@ struct TerrainInfo {
   Eigen::Vector3d start = Eigen::Vector3d::Zero();  // x, y, heading
   double startLine = 0;                             // station of the start/finish line
   double straightStart = 0, straightEnd = 0, straightHeight = 0;
-  Area pit, spectators;                             // level pads beside the straight
+  Area pit, spectators;  // level pads beside the straight
   std::vector<TrackFeature> features;
   std::vector<Eigen::Vector3d> centre;  // every 2 m: x, y, track height
   std::vector<double> curvature;        // signed (positive to the left) [1/m], at the centre points
@@ -62,15 +60,24 @@ inline TerrainInfo readTerrainInfo(const std::filesystem::path& file) {
     if (line.empty() || line[0] == '#') continue;
     std::istringstream s(line);
     s >> key;
-    if (key == "extent") s >> info.extent;
-    else if (key == "samples") s >> info.samples;
-    else if (key == "height") s >> info.heightMin >> info.heightMax;
-    else if (key == "track") s >> info.halfWidth >> info.length;
-    else if (key == "start") s >> info.start.x() >> info.start.y() >> info.start.z();
-    else if (key == "start_line") s >> info.startLine;
-    else if (key == "straight") s >> info.straightStart >> info.straightEnd >> info.straightHeight;
-    else if (key == "pit") s >> info.pit.x0 >> info.pit.y0 >> info.pit.x1 >> info.pit.y1;
-    else if (key == "spectators") s >> info.spectators.x0 >> info.spectators.y0 >> info.spectators.x1 >> info.spectators.y1;
+    if (key == "extent")
+      s >> info.extent;
+    else if (key == "samples")
+      s >> info.samples;
+    else if (key == "height")
+      s >> info.heightMin >> info.heightMax;
+    else if (key == "track")
+      s >> info.halfWidth >> info.length;
+    else if (key == "start")
+      s >> info.start.x() >> info.start.y() >> info.start.z();
+    else if (key == "start_line")
+      s >> info.startLine;
+    else if (key == "straight")
+      s >> info.straightStart >> info.straightEnd >> info.straightHeight;
+    else if (key == "pit")
+      s >> info.pit.x0 >> info.pit.y0 >> info.pit.x1 >> info.pit.y1;
+    else if (key == "spectators")
+      s >> info.spectators.x0 >> info.spectators.y0 >> info.spectators.x1 >> info.spectators.y1;
     else if (key == "feature") {
       TrackFeature f;
       s >> f.start >> f.length;
@@ -153,28 +160,22 @@ inline raisim::HeightMap* addTerrain(raisim::World& world, const TerrainInfo& in
 
 /// Meadow tint per height-map sample (linear RGB around 1): patches of lush and dry grass that
 /// break up the texture tiling, and darker soil in the hollows.
-inline std::vector<Eigen::Vector3f> terrainColours(const raisim::HeightMap& terrain, const TerrainInfo& info,
-                                                   const Surface& surface) {
+inline std::vector<Eigen::Vector3f> terrainColours(const raisim::HeightMap& terrain, const TerrainInfo& info, const Surface& surface) {
   const int n = info.samples;
   std::vector<Eigen::Vector3f> colours(size_t(n) * n);
-  auto wave = [](double x, double y, double k, double phase) {
-    return std::sin(x * k + phase) * std::cos(y * k * 0.83 - phase * 1.7);
-  };
+  auto wave = [](double x, double y, double k, double phase) { return std::sin(x * k + phase) * std::cos(y * k * 0.83 - phase * 1.7); };
   for (int j = 0; j < n; ++j)
     for (int i = 0; i < n; ++i) {
       const double x = -info.extent / 2 + info.extent * i / (n - 1);
       const double y = -info.extent / 2 + info.extent * j / (n - 1);
-      const double patch = 0.5 * wave(x, y, 0.045, 0.3) + 0.3 * wave(x + 13, y - 7, 0.11, 1.9) +
-                           0.2 * wave(x - 5, y + 21, 0.27, 4.1);
-      const double hollow = std::clamp((terrain.getHeight(x + 2, y) + terrain.getHeight(x - 2, y) +
-                                        terrain.getHeight(x, y + 2) + terrain.getHeight(x, y - 2)) / 4 -
-                                       terrain.getHeight(x, y), -0.3, 0.3);
+      const double patch = 0.5 * wave(x, y, 0.045, 0.3) + 0.3 * wave(x + 13, y - 7, 0.11, 1.9) + 0.2 * wave(x - 5, y + 21, 0.27, 4.1);
+      const double hollow =
+          std::clamp((terrain.getHeight(x + 2, y) + terrain.getHeight(x - 2, y) + terrain.getHeight(x, y + 2) + terrain.getHeight(x, y - 2)) / 4 - terrain.getHeight(x, y), -0.3, 0.3);
       const double d = surface.bare.at(x, y);
       // Lush patches are greener and darker, dry ones yellower and brighter.
       const double dry = std::clamp(0.5 + 0.6 * patch, 0.0, 1.0) * (1 - d);
       const double shade = 1.0 - 0.8 * std::max(0.0, hollow);
-      colours[size_t(j) * n + i] = Eigen::Vector3f(float((0.72 + 0.34 * dry) * shade), float((0.86 + 0.14 * dry) * shade),
-                                                   float((0.66 + 0.10 * dry) * shade));
+      colours[size_t(j) * n + i] = Eigen::Vector3f(float((0.72 + 0.34 * dry) * shade), float((0.86 + 0.14 * dry) * shade), float((0.66 + 0.10 * dry) * shade));
     }
   return colours;
 }
@@ -267,9 +268,7 @@ class TrackLocator {
   }
 
  private:
-  long long key(double x, double y) const {
-    return (long long)(std::floor(x / 8.0)) * 1000003LL + (long long)std::floor(y / 8.0);
-  }
+  long long key(double x, double y) const { return (long long)(std::floor(x / 8.0)) * 1000003LL + (long long)std::floor(y / 8.0); }
   const TerrainInfo& info_;
   std::unordered_map<long long, std::vector<size_t>> bins_;
 };
@@ -287,8 +286,7 @@ struct Scenery {
 
 // Asset folders in rsc/forest and rsc/offroad_buggy/props.
 inline const std::array<const char*, 3> kTreeNames = {"pine_sapling_small", "fir_sapling", "tree_small_02"};
-inline const std::array<const char*, 5> kGrassNames = {"grass_medium_01", "grass_medium_02", "dandelion_01",
-                                                       "periwinkle_plant", "fern_02"};
+inline const std::array<const char*, 5> kGrassNames = {"grass_medium_01", "grass_medium_02", "dandelion_01", "periwinkle_plant", "fern_02"};
 constexpr int kMossRocks = 6;
 /// Rock types: the six mossy rocks of rsc/forest (normalised to a horizontal radius of 1 m), then the
 /// sun-baked boulders of the venue.
@@ -300,36 +298,27 @@ constexpr std::array<double, kRockTypes> kRockRadius = {1, 1, 1, 1, 1, 1, 0.95, 
 inline const std::array<const char*, 2> kStoneNames = {"rock_07", "rock_09"};
 
 inline std::filesystem::path rockFolder(const std::filesystem::path& rsc, int type) {
-  return type < kMossRocks ? rsc / "forest" / ("rock_moss_" + std::to_string(type))
-                           : rsc / "offroad_buggy" / "props" / kBoulderNames[type - kMossRocks];
+  return type < kMossRocks ? rsc / "forest" / ("rock_moss_" + std::to_string(type)) : rsc / "offroad_buggy" / "props" / kBoulderNames[type - kMossRocks];
 }
 
 /// Place trees, boulders, fallen trunks, the rock garden, verge stones and grass around the circuit,
 /// away from the venue already in occupied, and add the static colliders of the trees, boulders,
 /// trunks and rock-garden stones. Deterministic for a fixed seed.
-inline Scenery placeScenery(raisim::World& world, const raisim::HeightMap& terrain, const TerrainInfo& info,
-                            const Surface& surface, const std::filesystem::path& rsc, double grassDensity,
+inline Scenery placeScenery(raisim::World& world, const raisim::HeightMap& terrain, const TerrainInfo& info, const Surface& surface, const std::filesystem::path& rsc, double grassDensity,
                             PlacementGrid& occupied) {
   std::mt19937 rng(7);
   auto unit = [&] { return double(rng()) / 4294967296.0; };
   const TrackLocator track(info);
   const double half = info.extent / 2 - 3;
-  auto slope = [&](double x, double y) {
-    return std::hypot(terrain.getHeight(x + 0.5, y) - terrain.getHeight(x - 0.5, y),
-                      terrain.getHeight(x, y + 0.5) - terrain.getHeight(x, y - 0.5));
-  };
-  auto onPad = [&](double x, double y, double margin) {
-    return info.pit.contains(x, y, margin) || info.spectators.contains(x, y, margin);
-  };
+  auto slope = [&](double x, double y) { return std::hypot(terrain.getHeight(x + 0.5, y) - terrain.getHeight(x - 0.5, y), terrain.getHeight(x, y + 0.5) - terrain.getHeight(x, y - 0.5)); };
+  auto onPad = [&](double x, double y, double margin) { return info.pit.contains(x, y, margin) || info.spectators.contains(x, y, margin); };
   Scenery scenery;
   const auto forest = rsc / "forest", props = rsc / "offroad_buggy" / "props";
 
   // Trees: groves in the hills (clustered by a smooth density field) and loners in the meadow.
   std::array<raisim::Rasset, 3> treeAssets;
   for (int t = 0; t < 3; ++t) treeAssets[t] = raisim::Rasset::load(forest / kTreeNames[t] / "model.rasset");
-  auto grove = [](double x, double y) {
-    return 0.5 + 0.5 * std::sin(x * 0.035 + 1.3) * std::cos(y * 0.041 - 0.4) + 0.25 * std::sin(x * 0.09 - y * 0.07);
-  };
+  auto grove = [](double x, double y) { return 0.5 + 0.5 * std::sin(x * 0.035 + 1.3) * std::cos(y * 0.041 - 0.4) + 0.25 * std::sin(x * 0.09 - y * 0.07); };
   for (int attempts = 0; scenery.trees.size() < 480 && attempts < 60000; ++attempts) {
     const double x = (unit() * 2 - 1) * half, y = (unit() * 2 - 1) * half;
     if (track.locate(x, y)[0] < info.halfWidth + 7.0 || onPad(x, y, 6.0)) continue;
@@ -343,8 +332,7 @@ inline Scenery placeScenery(raisim::World& world, const raisim::HeightMap& terra
     occupied.add(x, y, type == 2 ? 1.6 : 1.1);
     scenery.trees.push_back({x, y, terrain.getHeight(x, y) - 0.05, unit() * 2 * M_PI, scale, type});
   }
-  for (const auto& p : scenery.trees)
-    scenery.colliders += treeAssets[p.type].addStaticColliders(world, {p.x, p.y, p.z}, p.yaw, p.scale, "", "wood").size();
+  for (const auto& p : scenery.trees) scenery.colliders += treeAssets[p.type].addStaticColliders(world, {p.x, p.y, p.z}, p.yaw, p.scale, "", "wood").size();
 
   // Boulders: mossy ones in the meadow, sun-baked ones mostly near the track.
   rng.seed(23);
@@ -363,8 +351,7 @@ inline Scenery placeScenery(raisim::World& world, const raisim::HeightMap& terra
     const double distance = track.locate(x, y)[0];
     if (onPad(x, y, 3.0)) continue;
     const double r = unit();
-    const int type = distance < 30 ? (r < 0.55 ? kMossRocks : r < 0.8 ? kMossRocks + 1 : int(rng() % kMossRocks))
-                                   : (r < 0.8 ? int(rng() % kMossRocks) : kMossRocks + int(rng() % 2));
+    const int type = distance < 30 ? (r < 0.55 ? kMossRocks : r < 0.8 ? kMossRocks + 1 : int(rng() % kMossRocks)) : (r < 0.8 ? int(rng() % kMossRocks) : kMossRocks + int(rng() % 2));
     const double scale = type < kMossRocks ? 0.3 + 1.5 * unit() * unit() : 0.55 + 0.75 * unit();
     const double radius = kRockRadius[type] * scale;
     if (distance < info.halfWidth + 3.0 + radius) continue;
@@ -372,8 +359,7 @@ inline Scenery placeScenery(raisim::World& world, const raisim::HeightMap& terra
     occupied.add(x, y, radius);
     scenery.rocks.push_back({x, y, lowest(x, y, 0.6 * radius) - 0.12 * radius, unit() * 2 * M_PI, scale, type});
   }
-  for (const auto& p : scenery.rocks)
-    scenery.colliders += rockAssets[p.type].addStaticColliders(world, {p.x, p.y, p.z}, p.yaw, p.scale, "", "rock").size();
+  for (const auto& p : scenery.rocks) scenery.colliders += rockAssets[p.type].addStaticColliders(world, {p.x, p.y, p.z}, p.yaw, p.scale, "", "rock").size();
 
   // Fallen trunks at the edges of the groves.
   const auto logAsset = raisim::Rasset::load(props / "dead_tree_trunk_02" / "model.rasset");
@@ -385,8 +371,7 @@ inline Scenery placeScenery(raisim::World& world, const raisim::HeightMap& terra
     const double scale = 0.8 + 0.4 * unit();
     scenery.logs.push_back({x, y, lowest(x, y, 1.6 * scale) - 0.08, unit() * 2 * M_PI, scale, 0});
   }
-  for (const auto& p : scenery.logs)
-    scenery.colliders += logAsset.addStaticColliders(world, {p.x, p.y, p.z}, p.yaw, p.scale, "", "wood").size();
+  for (const auto& p : scenery.logs) scenery.colliders += logAsset.addStaticColliders(world, {p.x, p.y, p.z}, p.yaw, p.scale, "", "wood").size();
 
   // Rock garden: stones 12 to 20 cm high scattered over the track, which the car drives over at
   // walking pace. Its own random sequence keeps it fixed when the other scenery changes.
@@ -400,11 +385,9 @@ inline Scenery placeScenery(raisim::World& world, const raisim::HeightMap& terra
         const double scale = 0.85 + 0.55 * unit();
         if (!occupied.clear(p.x(), p.y(), 0.2 * scale + 0.25)) continue;
         occupied.add(p.x(), p.y(), 0.2 * scale);
-        scenery.stones.push_back({p.x(), p.y(), lowest(p.x(), p.y(), 0.1 * scale) - 0.035 * scale, unit() * 2 * M_PI,
-                                  scale, 0});
+        scenery.stones.push_back({p.x(), p.y(), lowest(p.x(), p.y(), 0.1 * scale) - 0.035 * scale, unit() * 2 * M_PI, scale, 0});
       }
-  for (const auto& p : scenery.stones)
-    scenery.colliders += stoneAsset.addStaticColliders(world, {p.x, p.y, p.z}, p.yaw, p.scale, "", "rock").size();
+  for (const auto& p : scenery.stones) scenery.colliders += stoneAsset.addStaticColliders(world, {p.x, p.y, p.z}, p.yaw, p.scale, "", "rock").size();
   // Loose stones on the verges and berms, too small to matter to the car (visual only).
   rng.seed(29);
   for (int i = 0; i < 360; ++i) {

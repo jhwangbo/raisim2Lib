@@ -1,13 +1,12 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
+#include "example_resources.hpp"
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
-#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-
   /// create raisim world
   double dt = 0.003;
 
@@ -22,8 +21,7 @@ int main(int argc, char* argv[]) {
 
   /// ANYmal joint PD controller
   Eigen::VectorXd jointNominalConfig(19), jointVelocityTarget(18);
-  Eigen::VectorXd jointState(18), jointForce(18), jointPgain(18),
-      jointDgain(18);
+  Eigen::VectorXd jointState(18), jointForce(18), jointPgain(18), jointDgain(18);
   jointPgain.setZero();
   jointDgain.setZero();
   jointVelocityTarget.setZero();
@@ -34,15 +32,10 @@ int main(int argc, char* argv[]) {
 
   for (size_t i = 0; i < N; i++) {
     for (size_t j = 0; j < N; j++) {
-      anymals.push_back(world.addArticulatedSystem(
-          exampleRscPath(argv[0], "anymal/urdf/anymal.urdf")));
-      anymals.back()->setGeneralizedCoordinate(
-          {double(2 * i), double(j), 0.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8,
-           -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8});
-      anymals.back()->setGeneralizedForce(
-          Eigen::VectorXd::Zero(anymals.back()->getDOF()));
-      anymals.back()->setControlMode(
-          raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
+      anymals.push_back(world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf")));
+      anymals.back()->setGeneralizedCoordinate({double(2 * i), double(j), 0.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8});
+      anymals.back()->setGeneralizedForce(Eigen::VectorXd::Zero(anymals.back()->getDOF()));
+      anymals.back()->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
       anymals.back()->setPdGains(jointPgain, jointDgain);
       anymals.back()->setName("anymal" + std::to_string(j + i * N));
     }
@@ -63,7 +56,7 @@ int main(int argc, char* argv[]) {
   int j = 0;
 
   for (int i = 0;; i++) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
     // integrateWorldThreadSafe(callback) runs the callback inside the world mutex,
     // after interaction / sim-control requests are applied, before world.integrate().
     // The viewer can pause/step/apply-force this loop without the user code changing.

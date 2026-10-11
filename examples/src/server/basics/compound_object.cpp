@@ -18,11 +18,11 @@ int main(int argc, char* argv[]) {
   std::normal_distribution<double> distribution(0.0, 0.6);
   std::srand(std::time(nullptr));
 
-  for(int i=0; i<20; i++) {
+  for (int i = 0; i < 20; i++) {
     raisim::Compound::CompoundObjectChild child;
     child.objectType = raisim::ObjectType::CAPSULE;
-    child.objectParam[0] = 0.1; // radius
-    child.objectParam[1] = 0.1; // height (center-to-center distance)
+    child.objectParam[0] = 0.1;  // radius
+    child.objectParam[1] = 0.1;  // height (center-to-center distance)
     child.trans.pos[0] = distribution(generator);
     child.trans.pos[1] = distribution(generator);
     child.trans.pos[2] = distribution(generator);
@@ -36,8 +36,9 @@ int main(int argc, char* argv[]) {
     children.push_back(child);
   }
 
-  raisim::Mat<3,3> inertia; inertia.setIdentity();
-  auto compound = world.addCompound(children, 5, {0,0,0}, inertia);
+  raisim::Mat<3, 3> inertia;
+  inertia.setIdentity();
+  auto compound = world.addCompound(children, 5, {0, 0, 0}, inertia);
   compound->setPosition(0, 0, 3);
   compound->setAppearance("1,0,0,0.3");
 
@@ -46,10 +47,9 @@ int main(int argc, char* argv[]) {
   server.launchServer();
   server.focusOn(compound);
 
-
   raisim_examples::warnIfNoClientConnected(server);
   while (1) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
     server.integrateWorldThreadSafe();
   }
 

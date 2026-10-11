@@ -1,20 +1,19 @@
 // This file is part of RaiSim. You must obtain a valid license from RaiSim Tech
 // Inc. prior to usage.
 
+#include "example_resources.hpp"
 #include "raisim/RaisimServer.hpp"
 #include "rayrai_tcp_viewer_hint.hpp"
-#include "example_resources.hpp"
 
 int main(int argc, char* argv[]) {
-
   /// create raisim world
   raisim::World world;
   world.setTimeStep(0.001);
 
   /// create objects
   auto movingGround = world.addBox(10, 10, 1, 10, "gnd");
-  movingGround->setBodyType(raisim::BodyType::KINEMATIC); // kinematic objects have infinite mass
-  movingGround->setPosition(0,0,-0.5);
+  movingGround->setBodyType(raisim::BodyType::KINEMATIC);  // kinematic objects have infinite mass
+  movingGround->setPosition(0, 0, -0.5);
   movingGround->setAppearance("red");
   auto anymalB = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
 
@@ -43,13 +42,12 @@ int main(int argc, char* argv[]) {
   server.launchServer();
   server.focusOn(anymalB);
 
-
   raisim_examples::warnIfNoClientConnected(server);
-  for (int i=0; i<20000; i++) {
-    RS_TIMED_LOOP(int(world.getTimeStep()*1e6))
-    movingGround->setLinearVelocity({0, 0, 3. * sin(double(i)/3000. * M_PI)});
+  for (int i = 0; i < 20000; i++) {
+    RS_TIMED_LOOP(int(world.getTimeStep() * 1e6))
+    movingGround->setLinearVelocity({0, 0, 3. * sin(double(i) / 3000. * M_PI)});
     server.integrateWorldThreadSafe();
-//    world.integrate();
+    //    world.integrate();
   }
 
   server.killServer();

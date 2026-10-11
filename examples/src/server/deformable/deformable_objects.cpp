@@ -3,11 +3,6 @@
 // Copyright 2020, RaiSim Tech//
 //----------------------------//
 
-#include "rayrai_tcp_viewer_hint.hpp"
-
-#include <raisim/RaisimServer.hpp>
-#include <raisim/World.hpp>
-
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -21,7 +16,12 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+#include <raisim/RaisimServer.hpp>
+#include <raisim/World.hpp>
+
 #include "example_resources.hpp"
+#include "rayrai_tcp_viewer_hint.hpp"
 
 namespace {
 
@@ -37,9 +37,7 @@ RotationMatrix eulerRotation(double roll, double pitch, double yaw) {
   const double cy = std::cos(yaw);
   const double sy = std::sin(yaw);
 
-  return {{{cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr},
-           {sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr},
-           {-sp, cp * sr, cp * cr}}};
+  return {{{cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr}, {sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr}, {-sp, cp * sr, cp * cr}}};
 }
 
 RotationMatrix randomCubeRotation(std::mt19937& rng) {
@@ -48,23 +46,14 @@ RotationMatrix randomCubeRotation(std::mt19937& rng) {
   return eulerRotation(fullTurn(rng), fullTurn(rng), fullTurn(rng));
 }
 
-std::array<double, 3> rotatePoint(const RotationMatrix& rotation,
-                                  const std::array<double, 3>& point) {
-  return {rotation.r[0][0] * point[0] + rotation.r[0][1] * point[1] + rotation.r[0][2] * point[2],
-          rotation.r[1][0] * point[0] + rotation.r[1][1] * point[1] + rotation.r[1][2] * point[2],
+std::array<double, 3> rotatePoint(const RotationMatrix& rotation, const std::array<double, 3>& point) {
+  return {rotation.r[0][0] * point[0] + rotation.r[0][1] * point[1] + rotation.r[0][2] * point[2], rotation.r[1][0] * point[0] + rotation.r[1][1] * point[1] + rotation.r[1][2] * point[2],
           rotation.r[2][0] * point[0] + rotation.r[2][1] * point[1] + rotation.r[2][2] * point[2]};
 }
 
 double rotatedCubeVerticalHalfExtent(double size, const RotationMatrix& rotation) {
   const double h = 0.5 * size;
-  const std::array<std::array<double, 3>, 8> vertices = {{{-h, -h, -h},
-                                                          {h, -h, -h},
-                                                          {h, h, -h},
-                                                          {-h, h, -h},
-                                                          {-h, -h, h},
-                                                          {h, -h, h},
-                                                          {h, h, h},
-                                                          {-h, h, h}}};
+  const std::array<std::array<double, 3>, 8> vertices = {{{-h, -h, -h}, {h, -h, -h}, {h, h, -h}, {-h, h, -h}, {-h, -h, h}, {h, -h, h}, {h, h, h}, {-h, h, h}}};
 
   double maxAbsZ = 0.0;
   for (const auto& vertex : vertices) {
@@ -74,11 +63,7 @@ double rotatedCubeVerticalHalfExtent(double size, const RotationMatrix& rotation
   return maxAbsZ;
 }
 
-void makeClothGrid(int n,
-                   double width,
-                   double z,
-                   std::vector<raisim::Vec<3>>& vertices,
-                   std::vector<raisim::DeformableObject::Triangle>& triangles) {
+void makeClothGrid(int n, double width, double z, std::vector<raisim::Vec<3>>& vertices, std::vector<raisim::DeformableObject::Triangle>& triangles) {
   vertices.clear();
   triangles.clear();
   const double step = width / static_cast<double>(n - 1);
@@ -86,15 +71,11 @@ void makeClothGrid(int n,
 
   for (int y = 0; y < n; ++y) {
     for (int x = 0; x < n; ++x) {
-      vertices.push_back({-half + step * static_cast<double>(x),
-                          -half + step * static_cast<double>(y),
-                          z});
+      vertices.push_back({-half + step * static_cast<double>(x), -half + step * static_cast<double>(y), z});
     }
   }
 
-  auto idx = [n](int x, int y) {
-    return static_cast<unsigned int>(y * n + x);
-  };
+  auto idx = [n](int x, int y) { return static_cast<unsigned int>(y * n + x); };
 
   for (int y = 0; y + 1 < n; ++y) {
     for (int x = 0; x + 1 < n; ++x) {
@@ -108,23 +89,14 @@ void makeClothGrid(int n,
   }
 }
 
-bool writeClosedCubeObj(const std::string& path,
-                        double size,
-                        const RotationMatrix& rotation) {
+bool writeClosedCubeObj(const std::string& path, double size, const RotationMatrix& rotation) {
   const double h = 0.5 * size;
   std::ofstream out(path);
   if (!out) {
     return false;
   }
 
-  const std::array<std::array<double, 3>, 8> vertices = {{{-h, -h, -h},
-                                                          {h, -h, -h},
-                                                          {h, h, -h},
-                                                          {-h, h, -h},
-                                                          {-h, -h, h},
-                                                          {h, -h, h},
-                                                          {h, h, h},
-                                                          {-h, h, h}}};
+  const std::array<std::array<double, 3>, 8> vertices = {{{-h, -h, -h}, {h, -h, -h}, {h, h, -h}, {-h, h, -h}, {-h, -h, h}, {h, -h, h}, {h, h, h}, {-h, h, h}}};
 
   for (const auto& vertex : vertices) {
     const auto rotated = rotatePoint(rotation, vertex);
@@ -146,7 +118,6 @@ bool writeClosedCubeObj(const std::string& path,
   return true;
 }
 
-
 struct CubeStackPose {
   double x = 0.0;
   double y = 0.0;
@@ -166,12 +137,10 @@ double cubeVerticalHalfExtent(double size, double roll, double pitch) {
   return half * (std::abs(sp) + std::abs(cp * sr) + std::abs(cp * cr));
 }
 
-double cubeStackSurfaceSpacing(double size, int resolution) {
-  return size / static_cast<double>(std::max(2, resolution) - 1);
-}
+double cubeStackSurfaceSpacing(double size, int resolution) { return size / static_cast<double>(std::max(2, resolution) - 1); }
 
 double cubeStackCollisionRadius(double size, int resolution) {
-  (void) resolution;
+  (void)resolution;
   return std::max(0.004, 0.04 * size);
 }
 
@@ -181,13 +150,10 @@ int cubeStackCollisionSafeResolution(double size, double collisionRadius) {
 }
 
 int cubeStackEffectiveResolution(int requestedResolution, double size, double collisionRadius) {
-  return std::max(std::max(2, requestedResolution),
-                  cubeStackCollisionSafeResolution(size, collisionRadius));
+  return std::max(std::max(2, requestedResolution), cubeStackCollisionSafeResolution(size, collisionRadius));
 }
 
-double cubeStackClearance(double collisionRadius) {
-  return 2.0 * collisionRadius + 0.02;
-}
+double cubeStackClearance(double collisionRadius) { return 2.0 * collisionRadius + 0.02; }
 
 raisim::Vec<3> rotateXyz(const raisim::Vec<3>& p, double roll, double pitch, double yaw) {
   const double cr = std::cos(roll);
@@ -206,35 +172,24 @@ raisim::Vec<3> rotateXyz(const raisim::Vec<3>& p, double roll, double pitch, dou
   return {cy * x2 - sy * y2, sy * x2 + cy * y2, z2};
 }
 
-void makeCubeSurface(int resolution,
-                     double size,
-                     const raisim::Vec<3>& center,
-                     double roll,
-                     double pitch,
-                     double yaw,
-                     std::vector<raisim::Vec<3>>& vertices,
+void makeCubeSurface(int resolution, double size, const raisim::Vec<3>& center, double roll, double pitch, double yaw, std::vector<raisim::Vec<3>>& vertices,
                      std::vector<raisim::DeformableObject::Triangle>& triangles) {
   vertices.clear();
   triangles.clear();
   const int n = std::max(2, resolution);
   std::vector<int> ids(static_cast<size_t>(n * n * n), -1);
-  auto gridId = [n](int i, int j, int k) {
-    return static_cast<size_t>((k * n + j) * n + i);
-  };
+  auto gridId = [n](int i, int j, int k) { return static_cast<size_t>((k * n + j) * n + i); };
 
   const double step = size / static_cast<double>(n - 1);
   const double half = 0.5 * size;
   for (int k = 0; k < n; ++k) {
     for (int j = 0; j < n; ++j) {
       for (int i = 0; i < n; ++i) {
-        const bool boundary =
-            (i == 0 || i == n - 1 || j == 0 || j == n - 1 || k == 0 || k == n - 1);
+        const bool boundary = (i == 0 || i == n - 1 || j == 0 || j == n - 1 || k == 0 || k == n - 1);
         if (!boundary) {
           continue;
         }
-        raisim::Vec<3> p{-half + step * static_cast<double>(i),
-                         -half + step * static_cast<double>(j),
-                         -half + step * static_cast<double>(k)};
+        raisim::Vec<3> p{-half + step * static_cast<double>(i), -half + step * static_cast<double>(j), -half + step * static_cast<double>(k)};
         p = rotateXyz(p, roll, pitch, yaw) + center;
         ids[gridId(i, j, k)] = static_cast<int>(vertices.size());
         vertices.push_back(p);
@@ -242,9 +197,7 @@ void makeCubeSurface(int resolution,
     }
   }
 
-  auto idx = [&](int i, int j, int k) {
-    return static_cast<unsigned int>(ids[gridId(i, j, k)]);
-  };
+  auto idx = [&](int i, int j, int k) { return static_cast<unsigned int>(ids[gridId(i, j, k)]); };
   auto addQuad = [&](unsigned int a, unsigned int b, unsigned int c, unsigned int d) {
     triangles.push_back(raisim::DeformableObject::Triangle{a, c, b});
     triangles.push_back(raisim::DeformableObject::Triangle{a, d, c});
@@ -283,9 +236,7 @@ CubeStackPose cubeStackPose(int index, double size, double collisionRadius) {
   return pose;
 }
 
-bool writeObjMesh(const std::string& path,
-                  const std::vector<raisim::Vec<3>>& vertices,
-                  const std::vector<raisim::DeformableObject::Triangle>& triangles) {
+bool writeObjMesh(const std::string& path, const std::vector<raisim::Vec<3>>& vertices, const std::vector<raisim::DeformableObject::Triangle>& triangles) {
   std::ofstream out(path);
   if (!out) {
     return false;
@@ -353,15 +304,12 @@ int main(int argc, char* argv[]) {
   raisim::DeformableObject::MeshBuildOptions cubeBuild;
   cubeBuild.particles.mode = raisim::DeformableObject::MeshParticleOptions::Mode::Surface;
   cubeBuild.particles.spacing = apiParticleSpacing;
-  cubeBuild.internalStruts.mode =
-      raisim::DeformableObject::InternalStrutOptions::Mode::PairsWithinRadius;
+  cubeBuild.internalStruts.mode = raisim::DeformableObject::InternalStrutOptions::Mode::PairsWithinRadius;
   cubeBuild.internalStruts.radius = 2.05 * cubeParticleSpacing;
 
   std::vector<std::string> cubeObjFiles;
   const std::filesystem::path cubeObjPrefix =
-      std::filesystem::temp_directory_path() /
-      ("raisim_deformable_cube_stack_example_" +
-       std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "_");
+      std::filesystem::temp_directory_path() / ("raisim_deformable_cube_stack_example_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "_");
   size_t totalCubeParticles = 0;
   size_t totalCubeTriangles = 0;
   for (int i = 0; i < cubeCount; ++i) {
@@ -369,8 +317,7 @@ int main(int argc, char* argv[]) {
     const std::string cubeObj = (cubeObjPrefix.string() + std::to_string(i) + ".obj");
     std::vector<raisim::Vec<3>> cubeVertices;
     std::vector<raisim::DeformableObject::Triangle> cubeTriangles;
-    makeCubeSurface(cubeResolution, cubeSize, {0.0, 0.0, 0.0}, pose.roll, pose.pitch, pose.yaw,
-                    cubeVertices, cubeTriangles);
+    makeCubeSurface(cubeResolution, cubeSize, {0.0, 0.0, 0.0}, pose.roll, pose.pitch, pose.yaw, cubeVertices, cubeTriangles);
     if (!writeObjMesh(cubeObj, cubeVertices, cubeTriangles)) {
       std::cerr << "Could not write temporary OBJ file: " << cubeObj << std::endl;
       return 1;
@@ -407,20 +354,10 @@ int main(int argc, char* argv[]) {
   rubber->setName("elastic_solid_block");
   rubber->setPositionOffset({-1.55, 0.0, 0.7});
 
-  std::cout << "deformable_objects: cloth_particles=" << cloth->getNumParticles()
-            << " cloth_triangles=" << cloth->getTriangles().size()
-            << " cube_particles=" << totalCubeParticles
-            << " cube_triangles=" << totalCubeTriangles
-            << " cube_count=" << cubeCount
-            << " cube_resolution=" << cubeResolution
-            << " requested_cube_resolution=" << requestedResolution
-            << " cloth_iterations=" << clothMaterial.iterations
-            << " cube_iterations=" << cubeMaterial.iterations
-            << " cube_compliance=" << cubeMaterial.distanceCompliance
-            << " cube_collision_radius=" << cubeMaterial.collisionRadius
-            << " solid_particles=" << rubber->getNumParticles()
-            << " solid_tetrahedra=" << rubber->getTetrahedra().size()
-            << std::endl;
+  std::cout << "deformable_objects: cloth_particles=" << cloth->getNumParticles() << " cloth_triangles=" << cloth->getTriangles().size() << " cube_particles=" << totalCubeParticles
+            << " cube_triangles=" << totalCubeTriangles << " cube_count=" << cubeCount << " cube_resolution=" << cubeResolution << " requested_cube_resolution=" << requestedResolution
+            << " cloth_iterations=" << clothMaterial.iterations << " cube_iterations=" << cubeMaterial.iterations << " cube_compliance=" << cubeMaterial.distanceCompliance
+            << " cube_collision_radius=" << cubeMaterial.collisionRadius << " solid_particles=" << rubber->getNumParticles() << " solid_tetrahedra=" << rubber->getTetrahedra().size() << std::endl;
 
   raisim::RaisimServer server(&world);
   server.launchServer();
@@ -442,9 +379,7 @@ int main(int argc, char* argv[]) {
     server.integrateWorldThreadSafe();
 
     const double targetElapsed = world.getWorldTime() - simStart;
-    const auto targetWallTime =
-        wallStart + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                        std::chrono::duration<double>(targetElapsed));
+    const auto targetWallTime = wallStart + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(targetElapsed));
     const auto now = std::chrono::steady_clock::now();
     if (targetWallTime > now) {
       std::this_thread::sleep_until(targetWallTime);

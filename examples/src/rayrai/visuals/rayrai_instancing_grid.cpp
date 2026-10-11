@@ -1,21 +1,19 @@
 #include <cmath>
 #include <memory>
 
+#include "raisim/World.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
-#include "raisim/World.hpp"
 
 int main(int argc, char* argv[]) {
   ExampleApp app;
-  if (!app.init("rayrai_example_instancing", 1280, 720))
-    return -1;
+  if (!app.init("rayrai_example_instancing", 1280, 720)) return -1;
 
   auto world = std::make_shared<raisim::World>();
   world->addGround();
 
   auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
-  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(
-    raisin::RayraiWindow::RenderQualityPreset::Balanced));
+  viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {60, 60, 70, 255});
   auto& camera = viewer->getCamera();
   camera.target = {18.94f, 15.44f, 0.15f};
@@ -24,8 +22,7 @@ int main(int argc, char* argv[]) {
   camera.pitch = -15.5f;
   camera.zoom = 45.0f;
 
-  auto instancedBoxes = viewer->addInstancedVisuals("instanced_boxes", raisim::Shape::Box,
-    glm::vec3(0.1f, 0.1f, 0.1f), glm::vec4(1.f, 0.2f, 0.2f, 1.f), glm::vec4(0.2f, 0.2f, 1.f, 1.f));
+  auto instancedBoxes = viewer->addInstancedVisuals("instanced_boxes", raisim::Shape::Box, glm::vec3(0.1f, 0.1f, 0.1f), glm::vec4(1.f, 0.2f, 0.2f, 1.f), glm::vec4(0.2f, 0.2f, 1.f, 1.f));
   instancedBoxes->setDetectable(true);
 
   const int gridSize = 300;
@@ -33,15 +30,13 @@ int main(int argc, char* argv[]) {
   for (int x = 0; x < gridSize; ++x) {
     for (int y = 0; y < gridSize; ++y) {
       const float weight = gridSize > 1 ? float(x) / float(gridSize - 1) : 0.f;
-      instancedBoxes->addInstance(
-        glm::vec3(1.0f + x * spacing, -2.5f + y * spacing, 0.15f), weight);
+      instancedBoxes->addInstance(glm::vec3(1.0f + x * spacing, -2.5f + y * spacing, 0.15f), weight);
     }
   }
 
   while (!app.quit) {
     app.processEvents();
-    if (app.quit)
-      break;
+    if (app.quit) break;
 
     world->integrate();
     const double t = world->getWorldTime();

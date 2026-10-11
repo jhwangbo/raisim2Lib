@@ -5,15 +5,15 @@
 // closed by URDF <equality> constraints, which RaiSim eliminates exactly every step; the contact
 // solver never iterates on them.
 
-#include "raisim/RaisimServer.hpp"
-#include "raisim/World.hpp"
-#include "rayrai_tcp_viewer_hint.hpp"
-#include "example_resources.hpp"
+#include <cmath>
+#include <iostream>
 
 #include <Eigen/Core>
 
-#include <cmath>
-#include <iostream>
+#include "example_resources.hpp"
+#include "raisim/RaisimServer.hpp"
+#include "raisim/World.hpp"
+#include "rayrai_tcp_viewer_hint.hpp"
 
 int main(int argc, char* argv[]) {
   raisim::World::setActivationKey(exampleRscPath(argv[0], "activation.raisim"));
@@ -29,11 +29,9 @@ int main(int argc, char* argv[]) {
   // count the loop constraints: each appears as one eliminated row of the contact problem
   world.integrate1();
   size_t loops = 0;
-  for (const auto& row : *world.getContactProblem())
-    loops += row.rank == raisim::contact::rank::PROJECTED_PIN_CONSTRAINT;
+  for (const auto& row : *world.getContactProblem()) loops += row.rank == raisim::contact::rank::PROJECTED_PIN_CONSTRAINT;
   world.integrate2();
-  std::cout << "Strandbeest: " << beest->getDOF() << " degrees of freedom, " << loops
-            << " loop constraints" << std::endl;
+  std::cout << "Strandbeest: " << beest->getDOF() << " degrees of freedom, " << loops << " loop constraints" << std::endl;
 
   // turn the crank at one revolution per second with a velocity-only PD; every other joint is
   // passive and moves through the loops
