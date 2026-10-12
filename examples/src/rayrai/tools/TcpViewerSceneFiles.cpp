@@ -3,9 +3,6 @@
 
 #include "TcpViewerSceneFiles.hpp"
 
-#include <algorithm>
-#include <cfloat>
-#include <cstdio>
 #include <exception>
 #include <utility>
 
@@ -20,12 +17,6 @@ namespace tcp_viewer
 
 namespace
 {
-
-std::string megabytes(uint64_t bytes) {
-  char text[32];
-  std::snprintf(text, sizeof(text), "%.1f MB", static_cast<double>(bytes) / (1024.0 * 1024.0));
-  return text;
-}
 
 SceneSync::Options syncOptions(std::filesystem::path cacheRoot) {
   SceneSync::Options options;
@@ -50,6 +41,10 @@ void ViewerSceneFiles::reset(RayraiWindow& viewer, RemoteScene& scene) {
 }
 
 bool ViewerSceneFiles::update(RayraiWindow& viewer, RemoteScene& scene) {
+  return meshLoading_.update(viewer, [&] { return apply(viewer, scene); });
+}
+
+bool ViewerSceneFiles::apply(RayraiWindow& viewer, RemoteScene& scene) {
   sync_.poll();
   if (sync_.state() != SceneSync::State::Ready) return false;
   // The sync starts over when the server stops and resumes sharing; names must stay unique.
@@ -95,6 +90,7 @@ void ViewerSceneFiles::remove(RayraiWindow& viewer) {
       if (batch) viewer.removeInstancedVisuals(batch->getName());
   visuals_ = {};
   applied_ = false;
+  meshLoading_.hide();
   if (!touched_) return;
   touched_ = false;
   viewerSettingsReset_ = true;
@@ -112,65 +108,9 @@ void ViewerSceneFiles::remove(RayraiWindow& viewer) {
   viewer.clearHeightmapSplatLayer();
 }
 
-void ViewerSceneFiles::drawOverlay(const ImVec2& paneOrigin, const ImVec2& paneSize, int paneId) {
-  using State = SceneSync::State;
-  const State state = sync_.state();
-  const bool prompt = state == State::AwaitingConsent;
-  const bool busy = state == State::Downloading || state == State::Finishing;
-  const bool failed = state == State::Failed && !errorDismissed_;
-  if (!prompt && !busy && !failed && state != State::Declined) return;
-
-  const float margin = ImGui::GetFontSize();
-  const float width = std::min(paneSize.x - 2.0f * margin, ImGui::GetFontSize() * 30.0f);
-  ImGui::SetNextWindowPos(ImVec2(paneOrigin.x + paneSize.x * 0.5f, paneOrigin.y + margin),
-                          ImGuiCond_Always, ImVec2(0.5f, 0.0f));
-  ImGui::SetNextWindowSizeConstraints(ImVec2(0.0f, 0.0f), ImVec2(std::max(width, 1.0f), FLT_MAX));
-  ImGui::SetNextWindowBgAlpha(state == State::Declined ? 0.45f : 0.85f);
-  const std::string name = "Scene files##pane" + std::to_string(paneId);
-  constexpr ImGuiWindowFlags kFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize |
-    ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
-    ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoMove;
-  if (!ImGui::Begin(name.c_str(), nullptr, kFlags)) {
-    ImGui::End();
-    return;
-  }
-  ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + std::max(width, 1.0f));
-  const std::string scene = sync_.sceneName().empty() ? "the scene" : sync_.sceneName();
-  if (prompt) {
-    ImGui::TextUnformatted("Download the server's scene?");
-    ImGui::Separator();
-    ImGui::Text("%s offers %zu file%s (%s). Accept to check local files and download missing resources.", scene.c_str(),
-                sync_.missingFileCount(), sync_.missingFileCount() == 1 ? "" : "s",
-                megabytes(sync_.missingBytes()).c_str());
-    ImGui::TextDisabled("They are saved in %s", raisim::server::scene_files::pathUtf8(sync_.copyDirectory()).c_str());
-    ImGui::TextDisabled("Add a resource directory that holds them to skip the download.");
-    if (ImGui::Button("Download")) sync_.acceptDownload();
-    ImGui::SameLine();
-    if (ImGui::Button("Not now")) sync_.declineDownload();
-  } else if (state == State::Downloading) {
-    const uint64_t total = std::max<uint64_t>(1, sync_.missingBytes());
-    ImGui::Text("Downloading %s", scene.c_str());
-    const std::string progress =
-      megabytes(sync_.downloadedBytes()) + " / " + megabytes(sync_.missingBytes());
-    ImGui::ProgressBar(static_cast<float>(static_cast<double>(sync_.downloadedBytes()) / total),
-                       ImVec2(width, 0.0f), progress.c_str());
-    if (ImGui::Button("Cancel")) sync_.cancelDownload();
-  } else if (state == State::Finishing) {
-    ImGui::Text("Loading %s...", scene.c_str());
-  } else if (failed) {
-    ImGui::TextUnformatted("Scene files");
-    ImGui::Separator();
-    ImGui::TextUnformatted(sync_.error().c_str());
-    if (ImGui::Button("Dismiss")) errorDismissed_ = true;
-  } else {
-    // Declined: the scene stays without its visuals until the user asks for it.
-    ImGui::Text("%s: visuals not downloaded", scene.c_str());
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Download")) sync_.acceptDownload();
-  }
-  ImGui::PopTextWrapPos();
-  ImGui::End();
+void ViewerSceneFiles::drawOverlay(const ImVec2& paneOrigin, const ImVec2& paneSize, int paneId,
+                                   float panelRight) {
+  drawSceneOverlay(sync_, errorDismissed_, meshLoading_, paneOrigin, paneSize, paneId, panelRight);
 }
 
 } // namespace tcp_viewer

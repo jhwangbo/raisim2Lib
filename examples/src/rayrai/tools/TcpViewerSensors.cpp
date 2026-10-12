@@ -7,7 +7,10 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
+#include <cstring>
 #include <limits>
+#include <optional>
 #include <utility>
 
 #include <SDL.h>
@@ -71,11 +74,31 @@ Properties sensorCameraProperties(const SensorInfo& info) {
   return properties;
 }
 
+/**
+ * Returns a RaiSim camera with the request's resolution for Camera::getRawImage(). With a custom
+ * buffer that call reads only the resolution, and constructing a DepthCamera computes a ray
+ * direction per pixel, so one camera is kept per stream and rebuilt when the resolution changes.
+ */
+template <typename SensorType, typename Properties>
+SensorType& readbackSensor(std::unique_ptr<SensorType>& sensor, const SensorInfo& info) {
+  if (!sensor || sensor->getProperties().width != info.width ||
+      sensor->getProperties().height != info.height) {
+    raisim::Vec<3> position;
+    position.setZero();
+    raisim::Mat<3, 3> rotation;
+    rotation.setIdentity();
+    sensor = std::make_unique<SensorType>(
+      sensorCameraProperties<Properties>(info), nullptr, position, rotation);
+  }
+  return *sensor;
+}
+
 void uploadDepthPreview(unsigned int& texture, int width, int height,
-                        const std::vector<float>& depth, float nearPlane, float farPlane,
+                        const std::vector<float>& depth,
+                        const detail::DepthPreviewShading& shading,
+                        std::vector<unsigned char>& rgba,
                         float& minimumDepth, float& maximumDepth) {
-  const auto rgba = detail::makeDepthPreviewRgba(
-    depth, nearPlane, farPlane, minimumDepth, maximumDepth);
+  detail::makeDepthPreviewRgba(depth, shading, rgba, minimumDepth, maximumDepth);
 
   if (texture == 0) {
     gl::glGenTextures(1, &texture);
@@ -96,41 +119,102 @@ void uploadDepthPreview(unsigned int& texture, int width, int height,
 namespace detail
 {
 
-std::vector<unsigned char> makeDepthPreviewRgba(const std::vector<float>& depth,
-  float clipMinimum, float clipMaximum, float& minimumDepth, float& maximumDepth) {
-  std::vector<unsigned char> rgba(depth.size() * 4u, 0);
+DepthPreviewShading::DepthPreviewShading(float clipMinimum, float clipMaximum)
+    : clipMinimum_(clipMinimum), clipMaximum_(clipMaximum) {
+  scaleMinimum_ = std::isfinite(clipMinimum) ? std::max(clipMinimum, 1.0e-6f) : 1.0e-6f;
+  scaleMaximum_ = std::isfinite(clipMaximum) && clipMaximum > scaleMinimum_
+    ? clipMaximum
+    : scaleMinimum_ + 1.0e-6f;
+  const float scaleMinimum = scaleMinimum_;
+  const float scaleMaximum = scaleMaximum_;
+  const float inverseLogRange = 1.0f / std::log(scaleMaximum / scaleMinimum);
+  const auto formulaShade = [&](float value) {
+    const float normalized = std::log(value / scaleMinimum) * inverseLogRange;
+    return static_cast<unsigned char>(std::lround(255.0f * normalized));
+  };
+  // Positive floats are ordered like their bit patterns, so bisect over those for the first
+  // depth of each shade. Every shade starts at or after the previous one.
+  const auto bits = [](float value) {
+    uint32_t result = 0;
+    std::memcpy(&result, &value, sizeof(result));
+    return result;
+  };
+  const auto fromBits = [](uint32_t value) {
+    float result = 0.0f;
+    std::memcpy(&result, &value, sizeof(result));
+    return result;
+  };
+  const unsigned char maximumShade = formulaShade(scaleMaximum);
+  bounds_[0] = -std::numeric_limits<float>::infinity();
+  uint32_t low = bits(scaleMinimum);
+  for (int shade = 1; shade <= 255; ++shade) {
+    if (maximumShade < shade) {
+      bounds_[static_cast<size_t>(shade)] = std::numeric_limits<float>::infinity();
+      continue;
+    }
+    uint32_t high = bits(scaleMaximum);
+    while (low < high) {
+      const uint32_t middle = low + (high - low) / 2u;
+      if (formulaShade(fromBits(middle)) >= shade) {
+        high = middle;
+      } else {
+        low = middle + 1u;
+      }
+    }
+    bounds_[static_cast<size_t>(shade)] = fromBits(low);
+  }
+  bounds_[256] = std::numeric_limits<float>::infinity();
+
+  firstBucket_ = bits(scaleMinimum) >> 16u;
+  const uint32_t lastBucket = bits(scaleMaximum) >> 16u;
+  bucketShades_.resize(lastBucket - firstBucket_ + 1u);
+  const auto firstBound = bounds_.begin() + 1;
+  for (uint32_t bucket = firstBucket_; bucket <= lastBucket; ++bucket) {
+    const float edge = std::max(fromBits(bucket << 16u), scaleMinimum);
+    bucketShades_[bucket - firstBucket_] = static_cast<unsigned char>(
+      std::upper_bound(firstBound, bounds_.begin() + 256, edge) - firstBound);
+  }
+}
+
+unsigned char DepthPreviewShading::shade(float depth) const {
+  const float clamped = std::clamp(depth, scaleMinimum_, scaleMaximum_);
+  uint32_t bits = 0;
+  std::memcpy(&bits, &clamped, sizeof(bits));
+  size_t shade = bucketShades_[(bits >> 16u) - firstBucket_];
+  // A bucket spans less than one shade for typical clip ranges, so one step usually suffices.
+  shade += clamped >= bounds_[shade + 1u] ? 1u : 0u;
+  while (clamped >= bounds_[shade + 1u]) ++shade;
+  return static_cast<unsigned char>(shade);
+}
+
+void makeDepthPreviewRgba(const std::vector<float>& depth, const DepthPreviewShading& shading,
+  std::vector<unsigned char>& rgba, float& minimumDepth, float& maximumDepth) {
+  rgba.resize(depth.size() * 4u);
   minimumDepth = std::numeric_limits<float>::infinity();
   maximumDepth = 0.0f;
-  for (float value : depth) {
-    if (std::isfinite(value) && value > 0.0f) {
-      minimumDepth = std::min(minimumDepth, value);
-      maximumDepth = std::max(maximumDepth, value);
-    }
-  }
-  if (!std::isfinite(minimumDepth)) {
-    minimumDepth = 0.0f;
-  }
-
-  const float scaleMinimum = std::isfinite(clipMinimum)
-    ? std::max(clipMinimum, 1.0e-6f)
-    : 1.0e-6f;
-  const float scaleMaximum = std::isfinite(clipMaximum) && clipMaximum > scaleMinimum
-    ? clipMaximum
-    : scaleMinimum + 1.0e-6f;
-  const float inverseLogRange = 1.0f / std::log(scaleMaximum / scaleMinimum);
   for (size_t i = 0; i < depth.size(); ++i) {
     const float value = depth[i];
     unsigned char shade = 0;
     if (std::isfinite(value) && value > 0.0f) {
-      const float scaledValue = std::clamp(value, scaleMinimum, scaleMaximum);
-      const float normalized = std::log(scaledValue / scaleMinimum) * inverseLogRange;
-      shade = static_cast<unsigned char>(std::lround(255.0f * normalized));
+      minimumDepth = std::min(minimumDepth, value);
+      maximumDepth = std::max(maximumDepth, value);
+      shade = shading.shade(value);
     }
     rgba[i * 4u + 0u] = shade;
     rgba[i * 4u + 1u] = shade;
     rgba[i * 4u + 2u] = shade;
     rgba[i * 4u + 3u] = 255;
   }
+  if (!std::isfinite(minimumDepth)) {
+    minimumDepth = 0.0f;
+  }
+}
+
+std::vector<unsigned char> makeDepthPreviewRgba(const std::vector<float>& depth,
+  float clipMinimum, float clipMaximum, float& minimumDepth, float& maximumDepth) {
+  std::vector<unsigned char> rgba;
+  makeDepthPreviewRgba(depth, DepthPreviewShading(clipMinimum, clipMaximum), rgba, minimumDepth,
+    maximumDepth);
   return rgba;
 }
 
@@ -138,6 +222,10 @@ std::vector<unsigned char> makeDepthPreviewRgba(const std::vector<float>& depth,
 
 struct SensorRenderer::CachedSensor {
   std::unique_ptr<Camera> camera;
+  std::unique_ptr<raisim::RGBCamera> rgbSensor;
+  std::unique_ptr<raisim::DepthCamera> depthSensor;
+  std::optional<detail::DepthPreviewShading> depthShading;
+  std::vector<unsigned char> depthPreviewRgba;
   SensorPreviewInfo preview;
   unsigned int depthPreviewTexture = 0;
 };
@@ -186,15 +274,10 @@ bool SensorRenderer::render(RayraiWindow& viewer, std::vector<PendingSensorUpdat
     configureCamera(*cached->camera, update);
 
     const auto started = std::chrono::steady_clock::now();
-    raisim::Vec<3> position;
-    position.setZero();
-    raisim::Mat<3, 3> rotation;
-    rotation.setIdentity();
     if (info.type == raisim::Sensor::Type::RGB) {
       viewer.renderWithExternalCamera(*cached->camera, overrides);
-      raisim::RGBCamera sensor(
-        sensorCameraProperties<raisim::RGBCamera::RGBCameraProperties>(info), nullptr, position,
-        rotation);
+      auto& sensor = readbackSensor<raisim::RGBCamera, raisim::RGBCamera::RGBCameraProperties>(
+        cached->rgbSensor, info);
       update.colorBgra.resize(static_cast<size_t>(info.width) *
                               static_cast<size_t>(info.height) * 4u);
       cached->camera->getRawImage(sensor, Camera::SensorStorageMode::CUSTOM_BUFFER,
@@ -206,15 +289,20 @@ bool SensorRenderer::render(RayraiWindow& viewer, std::vector<PendingSensorUpdat
       // it. Use the same filter as RGB so viewer-only helpers do not leak into
       // either sensor stream.
       viewer.renderDepthPlaneDistance(*cached->camera, nullptr, true, true);
-      raisim::DepthCamera sensor(
-        sensorCameraProperties<raisim::DepthCamera::DepthCameraProperties>(info), nullptr,
-        position, rotation);
+      auto& sensor =
+        readbackSensor<raisim::DepthCamera, raisim::DepthCamera::DepthCameraProperties>(
+          cached->depthSensor, info);
       update.depth.resize(static_cast<size_t>(info.width) * static_cast<size_t>(info.height));
       cached->camera->getRawImage(sensor, Camera::SensorStorageMode::CUSTOM_BUFFER,
         update.depth.data(), update.depth.size(), true);
+      const float clipNear = static_cast<float>(info.clipNear);
+      const float clipFar = static_cast<float>(info.clipFar);
+      if (!cached->depthShading || !cached->depthShading->matches(clipNear, clipFar)) {
+        cached->depthShading.emplace(clipNear, clipFar);
+      }
       uploadDepthPreview(cached->depthPreviewTexture, info.width, info.height, update.depth,
-        static_cast<float>(info.clipNear), static_cast<float>(info.clipFar),
-        cached->preview.minimumDepth, cached->preview.maximumDepth);
+        *cached->depthShading, cached->depthPreviewRgba, cached->preview.minimumDepth,
+        cached->preview.maximumDepth);
       cached->preview.texture = cached->depthPreviewTexture;
     }
     update.renderMilliseconds = std::chrono::duration<double, std::milli>(

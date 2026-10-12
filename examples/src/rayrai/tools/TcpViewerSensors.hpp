@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <array>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -22,7 +24,51 @@ namespace raisin::tcp_viewer
 namespace detail
 {
 
-/** Convert metric depth to RGBA using a log grayscale anchored to the camera clip range. */
+/**
+ * Log grayscale for depth previews, anchored to a camera clip range.
+ *
+ * A shade never decreases with depth, so the mapping is stored as the smallest depth that
+ * reaches each shade, found with the per-pixel formula itself. A pixel then needs a bucket
+ * lookup and a comparison or two instead of a logarithm, and gets the formula's shade.
+ */
+class DepthPreviewShading {
+ public:
+  DepthPreviewShading(float clipMinimum, float clipMaximum);
+
+  /** @return True when this table was built for the given clip range. */
+  bool matches(float clipMinimum, float clipMaximum) const {
+    return clipMinimum == clipMinimum_ && clipMaximum == clipMaximum_;
+  }
+
+  /**
+   * @param depth Finite, positive depth.
+   * @return Shade of @p depth.
+   */
+  unsigned char shade(float depth) const;
+
+ private:
+  float clipMinimum_;
+  float clipMaximum_;
+  float scaleMinimum_;
+  float scaleMaximum_;
+  // A depth has shade k when bounds_[k] <= depth < bounds_[k + 1]. Shades no depth reaches
+  // have empty intervals.
+  std::array<float, 257> bounds_{};
+  // Depths sharing their upper 16 bits (exponent and 7 mantissa bits) form a bucket. This is the
+  // shade at the lower edge of each bucket from the one holding scaleMinimum_ on.
+  uint32_t firstBucket_ = 0;
+  std::vector<unsigned char> bucketShades_;
+};
+
+/**
+ * Convert metric depth to RGBA using a log grayscale anchored to the camera clip range.
+ * @param rgba Resized to four bytes per depth sample; reusing it across frames avoids an
+ *        allocation per frame.
+ */
+void makeDepthPreviewRgba(const std::vector<float>& depth, const DepthPreviewShading& shading,
+  std::vector<unsigned char>& rgba, float& minimumDepth, float& maximumDepth);
+
+/** Same as above, building the shading table and the image for one call. */
 std::vector<unsigned char> makeDepthPreviewRgba(const std::vector<float>& depth,
   float clipMinimum, float clipMaximum, float& minimumDepth, float& maximumDepth);
 

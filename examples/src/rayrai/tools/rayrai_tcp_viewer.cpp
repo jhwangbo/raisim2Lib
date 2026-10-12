@@ -5376,10 +5376,6 @@ int main(int argc, char* argv[]) {
       }
     };
 
-    // Scene-file prompt and download progress, below the menu bar.
-    sceneFiles.drawOverlay(ImVec2(paneOrigin.x, paneOrigin.y + menuBarHeight),
-                           ImVec2(uiSize.x, uiSize.y - menuBarHeight), int(pane.id));
-
     const ImVec2 overlayBase(paneOrigin.x + 12.0f, paneOrigin.y + 12.0f + menuBarHeight);
     // Right edge the left overlay actually occupied this frame, so the object
     // inspector can avoid it. Starts at the pane's left edge: with no overlay
@@ -6657,6 +6653,9 @@ int main(int argc, char* argv[]) {
     }
     overlayCollapsedHoveredLastFrame = overlayMinimized && overlayHovered;
     } // end if (overlayVisible)
+    // Scene-file prompt, download and mesh progress, below the menu bar, clear of the overlay.
+    sceneFiles.drawOverlay(ImVec2(paneOrigin.x, paneOrigin.y + menuBarHeight),
+      ImVec2(uiSize.x, uiSize.y - menuBarHeight), int(pane.id), overlayRightEdge);
 
     const raisin::Visuals* selectedVisual = viewer->getTargetVisual();
     const VisualEntry* selectedEntry = nullptr;

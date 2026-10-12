@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <cfloat>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -12,6 +13,7 @@
 #include "rayrai/RaisimTcpCommon.hpp"
 #include "rayrai/RsceneVisuals.hpp"
 #include "rayrai/TcpSceneSync.hpp"
+#include "TcpViewerSceneLoading.hpp"
 
 namespace raisin
 {
@@ -25,11 +27,13 @@ class RemoteScene;
  * The server's RaiSim Engine scene in one viewer pane: finding or downloading its files
  * (SceneSync), the prompt that asks before a download, and the scene's visuals, lights and
  * render settings once applied. The server streams the physics bodies; the scene adds what
- * rayrai draws for it locally (raisin::rayrai_internal::applyRscene()).
+ * rayrai draws for it locally (raisin::rayrai_internal::applyRscene()). The scene's meshes load
+ * in the background while the pane shows their progress (SceneMeshLoading).
  */
 class ViewerSceneFiles {
  public:
-  /// @param cacheRoot Download cache; empty uses ~/.rayrai/scene_cache.
+  /// @param cacheRoot Scene directory (SceneSync::Options::cacheRoot); empty uses
+  ///        defaultSceneDirectory(), ~/.raisim/scenes.
   explicit ViewerSceneFiles(std::filesystem::path cacheRoot = {});
 
   /// The viewer's resource directories, searched for the scene's files.
@@ -48,7 +52,8 @@ class ViewerSceneFiles {
   /// Requests for the next update.
   void appendRequests(std::vector<ClientRequest>& requests) { sync_.appendRequests(requests); }
   /**
-   * Advances the background work and applies a ready scene.
+   * Advances the background work, applies a ready scene and loads its meshes; call it once
+   * per frame.
    * @return True in the frame the scene was applied.
    */
   bool update(RayraiWindow& viewer, RemoteScene& scene);
@@ -69,10 +74,15 @@ class ViewerSceneFiles {
   /// True without a scene, at the download prompt, after a decline or a failure.
   bool settled(const RayraiWindow& viewer) const;
 
-  /// Draws the download prompt or progress at the top of the pane.
-  void drawOverlay(const ImVec2& paneOrigin, const ImVec2& paneSize, int paneId);
+  /// Draws the download prompt or progress, or the progress of the scene's meshes, at the top
+  /// of the pane (drawSceneOverlay()), clear of a panel along its left edge that ends at
+  /// @p panelRight, such as the viewer's left overlay.
+  void drawOverlay(const ImVec2& paneOrigin, const ImVec2& paneSize, int paneId,
+                   float panelRight = -FLT_MAX);
 
  private:
+  /// Applies a ready scene. @return True when it was applied.
+  bool apply(RayraiWindow& viewer, RemoteScene& scene);
   void remove(RayraiWindow& viewer);
 
   SceneSync sync_;
@@ -82,6 +92,7 @@ class ViewerSceneFiles {
   bool touched_ = false;
   bool viewerSettingsReset_ = false;
   bool errorDismissed_ = false;
+  SceneMeshLoading meshLoading_;
 };
 
 } // namespace tcp_viewer
