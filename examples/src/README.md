@@ -99,8 +99,7 @@ from `rsc/docs/image/logo.png`, with deep-purple text on a white band.
   hip/knee actuators.
 - `robotiq_gripper_mimic`: a Kinova arm with a wrist-mounted Robotiq 2F-85 uses PD
   joint poses to grasp a cube at one table marker, carry it to another, release it,
-  then reset and repeat. Use `--headless --cycles 3` for task checks or
-  `--benchmark --cycles 10` for single-threaded timing.
+  then reset and repeat.
 - `tendon_elastic`, `tendon_pulleys`, and `tendon_coupling`: procedural tendon
   simulations streamed to the TCP viewer.
 - `rayrai_tendons`: the same tendon scenes with automatic local drawing and
