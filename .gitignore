@@ -49,5 +49,9 @@ imgui.ini
 # Covers source sidecars and hashed files in custom cache directories.
 *.lods
 *.lods.tmp.*
+*.rgeo
+*.rgeo.tmp.*
+*.rimp
+*.rimp.tmp.*
 *.rmpc
 *.rmpc.tmp.*
