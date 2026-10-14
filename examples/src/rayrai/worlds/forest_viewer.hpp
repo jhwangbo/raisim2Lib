@@ -49,35 +49,8 @@ struct ForestViewer {
     quality.directionalShadowCascadeMaxDistance = 80;
     quality.addViewerFillLights = false;
     viewer->setRenderQualitySettings(quality);
-    Viewer::WeatherSettings weather;
-    weather.enabled = true;
-    weather.preset = Viewer::WeatherPreset::Clear;
-    weather.useExplicitSunAngles = true;
-    weather.sunAzimuthDegrees = 210;
-    weather.sunElevationDegrees = 48;
-    weather.sunDiskSize = .001f;  // Compact sun disk in the baked sky background.
-    weather.windSpeed = 1.2f;
-    weather.cloudCoverage = .06f;
-    // Gentle distance haze keeps nearby leaves crisp and separates the far canopy.
-    weather.visibilityMeters = 1200.f;
-    weather.fogColor = glm::vec3(.65f, .70f, .75f);
-    viewer->setWeatherSettings(weather);
-    auto sky = viewer->generateWeatherSkyEnvironment(256, 32, false);
-    viewer->setEnvironmentBackground(sky.environmentMap, 1);
-    auto& sun = viewer->getLight();
-    sun.type = raisin::LightType::DIRECTIONAL;
-    sun.setShadowsEnabled(true);
-    sun.setShadowResolution(2048);
-    sun.setShadowParams(.0008f, 1.f, 1.25f);
-    viewer->setShadowOrtho(60, .1f, 180);
-    sun.direction = glm::normalize(glm::vec3(-.4f, .3f, -.85f));
-    sun.ambient = glm::vec3(.12f);
-    // Strong direct sun pushes exposed leaves into the ACES highlight shoulder.
-    sun.diffuse = glm::vec3(1, .95f, .85f) * 18.f;
-    sun.specular = glm::vec3(18);
-    viewer->setHeightmapPatternResourcePath((assets / "ground/mud_forest_diff_1k.jpg").string());
-    viewer->setHeightmapNormalResourcePath((assets / "ground/mud_forest_nor_gl_1k.jpg").string());
-    viewer->setHeightmapTerrainMaterialParameters(.45f, .98f, 0.f, false);
+    // The plant and rock models load in the background while the sky and the
+    // ground are set up.
     for (int type = 0; type < 10; ++type) {
       auto visual = viewer->addInstancedVisuals(names[type], raisim::Shape::Mesh, glm::vec3(1), glm::vec4(1), glm::vec4(.85f, .92f, .75f, 1),
                                                 (type < 3 ? treeAssets[type].visualMesh : assets / names[type] / "model.gltf").string(), true);
@@ -118,6 +91,35 @@ struct ForestViewer {
       visual->setAutomaticMeshLodEnabled(true);
       rockVisuals.push_back(visual);
     }
+    Viewer::WeatherSettings weather;
+    weather.enabled = true;
+    weather.preset = Viewer::WeatherPreset::Clear;
+    weather.useExplicitSunAngles = true;
+    weather.sunAzimuthDegrees = 210;
+    weather.sunElevationDegrees = 48;
+    weather.sunDiskSize = .001f;  // Compact sun disk in the baked sky background.
+    weather.windSpeed = 1.2f;
+    weather.cloudCoverage = .06f;
+    // Gentle distance haze keeps nearby leaves crisp and separates the far canopy.
+    weather.visibilityMeters = 1200.f;
+    weather.fogColor = glm::vec3(.65f, .70f, .75f);
+    viewer->setWeatherSettings(weather);
+    auto sky = viewer->generateWeatherSkyEnvironment(256, 32, false);
+    viewer->setEnvironmentBackground(sky.environmentMap, 1);
+    auto& sun = viewer->getLight();
+    sun.type = raisin::LightType::DIRECTIONAL;
+    sun.setShadowsEnabled(true);
+    sun.setShadowResolution(2048);
+    sun.setShadowParams(.0008f, 1.f, 1.25f);
+    viewer->setShadowOrtho(60, .1f, 180);
+    sun.direction = glm::normalize(glm::vec3(-.4f, .3f, -.85f));
+    sun.ambient = glm::vec3(.12f);
+    // Strong direct sun pushes exposed leaves into the ACES highlight shoulder.
+    sun.diffuse = glm::vec3(1, .95f, .85f) * 18.f;
+    sun.specular = glm::vec3(18);
+    viewer->setHeightmapPatternResourcePath((assets / "ground/mud_forest_diff_1k.jpg").string());
+    viewer->setHeightmapNormalResourcePath((assets / "ground/mud_forest_nor_gl_1k.jpg").string());
+    viewer->setHeightmapTerrainMaterialParameters(.45f, .98f, 0.f, false);
     auto& camera = viewer->getCamera();
     const double eyeX = forest::trail(-23);
     camera.position = {float(eyeX), -23, float(terrain->getHeight(eyeX, -23) + 2.6)};
