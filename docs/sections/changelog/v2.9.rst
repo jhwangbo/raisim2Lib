@@ -1,7 +1,14 @@
 Changelog: v2.9
 ===============
 
-v2.9.3 (unreleased)
+v2.9.4 (unreleased)
+-------------------
+
+**rayrai**
+
+* Build: instanced occlusion and shadow receiver filtering scopes are owned by the draw shaders instead of thread-local pointers. Render planning and diagnostics were moved out of ``RayraiWindow.cpp`` to keep the source file within its frozen size limit.
+
+v2.9.3 (2026-10-13)
 -------------------
 
 **rayrai**
