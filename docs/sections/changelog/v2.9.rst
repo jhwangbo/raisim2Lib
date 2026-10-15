@@ -35,6 +35,7 @@ Rebuild applications after updating (``InstancedVisuals``, ``OpenGLMesh``, ``Ray
   * The render thread resolves fewer file paths: a texture load resolves its file once (an absolute path loaded before not at all), stored prefetch keys are reused, and an import resolves its model directory once (the city's render thread: 3,219 → 550 resolutions, each several system calls).
   * The forest example starts loading its plant and rock models before it sets up the sky and the ground.
 * New: ``RayraiGlobalAsset::pollAsyncLoadsUntil(deadline)``, ``InstancedVisuals::pollAsyncMeshPreparation(deadline)``, an ``OpenGLMesh::createCpuGeometry()`` overload that takes the vertex and index arrays over, ``OpenGLMesh::preparedAttributes()``, ``restorePreparedGeometry()``, ``precomputeVertexSummaries()``, ``vertexSummaries()``, ``adoptVertexSummaries()``, ``contentDigest()``, ``uploadsCompactIndices()`` and an ``uploadPreparedGeometry()`` overload taking ``OpenGLMesh::StagedGeometry`` (internal, for the loading caches and staging buffers), ``assimp::importedTexturesDecoded()`` and ``assimp::AsyncModelLoadResult::geometry`` (internal).
+* Build: instanced occlusion and shadow receiver filtering scopes are owned by the draw shaders instead of thread-local pointers. Render planning and diagnostics were moved out of ``RayraiWindow.cpp`` to keep the source file within its frozen size limit.
 
 v2.9.3 (2026-10-13)
 -------------------
