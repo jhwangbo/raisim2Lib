@@ -246,7 +246,7 @@ for update in range(1000000):
             action = ppo.act_inference(obs)
             reward, dones, next_obs = env.step_and_observe(action)
             ppo.step(value_obs=obs, rews=reward, dones=dones)
-            done_sum += np.sum(dones)
+            done_sum += np.count_nonzero(dones)
             reward_sum += np.sum(reward)
             obs = next_obs
 
