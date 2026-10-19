@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 
 #include "raisim/World.hpp"
+#include "rayrai/PhysicsSnapshot.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
 
@@ -32,7 +33,9 @@ int main() {
   referencePost->setPosition(0.45, 0.0, 1.5);
   referencePost->setAppearance("0.25,0.30,0.36,0.6");
 
-  auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
+  // The renderer owns an empty world; physics reaches it only through copied snapshots.
+  raisin::PhysicsSnapshotCapture snapshotCapture;
+  auto viewer = std::make_shared<raisin::RayraiWindow>(std::make_shared<raisim::World>(), 1280, 720);
   viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {24, 26, 30, 255});
   raisim_examples::addRayraiBasicSceneLights(*viewer);
@@ -61,6 +64,9 @@ int main() {
     if (fastSphere->getPosition()[2] < 0.08) {
       fastSphere->setAppearance("1.0,0.0,0.0,1.0");
     }
+
+    const auto snapshot = snapshotCapture.capture(*world);
+    viewer->applyPhysicsSnapshot(snapshot);
 
     app.beginFrame();
     app.renderViewer(*viewer);

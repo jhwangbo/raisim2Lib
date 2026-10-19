@@ -4,6 +4,7 @@
 
 #include "example_resources.hpp"
 #include "raisim/World.hpp"
+#include "rayrai/PhysicsSnapshot.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
 
@@ -14,7 +15,9 @@ int main(int argc, char* argv[]) {
   auto world = std::make_shared<raisim::World>();
   world->addGround();
 
-  auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
+  // The renderer owns an empty world; physics reaches it only through copied snapshots.
+  raisin::PhysicsSnapshotCapture snapshotCapture;
+  auto viewer = std::make_shared<raisin::RayraiWindow>(std::make_shared<raisim::World>(), 1280, 720);
   viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {77, 77, 77, 255});
   auto& camera = viewer->getCamera();
@@ -46,7 +49,9 @@ int main(int argc, char* argv[]) {
     if (app.quit) break;
 
     world->integrate();
-    const double t = world->getWorldTime();
+    // CPU-only copy immediately after physics; apply on the thread owning the GL context.
+    const auto snapshot = snapshotCapture.capture(*world);
+    const double t = snapshot->simTime;
 
     if (vizSphere) {
       vizSphere->setPosition(0.0, -2.0, 0.6 + 0.15 * std::sin(t * 2.0));
@@ -54,6 +59,8 @@ int main(int argc, char* argv[]) {
     if (vizMesh) {
       vizMesh->setOrientation(std::cos(t * 0.5), 0.0, 0.0, std::sin(t * 0.5));
     }
+
+    viewer->applyPhysicsSnapshot(snapshot);
 
     app.beginFrame();
     app.renderViewer(*viewer);

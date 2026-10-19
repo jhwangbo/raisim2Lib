@@ -114,15 +114,27 @@ void init_sensors(py::module_ &m) {
         .def_rw("noiseType", &raisim::RGBCamera::RGBCameraProperties::noiseType)
         .def_rw("mean", &raisim::RGBCamera::RGBCameraProperties::mean)
         .def_rw("std", &raisim::RGBCamera::RGBCameraProperties::std)
+        .def_rw("shotNoise", &raisim::RGBCamera::RGBCameraProperties::shotNoise)
+        .def_rw("rowNoiseStd", &raisim::RGBCamera::RGBCameraProperties::rowNoiseStd)
+        .def_rw("seed", &raisim::RGBCamera::RGBCameraProperties::seed)
         .def_rw("format", &raisim::RGBCamera::RGBCameraProperties::format)
         .def_static("stringToNoiseType",
                     &raisim::RGBCamera::RGBCameraProperties::stringToNoiseType);
 
     py::class_<raisim::RGBCamera, raisim::Sensor>(m, "RGBCamera")
         .def_static("getStaticType", &raisim::RGBCamera::getType)
-        .def("getProperties", &raisim::RGBCamera::getProperties, py::rv_policy::reference_internal)
-        .def("getImageBuffer", py::overload_cast<>(&raisim::RGBCamera::getImageBuffer, py::const_))
-        .def("setImageBuffer", &raisim::RGBCamera::setImageBuffer);
+        .def("applyNoise", py::overload_cast<>(&raisim::RGBCamera::applyNoise))
+        .def("resetNoise", &raisim::RGBCamera::resetNoise)
+        .def("setProperties", &raisim::RGBCamera::setProperties)
+        .def("getProperties", &raisim::RGBCamera::getProperties, py::rv_policy::copy)
+        .def("getImageBuffer", [](const raisim::RGBCamera &self) {
+            const auto &image = self.getImageBuffer();
+            return py::bytes(image.data(), image.size());
+        })
+        .def("setImageBuffer", &raisim::RGBCamera::setImageBuffer)
+        .def("setImageBuffer", [](raisim::RGBCamera &self, const py::bytes &image) {
+            self.setImageBuffer(std::vector<char>(image.c_str(), image.c_str() + image.size()));
+        });
 
     py::enum_<raisim::DepthCamera::DepthCameraProperties::NoiseType>(m, "DepthCameraNoiseType",
                                                                      py::is_arithmetic())
@@ -149,12 +161,18 @@ void init_sensors(py::module_ &m) {
         .def_rw("noiseType", &raisim::DepthCamera::DepthCameraProperties::noiseType)
         .def_rw("mean", &raisim::DepthCamera::DepthCameraProperties::mean)
         .def_rw("std", &raisim::DepthCamera::DepthCameraProperties::std)
+        .def_rw("stdDepthSquared", &raisim::DepthCamera::DepthCameraProperties::stdDepthSquared)
+        .def_rw("resolution", &raisim::DepthCamera::DepthCameraProperties::resolution)
+        .def_rw("dropoutProbability", &raisim::DepthCamera::DepthCameraProperties::dropoutProbability)
+        .def_rw("seed", &raisim::DepthCamera::DepthCameraProperties::seed)
         .def_rw("format", &raisim::DepthCamera::DepthCameraProperties::format)
         .def_static("stringToNoiseType",
                     &raisim::DepthCamera::DepthCameraProperties::stringToNoiseType);
 
     py::class_<raisim::DepthCamera, raisim::Sensor>(m, "DepthCamera")
         .def_static("getStaticType", &raisim::DepthCamera::getType)
+        .def("applyNoise", py::overload_cast<>(&raisim::DepthCamera::applyNoise))
+        .def("resetNoise", &raisim::DepthCamera::resetNoise)
         .def("updateRayDirections", &raisim::DepthCamera::updateRayDirections)
         .def("getDepthArray", py::overload_cast<>(&raisim::DepthCamera::getDepthArray, py::const_))
         .def("setDepthArray", &raisim::DepthCamera::setDepthArray)
@@ -164,7 +182,7 @@ void init_sensors(py::module_ &m) {
         .def("set3DPoints", [](raisim::DepthCamera &self, const NDArray &points) {
             self.set3DPoints(ndarray_to_vec3_list(points));
         })
-        .def("getProperties", &raisim::DepthCamera::getProperties, py::rv_policy::reference_internal)
+        .def("getProperties", py::overload_cast<>(&raisim::DepthCamera::getProperties), py::rv_policy::reference_internal)
         .def("depthToPointCloud", [](const raisim::DepthCamera &self,
                                      const std::vector<float> &depthArray,
                                      bool isInSensorFrame) {
@@ -182,6 +200,14 @@ void init_sensors(py::module_ &m) {
         .value("UNIFORM", raisim::InertialMeasurementUnit::ImuProperties::NoiseType::UNIFORM)
         .value("NO_NOISE", raisim::InertialMeasurementUnit::ImuProperties::NoiseType::NO_NOISE);
 
+    py::class_<raisim::InertialMeasurementUnit::ChannelProperties>(m, "ImuChannelProperties")
+        .def(py::init<>())
+        .def_rw("bias", &raisim::InertialMeasurementUnit::ChannelProperties::bias)
+        .def_rw("noiseDensity", &raisim::InertialMeasurementUnit::ChannelProperties::noiseDensity)
+        .def_rw("biasRandomWalk", &raisim::InertialMeasurementUnit::ChannelProperties::biasRandomWalk)
+        .def_rw("cutoffFrequency", &raisim::InertialMeasurementUnit::ChannelProperties::cutoffFrequency)
+        .def_rw("resolution", &raisim::InertialMeasurementUnit::ChannelProperties::resolution);
+
     py::class_<raisim::InertialMeasurementUnit::ImuProperties>(m, "ImuProperties")
         .def(py::init<>())
         .def_rw("name", &raisim::InertialMeasurementUnit::ImuProperties::name)
@@ -191,11 +217,29 @@ void init_sensors(py::module_ &m) {
         .def_rw("noiseType", &raisim::InertialMeasurementUnit::ImuProperties::noiseType)
         .def_rw("mean", &raisim::InertialMeasurementUnit::ImuProperties::mean)
         .def_rw("std", &raisim::InertialMeasurementUnit::ImuProperties::std)
+        .def_rw("accelerometer", &raisim::InertialMeasurementUnit::ImuProperties::accelerometer)
+        .def_rw("gyroscope", &raisim::InertialMeasurementUnit::ImuProperties::gyroscope)
+        .def_rw("latency", &raisim::InertialMeasurementUnit::ImuProperties::latency)
+        .def_rw("seed", &raisim::InertialMeasurementUnit::ImuProperties::seed)
         .def_static("stringToNoiseType",
                     &raisim::InertialMeasurementUnit::ImuProperties::stringToNoiseType);
 
     py::class_<raisim::InertialMeasurementUnit, raisim::Sensor>(m, "InertialMeasurementUnit")
         .def_static("getStaticType", &raisim::InertialMeasurementUnit::getType)
+        .def("setProperties", &raisim::InertialMeasurementUnit::setProperties)
+        .def("reset", &raisim::InertialMeasurementUnit::reset)
+        .def("resetNoise", &raisim::InertialMeasurementUnit::resetNoise)
+        .def("getDroppedMeasurementCount", &raisim::InertialMeasurementUnit::getDroppedMeasurementCount)
+        .def("getDeliveryTimeStamp", &raisim::InertialMeasurementUnit::getDeliveryTimeStamp)
+        .def("getGroundTruthOrientation", [](const raisim::InertialMeasurementUnit &self) {
+            return convert_vec_to_np(self.getGroundTruthOrientation());
+        })
+        .def("getAccelerometerBias", [](const raisim::InertialMeasurementUnit &self) {
+            return self.getAccelerometerBias();
+        })
+        .def("getGyroscopeBias", [](const raisim::InertialMeasurementUnit &self) {
+            return self.getGyroscopeBias();
+        })
         .def("getLinearAcceleration",
              [](const raisim::InertialMeasurementUnit &self) { return self.getLinearAcceleration(); })
         .def("getAngularVelocity",
@@ -208,8 +252,8 @@ void init_sensors(py::module_ &m) {
         .def("setOrientation", [](raisim::InertialMeasurementUnit &self, const NDArray &orientation) {
             self.setOrientation(convert_np_to_vec<4>(orientation));
         })
-        .def("getProperties", &raisim::InertialMeasurementUnit::getProperties,
-             py::rv_policy::reference_internal);
+        .def("getProperties", py::overload_cast<>(&raisim::InertialMeasurementUnit::getProperties, py::const_),
+             py::rv_policy::copy);
 
     py::class_<raisim::SpinningLidar::SpinningLidarProperties>(m, "SpinningLidarProperties")
         .def(py::init<>())
@@ -222,11 +266,19 @@ void init_sensors(py::module_ &m) {
         .def_rw("rangeMin", &raisim::SpinningLidar::SpinningLidarProperties::rangeMin)
         .def_rw("rangeMax", &raisim::SpinningLidar::SpinningLidarProperties::rangeMax)
         .def_rw("spinningRate", &raisim::SpinningLidar::SpinningLidarProperties::spinningRate)
-        .def_rw("spinDirection", &raisim::SpinningLidar::SpinningLidarProperties::spinDirection);
+        .def_rw("spinDirection", &raisim::SpinningLidar::SpinningLidarProperties::spinDirection)
+        .def_rw("rangeBias", &raisim::SpinningLidar::SpinningLidarProperties::rangeBias)
+        .def_rw("rangeNoiseStd", &raisim::SpinningLidar::SpinningLidarProperties::rangeNoiseStd)
+        .def_rw("angularNoiseStd", &raisim::SpinningLidar::SpinningLidarProperties::angularNoiseStd)
+        .def_rw("resolution", &raisim::SpinningLidar::SpinningLidarProperties::resolution)
+        .def_rw("dropoutProbability", &raisim::SpinningLidar::SpinningLidarProperties::dropoutProbability)
+        .def_rw("seed", &raisim::SpinningLidar::SpinningLidarProperties::seed);
 
     py::class_<raisim::SpinningLidar, raisim::Sensor>(m, "SpinningLidar")
         .def_static("getStaticType", &raisim::SpinningLidar::getType)
-        .def("getProperties", &raisim::SpinningLidar::getProperties, py::rv_policy::reference_internal)
+        .def("applyNoise", &raisim::SpinningLidar::applyNoise)
+        .def("resetNoise", &raisim::SpinningLidar::resetNoise)
+        .def("getProperties", &raisim::SpinningLidar::getProperties, py::rv_policy::copy)
         .def("setProperties", &raisim::SpinningLidar::setProperties)
         .def("getScan", [](const raisim::SpinningLidar &self) {
             return vec3_list_to_ndarray(self.getScan());

@@ -53,7 +53,7 @@ from `rsc/docs/image/logo.png`, with deep-purple text on a white band.
 - `server/materials`: contact material effects such as restitution and static
   friction.
 - `server/terrain`: procedural, image, and dynamic height map examples.
-- `server/sensors`: CPU ray casting and ray-scan lidar examples.
+- `server/sensors`: CPU ray casting, ray-scan lidar, and a headless IMU sensor model example.
 - `server/robots`: articulated robot examples and robot control workflows.
 - `server/dynamics`: constraints, moving platforms, springs, and rigid-body
   dynamics demos.
@@ -106,6 +106,9 @@ from `rsc/docs/image/logo.png`, with deep-purple text on a white band.
   interactive controls. See the [tendon examples guide](../TENDONS.md).
 - `deformable_objects`: cloth, mesh deformables, filled particles, struts,
   compliance, and elastic modulus.
+- `imu_sensor_model`: ideal versus modeled IMU CSV at matching acquisition times;
+  includes seeded errors, bandwidth, quantization, and latency. It takes no
+  arguments and prints the ideal reference alongside modeled samples. No viewer is needed.
 - `model_asset_pipeline`: mesh preprocessing and OBJ asset export.
 - `mjcf_gymnasium_hopper`: load and actuate Gymnasium's Hopper MJCF model.
 - `mjcf_gymnasium_walker2d`: load and actuate Gymnasium's Walker2d MJCF model.
@@ -154,6 +157,60 @@ from `rsc/docs/image/logo.png`, with deep-purple text on a white band.
 Some targets are guarded by installed RaiSim API availability. If CMake prints a
 `Skipping ...` message, install a newer RaiSim/rayrai package and reconfigure.
 
+## Physics snapshots in rayrai examples
+
+14 of the 28 rayrai demos use `PhysicsSnapshotCapture` and
+`RayraiWindow::applyPhysicsSnapshot`:
+
+- `rayrai_basic_scene`, `rayrai_rgb_camera`, `rayrai_depth_camera`
+- `rayrai_custom_visuals`, `rayrai_instancing_grid`, `rayrai_pointcloud_animation`
+- `rayrai_rolling_spinning_friction`, `rayrai_tendons`
+- `rayrai_pbr_material_grid`, `rayrai_quality_lighting`
+- `rayrai_coacd_mesh_approximation`, `rayrai_visual_asset_support`
+- `rayrai_runtime_scene_editing`, `rayrai_swept_ccd`
+
+`capture()` returns `std::shared_ptr<const PhysicsSnapshot>`; pass that owner directly
+into `applyPhysicsSnapshot()` and retain it while another thread consumes the frame:
+
+```cpp
+const auto frame = snapshotCapture.capture(*world);  // physics thread, World protected
+viewer->applyPhysicsSnapshot(frame);                // render thread, GL context current
+```
+
+Frames store contiguous object state, shared persistent render descriptions and
+one pose per articulated link. Geometry and appearance have separate revisions.
+Released frame buffers are reused; a frame held by any camera stays unchanged.
+Object membership is reconciled only when its topology token changes. Deformable
+vertices share their unchanged indices. Heightmap patches carry vertex rows and a
+base revision; a renderer that skips that base uses the complete latest vertices.
+
+These demos bind the renderer to its own empty world and copy the source physics
+state after integration. The RGB/depth demos also copy calibration and sensor
+poses, use the Camera-only render overloads, and read pixels into independent
+buffers. Depth points are reconstructed from copied rays and the captured pose.
+The remaining 14 demos use the direct-world API. Server demos, benchmarks and
+the TCP viewer tool are outside this count.
+
+Capture checks deformable vertex positions, visual heightmap samples and mutable
+articulated visuals before reusing object state. It leaves shared heightmap dirty
+flags untouched. Each changed snapshot carries a render-state revision independent
+of the source object's revision, so geometry and appearance edits invalidate render
+caches. Switching an existing scene to snapshots replaces its scene-owned visuals
+and preserves unrelated visual overlays.
+
+The loops are sequential to keep each example focused. For separate physics and
+camera threads, protect integration, snapshot capture and sensor pose copying
+with the physics lock. Pass the immutable snapshot and copied pose to the render
+thread, release the physics lock, then protect snapshot application and camera
+rendering with the window lock. All GL work stays on its owning thread. Capture
+at the sensor's scheduled simulation time; do not wait for rendering while
+holding the physics lock. Render cameras use copied poses, with no live
+`targetObject`.
+
+The snapshot API is included in the normal rayrai library build. These example
+targets are always created, with no feature switch or availability check. Build
+them against the updated rayrai package containing `rayrai/PhysicsSnapshot.hpp`.
+
 ## Regression and debug tools
 
 Manual diagnostic programs live under `examples/tools/debug` and are built with
@@ -184,3 +241,5 @@ Use `--screenshot output.png` to save this view. The adjacent Raisim test build
 registers the asset check; `RAISIM_EXAMPLE_GPU_TESTS=ON` there also registers
 camera and image-quality checks against the original GLB render;
 `--benchmark-frames N` measures N rendered frames.
+
+`rayrai/sensors/rayrai_sensor_noise.cpp` saves clean/noisy RGB and depth comparisons offscreen with seeded read, shot, row and depth noise, quantization, and dropout. Run `rayrai_sensor_noise` without arguments in the desired output directory, using a current SDK exposing the sensor-noise API.

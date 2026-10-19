@@ -12,6 +12,7 @@
 #include "raisim/World.hpp"
 #include "rayrai/Camera.hpp"
 #include "rayrai/CameraFrustum.hpp"
+#include "rayrai/PhysicsSnapshot.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
 
@@ -53,7 +54,9 @@ int main(int argc, char* argv[]) {
   auto box = world->addBox(0.4, 0.4, 0.4, 1);
   box->setAppearance("0.2,0.7,0.9,1.0");
 
-  auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
+  // The renderer owns an empty world; physics reaches it only through copied snapshots.
+  raisin::PhysicsSnapshotCapture snapshotCapture;
+  auto viewer = std::make_shared<raisin::RayraiWindow>(std::make_shared<raisim::World>(), 1280, 720);
   viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {35, 35, 45, 255});
   auto& camera = viewer->getCamera();
@@ -61,11 +64,13 @@ int main(int argc, char* argv[]) {
   camera.yaw = -135.0f;
   camera.pitch = -28.0f;
 
-  auto depthCamera = std::make_shared<raisin::Camera>(*depthCam);
+  const auto depthProp = depthCam->getProperties();
+  auto depthCamera = std::make_shared<raisin::Camera>(depthProp);
   auto depthFrustum = viewer->addCameraFrustum("depth_frustum", glm::vec4(1.0f, 0.6f, 0.2f, 0.4f));
   depthFrustum->setDetectable(false);
 
-  const auto& depthProp = depthCam->getProperties();
+  // Copy calibration rays once, so depth back-projection also avoids the live sensor.
+  const auto sensorRays = depthCam->getPrecomputedRayDir();
   const int depthWidth = std::max(1, depthProp.width);
   const int depthHeight = std::max(1, depthProp.height);
   std::vector<float> rayraiDepth(size_t(depthWidth) * size_t(depthHeight));
@@ -81,7 +86,6 @@ int main(int argc, char* argv[]) {
   depthPoints->setDetectable(false);
   depthPoints->setCastsShadows(false);
   const float clipNear = float(depthProp.clipNear);
-  std::vector<raisim::Vec<3>> sensedPoints;
   std::vector<raisin::InstancedVisuals::InstanceSpec> pointInstances;
   pointInstances.reserve(size_t((depthWidth + kPointStride - 1) / kPointStride) * size_t((depthHeight + kPointStride - 1) / kPointStride));
 
@@ -107,25 +111,38 @@ int main(int argc, char* argv[]) {
     if (app.quit) break;
 
     world->integrate();
+    // CPU-only copy immediately after physics; apply on the thread owning the GL context.
+    const auto snapshot = snapshotCapture.capture(*world);
+    depthCam->updatePose();
+    const glm::vec3 capturedPosition = toGlm(depthCam->getPosition());
+    const glm::mat3 capturedRotation = toGlm(depthCam->getOrientation());
 
-    viewer->renderWithExternalCamera(*depthCam, *depthCamera, {});
-    viewer->renderDepthPlaneDistance(*depthCam, *depthCamera);
+    // Only copied data is used below. A separate render thread would lock the window here.
+    viewer->applyPhysicsSnapshot(snapshot);
+    depthCamera->position = capturedPosition;
+    depthCamera->front = capturedRotation[0];  // Sensor +X is forward, +Z is up.
+    depthCamera->up = capturedRotation[2];
+    depthCamera->right = glm::normalize(glm::cross(depthCamera->front, depthCamera->up));
+
+    viewer->renderWithExternalCamera(*depthCamera, {});
+    viewer->renderDepthPlaneDistance(*depthCamera);
     // Flip so rows run top to bottom, the pixel layout DepthCamera uses for its rays.
-    depthCamera->getRawImage(*depthCam, raisin::Camera::SensorStorageMode::CUSTOM_BUFFER, rayraiDepth.data(), rayraiDepth.size(),
-                             /*flipVertical=*/true);
+    depthCamera->readLinearDepth(rayraiDepth.data(), rayraiDepth.size(), /*flipVertical=*/true);
     centerRayraiDepth = rayraiDepth[size_t(depthHeight / 2) * size_t(depthWidth) + size_t(depthWidth / 2)];
 
     // Back-project the depth image into world-frame points and show them as cubes.
-    depthCam->depthToPointCloud(rayraiDepth, sensedPoints);
     pointInstances.clear();
     for (int row = 0; row < depthHeight; row += kPointStride) {
       for (int col = 0; col < depthWidth; col += kPointStride) {
         const size_t pixel = size_t(row) * size_t(depthWidth) + size_t(col);
         const float depth = rayraiDepth[pixel];
         // rayrai writes 0 where the ray hit nothing.
-        if (!(depth > 0.0f)) continue;
+        if (!std::isfinite(depth) || !(depth > 0.0f)) continue;
+        const auto ray = toGlm(sensorRays[pixel]);
+        if (!(ray.x > 0.0f)) continue;
         raisin::InstancedVisuals::InstanceSpec point;
-        point.position = toGlm(sensedPoints[pixel]);
+        // Plane depth is measured along sensor +X, including for fisheye rays.
+        point.position = capturedPosition + capturedRotation * (ray * (depth / ray.x));
         point.colorWeight = (depth - clipNear) / kPointColorRange;
         pointInstances.push_back(point);
       }
@@ -133,7 +150,8 @@ int main(int argc, char* argv[]) {
     depthPoints->clearInstances();
     depthPoints->addInstances(pointInstances.data(), pointInstances.size());
 
-    // CPU depth camera path.
+    // Optional CPU depth camera path: run on the physics thread under the World lock.
+    // Keep this independent of the snapshot rendering above.
     //
     // This is disabled by default so the example remains buildable with older
     // installed RaiSim packages. Uncomment this block after building against a
@@ -174,7 +192,7 @@ int main(int argc, char* argv[]) {
 #endif
 
     if (depthFrustum) {
-      depthFrustum->updateFromDepthCamera(*depthCam);
+      depthFrustum->updateFromCamera(*depthCamera);
     }
 
     app.beginFrame();
@@ -197,6 +215,9 @@ int main(int argc, char* argv[]) {
     app.endFrame();
   }
 
+  depthCamera.reset();
+  depthFrustum.reset();
+  depthPoints.reset();
   viewer.reset();
   app.shutdown();
   return 0;

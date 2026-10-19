@@ -6,6 +6,8 @@
 #ifndef SRC_RAISIMGYMVECENV_HPP
 #define SRC_RAISIMGYMVECENV_HPP
 
+#include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <thread>
 #include "RaisimGymEnv.hpp"
@@ -60,6 +62,7 @@ class VectorizedEnvironment {
     for (int i = 0; i < num_envs_; i++) {
       // only the first environment is visualized
       environments_[i]->init();
+      environments_[i]->getWorld()->setSensorNoiseSeed(uint64_t(i) + 1);
       environments_[i]->reset();
     }
 
@@ -212,16 +215,18 @@ class VectorizedEnvironment {
     obMean_ = mean; obVar_ = var; obCount_ = count; }
 
   void setSeed(int seed) {
-    int seed_inc = seed;
+    // Validate the complete range before invoking any user hook.
+    if (int64_t(seed) + num_envs_ - 1 > std::numeric_limits<int>::max())
+      throw std::invalid_argument("environment seed range exceeds int");
 
     if constexpr (StaticSchedule) {
       #pragma omp parallel for schedule(static)
       for(int i=0; i<num_envs_; i++)
-        environments_[i]->setSeed(seed_inc++);
+        seedEnvironment(i, seed);
     } else {
       #pragma omp parallel for schedule(auto)
       for(int i=0; i<num_envs_; i++)
-        environments_[i]->setSeed(seed_inc++);
+        seedEnvironment(i, seed);
     }
   }
 
@@ -282,6 +287,14 @@ class VectorizedEnvironment {
   const std::vector<std::string>& getRewardNames() const { return rewardNames_; }
 
  private:
+  void seedEnvironment(int index, int seed) {
+    environments_[index]->setSeed(seed + index);
+    // Keep this outside the virtual hook: derived environments need not call the base.
+    // Unsigned conversion preserves negative user seeds without producing a zero World seed.
+    environments_[index]->getWorld()->setSensorNoiseSeed(
+        uint64_t(uint32_t(seed)) + uint64_t(index) + 1);
+  }
+
   inline void perAgentStepAndObserve(int agentId,
                                      Eigen::Ref<EigenRowMajorMat> &action,
                                      Eigen::Ref<EigenVec> &reward,

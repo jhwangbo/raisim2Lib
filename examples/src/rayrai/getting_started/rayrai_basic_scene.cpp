@@ -3,6 +3,7 @@
 
 #include "example_resources.hpp"
 #include "raisim/World.hpp"
+#include "rayrai/PhysicsSnapshot.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
 
@@ -19,7 +20,9 @@ int main(int argc, char* argv[]) {
     robot->setGeneralizedCoordinate({0, 0, 0.32, 1.0, 0.0, 0.0, 0.0, 0, 0.67, -1.3, 0, 0.67, -1.3, 0, 0.67, -1.3, 0, 0.67, -1.3});
   }
 
-  auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
+  // The renderer owns an empty world; physics reaches it only through copied snapshots.
+  raisin::PhysicsSnapshotCapture snapshotCapture;
+  auto viewer = std::make_shared<raisin::RayraiWindow>(std::make_shared<raisim::World>(), 1280, 720);
   viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {30, 30, 40, 255});
   viewer->setGroundPatternResourcePath(exampleRscPath(argv[0], "minitaur/vision/checker_blue.png"));
@@ -35,6 +38,12 @@ int main(int argc, char* argv[]) {
     app.processEvents();
 
     world->integrate();
+    // With separate threads, integrate() and capture() share the physics lock. Release it
+    // before handing this immutable snapshot to the renderer. applyPhysicsSnapshot() and
+    // rendering use only the window lock on the thread owning the GL context.
+    const auto snapshot = snapshotCapture.capture(*world);
+
+    viewer->applyPhysicsSnapshot(snapshot);
 
     app.beginFrame();
     app.renderViewer(*viewer);

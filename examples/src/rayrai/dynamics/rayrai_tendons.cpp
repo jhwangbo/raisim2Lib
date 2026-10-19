@@ -1,4 +1,5 @@
 // Interactive versions of the three tendon examples, using automatic rendering.
+#include "rayrai/PhysicsSnapshot.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
 #include "tendon_example_runner.hpp"
@@ -49,7 +50,9 @@ int run(const Options& options) {
   } cleanup{app};
   // Keep ImGui scratch files out of the source directory.
   ImGui::GetIO().IniFilename = nullptr;
-  auto viewer = std::make_shared<raisin::RayraiWindow>(scene->world, 1280, 720);
+  // The renderer owns an empty world; physics reaches it only through copied snapshots.
+  raisin::PhysicsSnapshotCapture snapshotCapture;
+  auto viewer = std::make_shared<raisin::RayraiWindow>(std::make_shared<raisim::World>(), 1280, 720);
   viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {30, 34, 42, 255});
   raisim_examples::addRayraiBasicSceneLights(*viewer);
@@ -78,6 +81,10 @@ int run(const Options& options) {
       ++steps;
       accumulator -= scene->world->getTimeStep();
     }
+    // Capture after the physics batch. No World access is needed while drawing.
+    const auto snapshot = snapshotCapture.capture(*scene->world);
+    viewer->applyPhysicsSnapshot(snapshot);
+
     app.beginFrame();
     app.renderViewer(*viewer);
     ImGui::SetNextWindowPos(ImVec2(12, 12), ImGuiCond_FirstUseEver);
@@ -103,7 +110,7 @@ int run(const Options& options) {
     ++frames;
     if (reset) {
       scene = std::make_unique<Scene>(static_cast<Kind>(selected));
-      viewer->swapWorld(scene->world);
+      // The next snapshot replaces the old scene, including its automatic tendon visuals.
       positionCamera(*viewer, scene->kind);
       accumulator = 0.;
       steps = 0;

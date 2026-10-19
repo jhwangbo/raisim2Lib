@@ -10,6 +10,7 @@
 #include "raisim/World.hpp"
 #include "rayrai/Camera.hpp"
 #include "rayrai/CameraFrustum.hpp"
+#include "rayrai/PhysicsSnapshot.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
 
@@ -51,7 +52,9 @@ int main(int argc, char* argv[]) {
   auto box = world->addBox(0.4, 0.4, 0.4, 1);
   box->setAppearance("0.2,0.7,0.9,1.0");
 
-  auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
+  // The renderer owns an empty world; physics reaches it only through copied snapshots.
+  raisin::PhysicsSnapshotCapture snapshotCapture;
+  auto viewer = std::make_shared<raisin::RayraiWindow>(std::make_shared<raisim::World>(), 1280, 720);
   viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {35, 35, 45, 255});
   auto& camera = viewer->getCamera();
@@ -59,9 +62,11 @@ int main(int argc, char* argv[]) {
   camera.yaw = -135.0f;
   camera.pitch = -28.0f;
 
-  auto rgbCamera = std::make_shared<raisin::Camera>(*rgbCam);
+  const auto rgbProp = rgbCam->getProperties();
+  auto rgbCamera = std::make_shared<raisin::Camera>(rgbProp);
   auto rgbFrustum = viewer->addCameraFrustum("rgb_frustum", glm::vec4(0.2f, 0.7f, 1.0f, 0.4f));
   rgbFrustum->setDetectable(false);
+  std::vector<char> rgbImage(size_t(rgbProp.width) * size_t(rgbProp.height) * 4);
 
   rgbCam->updatePose();
   const glm::vec3 sensorPos = toGlm(rgbCam->getPosition());
@@ -85,8 +90,21 @@ int main(int argc, char* argv[]) {
     if (app.quit) break;
 
     world->integrate();
+    // CPU-only copy immediately after physics; apply on the thread owning the GL context.
+    const auto snapshot = snapshotCapture.capture(*world);
+    rgbCam->updatePose();
+    const glm::vec3 capturedPosition = toGlm(rgbCam->getPosition());
+    const glm::mat3 capturedRotation = toGlm(rgbCam->getOrientation());
 
-    viewer->renderWithExternalCamera(*rgbCam, *rgbCamera, {});
+    // Only copied data is used below. A separate render thread would lock the window here.
+    viewer->applyPhysicsSnapshot(snapshot);
+    rgbCamera->position = capturedPosition;
+    rgbCamera->front = capturedRotation[0];  // Sensor +X is forward, +Z is up.
+    rgbCamera->up = capturedRotation[2];
+    rgbCamera->right = glm::normalize(glm::cross(rgbCamera->front, rgbCamera->up));
+
+    viewer->renderWithExternalCamera(*rgbCamera, {});
+    rgbCamera->readSceneColorBgra(rgbImage.data(), rgbImage.size());
     if (rgbFrustum) {
       rgbFrustum->updateFromCamera(*rgbCamera);
     }
@@ -94,7 +112,7 @@ int main(int argc, char* argv[]) {
     app.beginFrame();
     app.renderViewer(*viewer);
 
-    const auto& prop = rgbCam->getProperties();
+    const auto& prop = rgbProp;
     const int w = std::max(1, prop.width);
     const int h = std::max(1, prop.height);
     const float aspect = float(w) / float(h);
@@ -103,14 +121,20 @@ int main(int argc, char* argv[]) {
     ImGui::SetNextWindowSize(ImVec2(360, 220), ImGuiCond_FirstUseEver);
     ImGui::Begin("RGB Sensor", nullptr, ImGuiWindowFlags_NoCollapse);
     ImVec2 avail = ImGui::GetContentRegionAvail();
+    avail.y = std::max(1.0f, avail.y - ImGui::GetTextLineHeightWithSpacing());
     ImVec2 size = fitToAspect(avail, aspect);
     ImTextureID tex = (ImTextureID)(intptr_t)rgbCamera->getFinalTexture();
     ImGui::Image(tex, size, ImVec2(0, 1), ImVec2(1, 0));
+    const auto center = (size_t(h / 2) * size_t(w) + size_t(w / 2)) * 4;
+    ImGui::Text("Center RGB: %u %u %u", unsigned(static_cast<unsigned char>(rgbImage[center + 2])), unsigned(static_cast<unsigned char>(rgbImage[center + 1])),
+                unsigned(static_cast<unsigned char>(rgbImage[center])));
     ImGui::End();
 
     app.endFrame();
   }
 
+  rgbCamera.reset();
+  rgbFrustum.reset();
   viewer.reset();
   app.shutdown();
   return 0;

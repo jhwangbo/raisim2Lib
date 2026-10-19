@@ -204,31 +204,28 @@ void init_contact(py::module_ &m) {
         .def(py::init<>())
         .def_prop_rw("imp_i",
                       [](const raisim::contact::Single3DContactProblem &self) { return convert_vec_to_np(self.imp_i); },
-                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.imp_i = convert_np_to_vec<3>(value); })
+                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.imp_i = convert_np_to_vec<3>(value); }, py::rv_policy::move)
         .def_prop_rw("velInit",
                       [](const raisim::contact::Single3DContactProblem &self) { return convert_vec_to_np(self.velInit); },
-                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.velInit = convert_np_to_vec<3>(value); })
+                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.velInit = convert_np_to_vec<3>(value); }, py::rv_policy::move)
         .def_prop_rw("MappInv_i",
                       [](const raisim::contact::Single3DContactProblem &self) { return convert_mat_to_np(self.MappInv_i); },
-                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.MappInv_i = convert_np_to_mat<3, 3>(value); })
+                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.MappInv_i = convert_np_to_mat<3, 3>(value); }, py::rv_policy::move)
         .def_prop_rw("Mapp_i",
                       [](const raisim::contact::Single3DContactProblem &self) { return convert_mat_to_np(self.Mapp_i); },
-                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.Mapp_i = convert_np_to_mat<3, 3>(value); })
+                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.Mapp_i = convert_np_to_mat<3, 3>(value); }, py::rv_policy::move)
         .def_prop_rw("Mapp_iInv22",
                       [](const raisim::contact::Single3DContactProblem &self) { return convert_mat_to_np(self.Mapp_iInv22); },
-                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.Mapp_iInv22 = convert_np_to_mat<2, 2>(value); })
+                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.Mapp_iInv22 = convert_np_to_mat<2, 2>(value); }, py::rv_policy::move)
         .def_prop_rw("Mapp_i22",
                       [](const raisim::contact::Single3DContactProblem &self) { return convert_mat_to_np(self.Mapp_i22); },
-                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.Mapp_i22 = convert_np_to_mat<2, 2>(value); })
+                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.Mapp_i22 = convert_np_to_mat<2, 2>(value); }, py::rv_policy::move)
         .def_prop_rw("basisMat",
                       [](const raisim::contact::Single3DContactProblem &self) { return convert_mat_to_np(self.basisMat); },
-                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.basisMat = convert_np_to_mat<3, 2>(value); })
+                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.basisMat = convert_np_to_mat<3, 2>(value); }, py::rv_policy::move)
         .def_prop_rw("axis",
                       [](const raisim::contact::Single3DContactProblem &self) { return convert_vec_to_np(self.axis); },
-                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.axis = convert_np_to_vec<3>(value); })
-        .def_prop_rw("MappInv_red",
-                      [](const raisim::contact::Single3DContactProblem &self) { return convert_mat_to_np(self.MappInv_red); },
-                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.MappInv_red = convert_np_to_mat<3, 2>(value); })
+                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.axis = convert_np_to_vec<3>(value); }, py::rv_policy::move)
         .def_rw("mu", &raisim::contact::Single3DContactProblem::mu)
         .def_rw("n2_mu", &raisim::contact::Single3DContactProblem::n2_mu)
         .def_rw("muinv", &raisim::contact::Single3DContactProblem::muinv)
@@ -245,7 +242,7 @@ void init_contact(py::module_ &m) {
         .def_rw("pointIdB", &raisim::contact::Single3DContactProblem::pointIdB)
         .def_prop_rw("position_W",
                       [](const raisim::contact::Single3DContactProblem &self) { return convert_vec_to_np(self.position_W); },
-                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.position_W = convert_np_to_vec<3>(value); })
+                      [](raisim::contact::Single3DContactProblem &self, NDArray value) { self.position_W = convert_np_to_vec<3>(value); }, py::rv_policy::move)
         .def_rw("mu_static", &raisim::contact::Single3DContactProblem::mu_static)
         .def_rw("mu_static_vel_thresh", &raisim::contact::Single3DContactProblem::mu_static_vel_thresh)
         .def_rw("mu_static_vel_thresh_inv", &raisim::contact::Single3DContactProblem::mu_static_vel_thresh_inv)

@@ -1305,6 +1305,8 @@ void init_world(py::module_ &m) {
 
       .def("setContactSolverIterationOrder", &raisim::World::setContactSolverIterationOrder, py::arg("order"))
 
+      .def("setSensorNoiseSeed", &raisim::World::setSensorNoiseSeed)
+      .def("getSensorNoiseSeed", &raisim::World::getSensorNoiseSeed)
       .def("getWorldTime", &raisim::World::getWorldTime, R"mydelimiter(
         Return the total integrated time (which is updated at every `integrate2()`` call).
 

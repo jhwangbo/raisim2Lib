@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 
 #include "raisim/World.hpp"
+#include "rayrai/PhysicsSnapshot.hpp"
 #include "rayrai/example_common.hpp"
 #include "rayrai_example_compat.hpp"
 
@@ -37,7 +38,9 @@ int main() {
   filtered->setAppearance("0.24,0.84,0.38,1.0");
   const auto filteredId = filtered->getId();
 
-  auto viewer = std::make_shared<raisin::RayraiWindow>(world, 1280, 720);
+  // The renderer owns an empty world; physics reaches it only through copied snapshots.
+  raisin::PhysicsSnapshotCapture snapshotCapture;
+  auto viewer = std::make_shared<raisin::RayraiWindow>(std::make_shared<raisim::World>(), 1280, 720);
   viewer->setRenderQualitySettings(raisin::RayraiWindow::defaultRenderQualitySettings(raisin::RayraiWindow::RenderQualityPreset::Balanced));
   raisim_examples::setRayraiBackgroundColorRgb255(*viewer, {24, 26, 30, 255});
   raisim_examples::addRayraiBasicSceneLights(*viewer);
@@ -86,6 +89,10 @@ int main() {
     }
 
     world->integrate();
+    // CPU-only copy immediately after physics; apply on the thread owning the GL context.
+    const auto snapshot = snapshotCapture.capture(*world);
+
+    viewer->applyPhysicsSnapshot(snapshot);
 
     app.beginFrame();
     app.renderViewer(*viewer);

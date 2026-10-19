@@ -5,6 +5,7 @@
 #include "TcpViewerSensorLimits.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -18,7 +19,9 @@
 #include <glm/gtc/quaternion.hpp>
 
 #include "rayrai/Camera.hpp"
+#include "rayrai/GlStateGuard.hpp"
 #include "rayrai/RayraiWindow.hpp"
+#include "rayrai/TextureBindingCache.hpp"
 #include "raisim/sensors/DepthSensor.hpp"
 #include "raisim/sensors/RGBSensor.hpp"
 
@@ -75,9 +78,9 @@ Properties sensorCameraProperties(const SensorInfo& info) {
 }
 
 /**
- * Returns a RaiSim camera with the request's resolution for Camera::getRawImage(). With a custom
- * buffer that call reads only the resolution, and constructing a DepthCamera computes a ray
- * direction per pixel, so one camera is kept per stream and rebuilt when the resolution changes.
+ * Returns a clean readback camera; the server applies the sensor's noise model to the received
+ * pixels. Constructing a DepthCamera computes a ray direction per pixel, so one camera is kept
+ * per stream and rebuilt when the requested resolution changes.
  */
 template <typename SensorType, typename Properties>
 SensorType& readbackSensor(std::unique_ptr<SensorType>& sensor, const SensorInfo& info) {
@@ -93,25 +96,65 @@ SensorType& readbackSensor(std::unique_ptr<SensorType>& sensor, const SensorInfo
   return *sensor;
 }
 
-void uploadDepthPreview(unsigned int& texture, int width, int height,
+struct DepthPreviewTexture {
+  unsigned int texture = 0;
+  int width = 0, height = 0;
+};
+
+// Upload tightly packed bytes without inheriting the application's PBO or row
+// offsets. Restoring the texture binding also keeps the renderer's binding cache valid.
+class ScopedPreviewUpload {
+ public:
+  ScopedPreviewUpload() {
+    gl::glGetIntegerv(gl::GL_TEXTURE_BINDING_2D, &texture_);
+    for (size_t i = 0; i < kFields.size(); ++i) {
+      gl::glGetIntegerv(kFields[i], &previous_[i]);
+      if (previous_[i] != kValues[i]) gl::glPixelStorei(kFields[i], kValues[i]);
+    }
+  }
+  ~ScopedPreviewUpload() {
+    gl::glBindTexture(gl::GL_TEXTURE_2D, static_cast<gl::GLuint>(texture_));
+    for (size_t i = 0; i < kFields.size(); ++i)
+      if (previous_[i] != kValues[i]) gl::glPixelStorei(kFields[i], previous_[i]);
+  }
+  ScopedPreviewUpload(const ScopedPreviewUpload&) = delete;
+  ScopedPreviewUpload& operator=(const ScopedPreviewUpload&) = delete;
+
+ private:
+  ScopedPixelUnpackBufferZero noUnpackBuffer_;
+  static constexpr std::array<gl::GLenum, 4> kFields = {gl::GL_UNPACK_ALIGNMENT,
+      gl::GL_UNPACK_ROW_LENGTH, gl::GL_UNPACK_SKIP_ROWS, gl::GL_UNPACK_SKIP_PIXELS};
+  static constexpr std::array<gl::GLint, 4> kValues = {1, 0, 0, 0};
+  std::array<gl::GLint, 4> previous_{};
+  gl::GLint texture_ = 0;
+};
+
+void uploadDepthPreview(DepthPreviewTexture& target, int width, int height,
                         const std::vector<float>& depth,
                         const detail::DepthPreviewShading& shading,
                         std::vector<unsigned char>& rgba,
                         float& minimumDepth, float& maximumDepth) {
   detail::makeDepthPreviewRgba(depth, shading, rgba, minimumDepth, maximumDepth);
 
-  if (texture == 0) {
-    gl::glGenTextures(1, &texture);
+  const ScopedPreviewUpload upload;
+  const bool created = target.texture == 0;
+  if (created) gl::glGenTextures(1, &target.texture);
+  gl::glBindTexture(gl::GL_TEXTURE_2D, target.texture);
+  if (created) {
+    gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MIN_FILTER, gl::GL_LINEAR);
+    gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MAG_FILTER, gl::GL_LINEAR);
+    gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_WRAP_S, gl::GL_CLAMP_TO_EDGE);
+    gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_WRAP_T, gl::GL_CLAMP_TO_EDGE);
   }
-  gl::glBindTexture(gl::GL_TEXTURE_2D, texture);
-  gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MIN_FILTER, gl::GL_LINEAR);
-  gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MAG_FILTER, gl::GL_LINEAR);
-  gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_WRAP_S, gl::GL_CLAMP_TO_EDGE);
-  gl::glTexParameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_WRAP_T, gl::GL_CLAMP_TO_EDGE);
-  gl::glPixelStorei(gl::GL_UNPACK_ALIGNMENT, 1);
-  gl::glTexImage2D(gl::GL_TEXTURE_2D, 0, gl::GL_RGBA8, width, height, 0,
-                   gl::GL_RGBA, gl::GL_UNSIGNED_BYTE, rgba.data());
-  gl::glBindTexture(gl::GL_TEXTURE_2D, 0);
+  if (created || target.width != width || target.height != height) {
+    gl::glTexImage2D(gl::GL_TEXTURE_2D, 0, gl::GL_RGBA8, width, height, 0,
+                     gl::GL_RGBA, gl::GL_UNSIGNED_BYTE, rgba.data());
+    target.width = width;
+    target.height = height;
+  } else {
+    gl::glTexSubImage2D(gl::GL_TEXTURE_2D, 0, 0, 0, width, height,
+                        gl::GL_RGBA, gl::GL_UNSIGNED_BYTE, rgba.data());
+  }
 }
 
 } // namespace
@@ -119,16 +162,400 @@ void uploadDepthPreview(unsigned int& texture, int width, int height,
 namespace detail
 {
 
+namespace {
+
+// The caller checks the image length. Confirm eight missing returns before
+// taking the bulk path; ordinary images use the shade/range loops.
+template <size_t BlockSize>
+#if defined(_MSC_VER)
+__declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#endif
+size_t writeInvalidDepthPreviewPrefix(const float* depth, size_t count,
+                                      unsigned char* rgba, uint32_t opaque) {
+  static_assert(BlockSize >= 8u);
+  std::array<uint32_t, 8> first;
+  std::memcpy(first.data(), depth, sizeof(first));
+  bool firstValid = false;
+  for (uint32_t word : first) firstValid |= word - 1u < UINT32_C(0x7f7fffff);
+  if (firstValid) return 0;
+  std::array<uint32_t, BlockSize> block;
+  block.fill(opaque);
+  // The first eight samples were already classified above.
+  std::memcpy(rgba, block.data(), sizeof(first));
+  size_t i = first.size();
+  while (count - i >= block.size()) {
+    std::array<uint32_t, BlockSize> words;
+    std::memcpy(words.data(), depth + i, sizeof(words));
+    // The first word is known to be missing. Repeated words need only an
+    // equality check; otherwise the eight-sample loop below classifies the
+    // rest of the prefix without assuming a common representation.
+    bool stop = false;
+    for (uint32_t word : words) {
+      if constexpr (BlockSize > 8u) stop |= word != first[0];
+      else stop |= word - 1u < UINT32_C(0x7f7fffff);
+    }
+    if (stop) break;
+    std::memcpy(rgba + i * 4u, block.data(), sizeof(block));
+    i += block.size();
+  }
+  if constexpr (BlockSize > 8u) {
+    while (count - i >= 8u) {
+      std::array<uint32_t, 8> words;
+      std::memcpy(words.data(), depth + i, sizeof(words));
+      bool anyValid = false;
+      for (uint32_t word : words) anyValid |= word - 1u < UINT32_C(0x7f7fffff);
+      if (anyValid) break;
+      std::memcpy(rgba + i * 4u, block.data(), sizeof(words));
+      i += words.size();
+    }
+  }
+  while (i < count) {
+    uint32_t word;
+    std::memcpy(&word, depth + i, sizeof(word));
+    if (word - 1u < UINT32_C(0x7f7fffff)) break;
+    std::memcpy(rgba + i * 4u, &opaque, sizeof(opaque));
+    ++i;
+  }
+  return i;
+}
+
+#if defined(_MSC_VER)
+__declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#endif
+size_t writeVariedDepthPreviewBlocks(const float* depth, size_t count,
+    const DepthPreviewShading& shading, unsigned char* rgba, uint32_t opaque,
+    float& minimum, float& maximum) {
+  const auto lookup = shading.batchLookup();
+  uint32_t lower, upper;
+  const float first = shading.interval(0).second, last = shading.interval(255).first;
+  std::memcpy(&lower, &first, sizeof(lower));
+  std::memcpy(&upper, &last, sizeof(upper));
+  const uint32_t span = upper - lower;
+  std::array<float, 4> blockMinimum;
+  blockMinimum.fill(std::numeric_limits<float>::infinity());
+  std::array<float, 4> blockMaximum{};
+  size_t i = 0;
+  while (count - i >= 4u) {
+    std::array<uint32_t, 4> bits;
+    std::memcpy(bits.data(), depth + i, sizeof(bits));
+    bool allValid = true;
+#if defined(__clang__)
+#pragma clang loop vectorize(enable) interleave(disable) unroll(disable)
+#endif
+    for (size_t lane = 0; lane < 4u; ++lane) allValid &= bits[lane] - lower < span;
+    // Return flat runs to the shade cache in the ordinary preview loop.
+    if (!allValid || bits[0] == bits[1]) break;
+    std::array<float, 4> values;
+    std::memcpy(values.data(), bits.data(), sizeof(values));
+    const auto shades = lookup.shadesWithinRange(values);
+    // Different depths can share one shade, including clipped returns. Let the
+    // ordinary loop cache that interval instead of repeating four lookups.
+    bool sameShade = true;
+#if defined(__clang__)
+#pragma clang loop vectorize(enable) interleave(disable) unroll(disable)
+#endif
+    for (size_t lane = 0; lane < 4u; ++lane) sameShade &= shades[lane] == shades[0];
+    if (sameShade) break;
+    std::array<uint32_t, 4> pixels;
+#if defined(__clang__)
+#pragma clang loop vectorize(enable) interleave(disable) unroll(disable)
+#endif
+    for (size_t lane = 0; lane < 4u; ++lane) {
+      const uint32_t pair = shades[lane] | (shades[lane] << 8u);
+      pixels[lane] = pair | (pair << 16u) | opaque;
+      blockMinimum[lane] = std::min(blockMinimum[lane], values[lane]);
+      blockMaximum[lane] = std::max(blockMaximum[lane], values[lane]);
+    }
+    std::memcpy(rgba + i * 4u, pixels.data(), sizeof(pixels));
+    i += 4u;
+  }
+  // Combine lanes locally before updating the caller's range once per run.
+  float runMinimum = blockMinimum[0], runMaximum = blockMaximum[0];
+  for (size_t lane = 1; lane < 4u; ++lane) {
+    runMinimum = std::min(runMinimum, blockMinimum[lane]);
+    runMaximum = std::max(runMaximum, blockMaximum[lane]);
+  }
+  minimum = std::min(minimum, runMinimum);
+  maximum = std::max(maximum, runMaximum);
+  return i;
+}
+
+#if defined(_MSC_VER)
+__declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#endif
+void writeCachedDepthPreviewBlocks(const float* samples, size_t count,
+    const DepthPreviewShading& shading, unsigned char* output, uint32_t opaque,
+    float& imageMinimum, float& imageMaximum) {
+  float minimum = std::numeric_limits<float>::infinity();
+  float maximum = 0.0f;
+  std::array<float, 4> blockMinimum{minimum, minimum, minimum, minimum};
+  std::array<float, 4> blockMaximum{};
+  uint32_t lower = 1, span = 0;
+  unsigned char previousShade = 0;
+  size_t i = 0;
+  while (i < count) {
+    if (count - i >= 4u) {
+      std::array<uint32_t, 4> bits;
+      std::memcpy(bits.data(), samples + i, sizeof(bits));
+      // Positive IEEE floats have ordered bits. This exact half-open interval excludes
+      // zero, infinities, NaNs and negative values, including when shade 0 or 255 is cached.
+      const bool sameShade = int(bits[0] - lower < span) & int(bits[1] - lower < span) &
+          int(bits[2] - lower < span) & int(bits[3] - lower < span);
+      if (sameShade) {
+        // Reuse the classified words instead of loading the same depths again.
+        std::array<float, 4> values;
+        std::memcpy(values.data(), bits.data(), sizeof(values));
+        // Reduce each lane across blocks, then combine lanes once at the end.
+        // Keep the loop in lane order so Clang emits packed min/max operations.
+#if defined(__clang__)
+#pragma clang loop vectorize(enable) interleave(disable) unroll(disable)
+#endif
+        for (size_t lane = 0; lane < 4u; ++lane) {
+          blockMinimum[lane] = std::min(blockMinimum[lane], values[lane]);
+          blockMaximum[lane] = std::max(blockMaximum[lane], values[lane]);
+        }
+        const uint32_t pixel = UINT32_C(0x01010101) * previousShade | opaque;
+        const std::array<uint32_t, 4> block{pixel, pixel, pixel, pixel};
+        std::memcpy(output + i * 4u, block.data(), sizeof(block));
+        i += 4u;
+        continue;
+      }
+      const bool anyValid = int(bits[0] - 1u < UINT32_C(0x7f7fffff)) |
+          int(bits[1] - 1u < UINT32_C(0x7f7fffff)) |
+          int(bits[2] - 1u < UINT32_C(0x7f7fffff)) |
+          int(bits[3] - 1u < UINT32_C(0x7f7fffff));
+      if (!anyValid) {
+        const std::array<uint32_t, 4> block{opaque, opaque, opaque, opaque};
+        std::memcpy(output + i * 4u, block.data(), sizeof(block));
+        i += 4u;
+        continue;
+      }
+    }
+    const size_t end = i + std::min(size_t(4), count - i);
+    do {
+      const float value = samples[i];
+      unsigned char shade = 0;
+      uint32_t bits;
+      std::memcpy(&bits, &value, sizeof(bits));
+      // Exactly the finite, positive floats, including subnormals.
+      if (bits - 1u < UINT32_C(0x7f7fffff)) {
+        minimum = std::min(minimum, value);
+        maximum = std::max(maximum, value);
+        if (bits - lower < span) {
+          shade = previousShade;
+        } else {
+          shade = previousShade = shading.shade(value);
+          const auto interval = shading.interval(shade);
+          uint32_t upper;
+          std::memcpy(&lower, &interval.first, sizeof(lower));
+          std::memcpy(&upper, &interval.second, sizeof(upper));
+          if (!(interval.first > 0.f)) lower = 1;
+          span = upper - lower;
+        }
+      }
+      const uint32_t pixel = UINT32_C(0x01010101) * shade | opaque;
+      std::memcpy(output + i * 4u, &pixel, sizeof(pixel));
+      ++i;
+    } while (i < end);
+  }
+  for (size_t lane = 0; lane < 4u; ++lane) {
+    minimum = std::min(minimum, blockMinimum[lane]);
+    maximum = std::max(maximum, blockMaximum[lane]);
+  }
+  imageMinimum = std::min(imageMinimum, minimum);
+  imageMaximum = std::max(imageMaximum, maximum);
+}
+
+// Long leading runs need one shade lookup and fewer loop branches per pixel.
+#if defined(_MSC_VER)
+__declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#endif
+size_t writeUniformDepthPreviewPrefix(const float* samples, size_t count,
+    const DepthPreviewShading& shading, unsigned char* output, uint32_t opaque,
+    float& imageMinimum, float& imageMaximum) {
+  uint32_t first;
+  std::memcpy(&first, samples, sizeof(first));
+  if (first - 1u >= UINT32_C(0x7f7fffff)) return 0;
+  const unsigned char shade = shading.shade(samples[0]);
+  const auto interval = shading.interval(shade);
+  uint32_t lower, upper;
+  std::memcpy(&lower, &interval.first, sizeof(lower));
+  std::memcpy(&upper, &interval.second, sizeof(upper));
+  if (!(interval.first > 0.f)) lower = 1;
+  const uint32_t span = upper - lower;
+  // The caller supplies at least 4096 samples. Confirm a long run before
+  // adding the wide loop's setup to short surfaces and varying images.
+#if defined(__clang__)
+#pragma clang loop unroll(disable)
+#endif
+  for (size_t offset = 0; offset < 1024u; offset += 4u) {
+    std::array<uint32_t, 4> bits;
+    std::memcpy(bits.data(), samples + offset, sizeof(bits));
+    if (!(int(bits[0] - lower < span) & int(bits[1] - lower < span) &
+          int(bits[2] - lower < span) & int(bits[3] - lower < span))) return 0;
+  }
+  const uint32_t pixel = UINT32_C(0x01010101) * shade | opaque;
+  std::array<uint32_t, 16> pixels;
+  pixels.fill(pixel);
+  std::array<float, 4> minimum;
+  minimum.fill(std::numeric_limits<float>::infinity());
+  std::array<float, 4> maximum{};
+  size_t i = 0;
+  while (count - i >= 16u) {
+    std::array<uint32_t, 16> bits;
+    std::memcpy(bits.data(), samples + i, sizeof(bits));
+    bool sameShade = true;
+#if defined(__clang__)
+#pragma clang loop unroll(full)
+#endif
+    for (size_t lane = 0; lane < 16u; ++lane) sameShade &= bits[lane] - lower < span;
+    if (!sameShade) break;
+    std::array<float, 16> values;
+    std::memcpy(values.data(), bits.data(), sizeof(values));
+    // Four lanes per update keep the reductions in registers on 128-bit targets.
+#if defined(__clang__)
+#pragma clang loop vectorize(enable) interleave(disable) unroll(disable)
+#endif
+    for (size_t lane = 0; lane < 4u; ++lane) {
+      minimum[lane] = std::min(minimum[lane], values[lane]);
+      maximum[lane] = std::max(maximum[lane], values[lane]);
+      minimum[lane] = std::min(minimum[lane], values[lane + 4u]);
+      maximum[lane] = std::max(maximum[lane], values[lane + 4u]);
+      minimum[lane] = std::min(minimum[lane], values[lane + 8u]);
+      maximum[lane] = std::max(maximum[lane], values[lane + 8u]);
+      minimum[lane] = std::min(minimum[lane], values[lane + 12u]);
+      maximum[lane] = std::max(maximum[lane], values[lane + 12u]);
+    }
+    std::memcpy(output + i * 4u, pixels.data(), sizeof(pixels));
+    i += 16u;
+  }
+  for (size_t lane = 0; lane < 4u; ++lane) {
+    imageMinimum = std::min(imageMinimum, minimum[lane]);
+    imageMaximum = std::max(imageMaximum, maximum[lane]);
+  }
+  return i;
+}
+
+// Sampling chooses an execution path only; both paths produce every exact shade.
+// Keep flat, clipped and mostly missing images on the cached loop.
+// Fixed bounds preserve the compiler's short-window loop optimizations.
+template <size_t ProbeLimit>
+#if defined(_MSC_VER)
+__declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#endif
+bool probeVariedDepthPreview(const float* depth, size_t count,
+                             const DepthPreviewShading& shading) {
+  std::array<uint32_t, 4> firstBits;
+  std::memcpy(firstBits.data(), depth, sizeof(firstBits));
+  if (firstBits[0] - 1u < UINT32_C(0x7f7fffff)) {
+    const auto interval = shading.interval(shading.shade(depth[0]));
+    uint32_t firstLower, firstUpper;
+    std::memcpy(&firstLower, &interval.first, sizeof(firstLower));
+    std::memcpy(&firstUpper, &interval.second, sizeof(firstUpper));
+    if (!(interval.first > 0.f)) firstLower = 1;
+    const uint32_t firstSpan = firstUpper - firstLower;
+    if (int(firstBits[1] - firstLower < firstSpan) & int(firstBits[2] - firstLower < firstSpan) &
+        int(firstBits[3] - firstLower < firstSpan)) return false;
+  }
+  uint32_t lower, upper;
+  const float first = shading.interval(0).second, last = shading.interval(255).first;
+  std::memcpy(&lower, &first, sizeof(lower));
+  std::memcpy(&upper, &last, sizeof(upper));
+  const uint32_t span = upper - lower;
+  size_t varying = 0;
+  for (size_t probe = 0; probe < 8u; ++probe) {
+    size_t offset = (count - 4u) / 7u * probe + (count - 4u) % 7u * probe / 7u;
+    // Stagger the grid so periodic invalid blocks do not all land between probes.
+    const size_t stagger = probe * (probe + 1u) / 2u;
+    offset = stagger <= count - 4u - offset ? offset + stagger : offset - stagger;
+    // Look within a short window when a probe lands on missing returns. The
+    // staggered grid alone can still alias alternating missing/varied runs.
+    const size_t probeCount = std::min(ProbeLimit, count - offset);
+    for (size_t step = 0; step + 4u <= probeCount; step += 4u) {
+      std::array<uint32_t, 4> bits;
+      std::memcpy(bits.data(), depth + offset + step, sizeof(bits));
+      const bool interior = int(bits[0] - lower < span) & int(bits[1] - lower < span) &
+          int(bits[2] - lower < span) & int(bits[3] - lower < span);
+      if (!interior) {
+        bool clipped = false;
+        for (uint32_t word : bits)
+          clipped |= int(word - 1u < UINT32_C(0x7f7fffff)) & int(word - lower >= span);
+        if (clipped) break;
+        continue;
+      }
+      const auto interval = shading.interval(shading.shade(depth[offset + step]));
+      uint32_t shadeLower, shadeUpper;
+      std::memcpy(&shadeLower, &interval.first, sizeof(shadeLower));
+      std::memcpy(&shadeUpper, &interval.second, sizeof(shadeUpper));
+      const uint32_t shadeSpan = shadeUpper - shadeLower;
+      const bool sameShade = int(bits[1] - shadeLower < shadeSpan) &
+          int(bits[2] - shadeLower < shadeSpan) & int(bits[3] - shadeLower < shadeSpan);
+      varying += !sameShade;
+      break;
+    }
+  }
+  return varying >= 6u;
+}
+
+bool useVariedDepthPreview(const float* depth, size_t count,
+                           const DepthPreviewShading& shading) {
+  // Extend through longer gaps only after a dense prefix, and keep small
+  // previews on the short windows. This avoids scanning farther for sparse
+  // isolated returns; eight full windows inspect at most 512 samples.
+  if (count >= 4096u) {
+    uint32_t lower, upper;
+    const float first = shading.interval(0).second, last = shading.interval(255).first;
+    std::memcpy(&lower, &first, sizeof(lower));
+    std::memcpy(&upper, &last, sizeof(upper));
+    const uint32_t span = upper - lower;
+    std::array<uint32_t, 8> prefix;
+    std::memcpy(prefix.data(), depth, sizeof(prefix));
+    bool densePrefix = true;
+    for (uint32_t word : prefix) densePrefix &= word - lower < span;
+    if (densePrefix) return probeVariedDepthPreview<64>(depth, count, shading);
+  }
+  return probeVariedDepthPreview<16>(depth, count, shading);
+}
+
+} // namespace
+
 DepthPreviewShading::DepthPreviewShading(float clipMinimum, float clipMaximum)
     : clipMinimum_(clipMinimum), clipMaximum_(clipMaximum) {
   scaleMinimum_ = std::isfinite(clipMinimum) ? std::max(clipMinimum, 1.0e-6f) : 1.0e-6f;
   scaleMaximum_ = std::isfinite(clipMaximum) && clipMaximum > scaleMinimum_
     ? clipMaximum
     : scaleMinimum_ + 1.0e-6f;
+  if (!(scaleMaximum_ > scaleMinimum_)) {
+    // The fallback increment can round away at large depths. Use an adjacent
+    // finite float pair even at the largest representable clipping plane.
+    scaleMaximum_ = std::nextafter(scaleMinimum_, std::numeric_limits<float>::infinity());
+    if (!std::isfinite(scaleMaximum_)) {
+      scaleMaximum_ = scaleMinimum_;
+      scaleMinimum_ = std::nextafter(scaleMaximum_, 0.f);
+    }
+  }
   const float scaleMinimum = scaleMinimum_;
   const float scaleMaximum = scaleMaximum_;
-  const float inverseLogRange = 1.0f / std::log(scaleMaximum / scaleMinimum);
+  const bool wideRange = double(scaleMaximum) / scaleMinimum > std::numeric_limits<float>::max();
+  const float inverseLogRange = wideRange ? 0.f : 1.0f / std::log(scaleMaximum / scaleMinimum);
+  const double inverseWideLogRange = wideRange ?
+      1. / std::log(double(scaleMaximum) / scaleMinimum) : 0.;
   const auto formulaShade = [&](float value) {
+    if (wideRange) {
+      const double normalized = std::log(double(value) / scaleMinimum) * inverseWideLogRange;
+      return static_cast<unsigned char>(std::lround(255. * normalized));
+    }
+    // Float rounding defines the exact shade boundaries for ordinary ranges.
     const float normalized = std::log(value / scaleMinimum) * inverseLogRange;
     return static_cast<unsigned char>(std::lround(255.0f * normalized));
   };
@@ -165,49 +592,143 @@ DepthPreviewShading::DepthPreviewShading(float clipMinimum, float clipMaximum)
   }
   bounds_[256] = std::numeric_limits<float>::infinity();
 
-  firstBucket_ = bits(scaleMinimum) >> 16u;
-  const uint32_t lastBucket = bits(scaleMaximum) >> 16u;
-  bucketShades_.resize(lastBucket - firstBucket_ + 1u);
+  // A bucket narrower than the smallest boundary gap crosses at most one
+  // boundary. Repeated boundaries require one float per bucket instead.
+  uint32_t minimumGap = std::numeric_limits<uint32_t>::max();
+  for (size_t i = 2; i < 256u; ++i) {
+    if (std::isfinite(bounds_[i]))
+      minimumGap = std::min(minimumGap, bits(bounds_[i]) - bits(bounds_[i - 1u]));
+  }
+  uint32_t shift = 16u;
+  while (shift > 0u && (UINT32_C(1) << shift) > minimumGap) --shift;
+  // Align the table origin to at least 32 float words. Its five zero low bits
+  // can carry the shift without a second per-pixel load or a larger object.
+  const uint32_t alignment = UINT32_C(1) << std::max(shift, 5u);
+  const uint32_t origin = bits(scaleMinimum) & ~(alignment - 1u);
+  bucketLayout_ = origin | shift;
+  const uint32_t firstBucket = origin >> shift;
+  const uint32_t lastBucket = bits(scaleMaximum) >> shift;
+  bucketEntries_.resize(lastBucket - firstBucket + 1u);
   const auto firstBound = bounds_.begin() + 1;
-  for (uint32_t bucket = firstBucket_; bucket <= lastBucket; ++bucket) {
-    const float edge = std::max(fromBits(bucket << 16u), scaleMinimum);
-    bucketShades_[bucket - firstBucket_] = static_cast<unsigned char>(
+  const uint32_t width = UINT32_C(1) << shift;
+  for (uint32_t bucket = firstBucket; bucket <= lastBucket; ++bucket) {
+    const float edge = std::max(fromBits(bucket << shift), scaleMinimum);
+    const uint32_t shade = static_cast<uint32_t>(
       std::upper_bound(firstBound, bounds_.begin() + 256, edge) - firstBound);
+    const uint32_t boundaryOffset = std::min(bits(bounds_[shade + 1u]) - (bucket << shift), width);
+    // Cancel the bucket's position, then add a bias whose carry changes the
+    // shade at the exact boundary. A boundary beyond this bucket adds no bias.
+    bucketEntries_[bucket - firstBucket] = (shade << shift) - ((bucket - firstBucket) << shift) +
+        width - boundaryOffset;
   }
 }
 
 unsigned char DepthPreviewShading::shade(float depth) const {
-  const float clamped = std::clamp(depth, scaleMinimum_, scaleMaximum_);
-  uint32_t bits = 0;
-  std::memcpy(&bits, &clamped, sizeof(bits));
-  size_t shade = bucketShades_[(bits >> 16u) - firstBucket_];
-  // A bucket spans less than one shade for typical clip ranges, so one step usually suffices.
-  shade += clamped >= bounds_[shade + 1u] ? 1u : 0u;
-  while (clamped >= bounds_[shade + 1u]) ++shade;
-  return static_cast<unsigned char>(shade);
+  return shadeWithinRange(std::clamp(depth, scaleMinimum_, scaleMaximum_));
 }
 
 void makeDepthPreviewRgba(const std::vector<float>& depth, const DepthPreviewShading& shading,
   std::vector<unsigned char>& rgba, float& minimumDepth, float& maximumDepth) {
-  rgba.resize(depth.size() * 4u);
-  minimumDepth = std::numeric_limits<float>::infinity();
-  maximumDepth = 0.0f;
-  for (size_t i = 0; i < depth.size(); ++i) {
-    const float value = depth[i];
-    unsigned char shade = 0;
-    if (std::isfinite(value) && value > 0.0f) {
-      minimumDepth = std::min(minimumDepth, value);
-      maximumDepth = std::max(maximumDepth, value);
-      shade = shading.shade(value);
+  size_t count = depth.size();
+  rgba.resize(count * 4u);
+  // Byte writes can alias the vector objects and the output references. Keep pointers and
+  // range reductions local so they stay in registers until the whole image is complete.
+  const float* samples = depth.data();
+  unsigned char* output = rgba.data();
+  // Repeating a byte fills all four channels; OR in alpha using its native byte position.
+  // memcpy keeps both packed writes and unaligned destinations portable.
+  const std::array<unsigned char, 4> opaqueBytes{0, 0, 0, 255};
+  uint32_t opaque;
+  std::memcpy(&opaque, opaqueBytes.data(), sizeof(opaque));
+  if (count >= 32u) {
+    uint32_t first;
+    std::memcpy(&first, samples, sizeof(first));
+    if (first - 1u >= UINT32_C(0x7f7fffff)) {
+      // Restrict wider equality checks to the initial prefix of large images.
+      // Later gaps retain the smaller classifier for short missing runs.
+      const size_t skipped = count >= 4096u
+          ? writeInvalidDepthPreviewPrefix<64>(samples, count, output, opaque)
+          : writeInvalidDepthPreviewPrefix<8>(samples, count, output, opaque);
+      samples += skipped;
+      output += skipped * 4u;
+      count -= skipped;
     }
-    rgba[i * 4u + 0u] = shade;
-    rgba[i * 4u + 1u] = shade;
-    rgba[i * 4u + 2u] = shade;
-    rgba[i * 4u + 3u] = 255;
   }
-  if (!std::isfinite(minimumDepth)) {
-    minimumDepth = 0.0f;
+  float minimum = std::numeric_limits<float>::infinity();
+  float maximum = 0.0f;
+  // Choose the converter before consuming the prefix so its removal does not
+  // change the execution path for the rest of a mostly uniform image.
+  const bool varied = count >= 256u && useVariedDepthPreview(samples, count, shading);
+  if (!varied && count >= 4096u) {
+    // A missing prefix can leave every four-pixel block crossing a vector boundary.
+    // Peel at most three pixels through the ordinary converter before batching.
+    const size_t leading = (4u - ((reinterpret_cast<uintptr_t>(output) >> 2u) & 3u)) & 3u;
+    if (leading != 0u) {
+      writeCachedDepthPreviewBlocks(samples, leading, shading, output, opaque, minimum, maximum);
+      samples += leading;
+      output += leading * 4u;
+      count -= leading;
+    }
+    const size_t written = count >= 4096u ? writeUniformDepthPreviewPrefix(samples, count, shading,
+        output, opaque, minimum, maximum) : 0u;
+    samples += written;
+    output += written * 4u;
+    count -= written;
   }
+  if (varied) {
+    while (count >= 64u) {
+      const size_t written = writeVariedDepthPreviewBlocks(samples, count, shading,
+          output, opaque, minimum, maximum);
+      samples += written;
+      output += written * 4u;
+      count -= written;
+      if (count == 0u) break;
+      if (count >= 32u) {
+        std::array<uint32_t, 2> first;
+        std::memcpy(first.data(), samples, sizeof(first));
+        if (int(first[0] - 1u >= UINT32_C(0x7f7fffff)) &
+            int(first[1] - 1u >= UINT32_C(0x7f7fffff))) {
+          const size_t skipped = writeInvalidDepthPreviewPrefix<8>(samples, count, output, opaque);
+          if (skipped != 0u) {
+            samples += skipped;
+            output += skipped * 4u;
+            count -= skipped;
+            continue;
+          }
+        }
+      }
+      // Handle a boundary or missing return with the cached loop. Amortize its
+      // setup over 64 samples when the next block already shares one shade.
+      size_t cachedCount = std::min(count, size_t(4));
+      if (count >= 64u) {
+        std::array<uint32_t, 4> bits;
+        std::memcpy(bits.data(), samples, sizeof(bits));
+        const bool anyValid = int(bits[0] - 1u < UINT32_C(0x7f7fffff)) |
+            int(bits[1] - 1u < UINT32_C(0x7f7fffff)) |
+            int(bits[2] - 1u < UINT32_C(0x7f7fffff)) |
+            int(bits[3] - 1u < UINT32_C(0x7f7fffff));
+        if (!anyValid) cachedCount = 64u;
+        else if (bits[0] - 1u < UINT32_C(0x7f7fffff)) {
+          const auto interval = shading.interval(shading.shade(samples[0]));
+          uint32_t lower, upper;
+          std::memcpy(&lower, &interval.first, sizeof(lower));
+          std::memcpy(&upper, &interval.second, sizeof(upper));
+          if (!(interval.first > 0.f)) lower = 1;
+          const uint32_t span = upper - lower;
+          if (int(bits[1] - lower < span) & int(bits[2] - lower < span) & int(bits[3] - lower < span))
+            cachedCount = 64u;
+        }
+      }
+      writeCachedDepthPreviewBlocks(samples, cachedCount, shading, output, opaque, minimum, maximum);
+      samples += cachedCount;
+      output += cachedCount * 4u;
+      count -= cachedCount;
+    }
+  }
+  if (count != 0u)
+    writeCachedDepthPreviewBlocks(samples, count, shading, output, opaque, minimum, maximum);
+  minimumDepth = std::isfinite(minimum) ? minimum : 0.0f;
+  maximumDepth = maximum;
 }
 
 std::vector<unsigned char> makeDepthPreviewRgba(const std::vector<float>& depth,
@@ -227,7 +748,7 @@ struct SensorRenderer::CachedSensor {
   std::optional<detail::DepthPreviewShading> depthShading;
   std::vector<unsigned char> depthPreviewRgba;
   SensorPreviewInfo preview;
-  unsigned int depthPreviewTexture = 0;
+  DepthPreviewTexture depthPreview;
 };
 
 SensorRenderer::SensorRenderer() = default;
@@ -300,10 +821,10 @@ bool SensorRenderer::render(RayraiWindow& viewer, std::vector<PendingSensorUpdat
       if (!cached->depthShading || !cached->depthShading->matches(clipNear, clipFar)) {
         cached->depthShading.emplace(clipNear, clipFar);
       }
-      uploadDepthPreview(cached->depthPreviewTexture, info.width, info.height, update.depth,
+      uploadDepthPreview(cached->depthPreview, info.width, info.height, update.depth,
         *cached->depthShading, cached->depthPreviewRgba, cached->preview.minimumDepth,
         cached->preview.maximumDepth);
-      cached->preview.texture = cached->depthPreviewTexture;
+      cached->preview.texture = cached->depthPreview.texture;
     }
     update.renderMilliseconds = std::chrono::duration<double, std::milli>(
       std::chrono::steady_clock::now() - started).count();
@@ -341,9 +862,7 @@ std::vector<SensorPreviewInfo> SensorRenderer::previewsForTag(uint32_t parentTag
 void SensorRenderer::clear() {
   if (SDL_GL_GetCurrentContext() != nullptr) {
     for (const auto& item : sensors_) {
-      if (item.second && item.second->depthPreviewTexture != 0) {
-        gl::glDeleteTextures(1, &item.second->depthPreviewTexture);
-      }
+      if (item.second) deleteTextureAndInvalidateCache(item.second->depthPreview.texture);
     }
   }
   sensors_.clear();
