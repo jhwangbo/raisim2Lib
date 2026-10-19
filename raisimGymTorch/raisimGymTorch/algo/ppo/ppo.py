@@ -18,11 +18,18 @@ class CudaGraphRollout:
     against 850 us of simulation: seven eager dispatches for a two-layer MLP, a
     pageable host-to-device copy of the observation, and two hard
     synchronizations. Capturing the forward pass, the action sampling and the
-    writes into the rollout buffers leaves five host-visible operations per
-    step, and the transition never leaves the device afterwards.
+    writes into the rollout buffers leaves a few graph launches and one
+    synchronization per step, and the transition never leaves the device
+    afterwards.
 
     The buffer index lives on the device and is incremented inside the graph, so
     a replay needs no argument. It is re-zeroed whenever a new rollout starts.
+
+    The step is split into graphs so that the host only waits for the one that
+    computes the action and copies it back. Writing the transition into the
+    rollout buffers, and drawing the noise of the next step, run on the device
+    while the host simulates. The noise draws keep their original order, one per
+    step, so the random stream is consumed exactly as by a single graph.
     """
 
     def __init__(self, actor, storage, device):
@@ -43,7 +50,9 @@ class CudaGraphRollout:
 
         self.observation = torch.zeros(num_envs, obs_dim, dtype=torch.float32, device=device)
         self.action = torch.zeros(num_envs, action_dim, dtype=torch.float32, device=device)
+        self.noise = torch.zeros(num_envs, action_dim, dtype=torch.float32, device=device)
         self.index = torch.zeros(1, dtype=torch.long, device=device)
+        self.log_std_sum = torch.zeros((), dtype=torch.float32, device=device)
         self.done = torch.cuda.Event()
 
         # Capture under no_grad rather than inference mode: the captured
@@ -53,44 +62,171 @@ class CudaGraphRollout:
         stream.wait_stream(torch.cuda.current_stream())
         with torch.cuda.stream(stream), torch.no_grad():
             for _ in range(3):
-                self._body(network)
+                self.index.zero_()
+                self._draw_noise()
+                self._policy(network)
+                self._record()
         torch.cuda.current_stream().wait_stream(stream)
 
-        self.graph = torch.cuda.CUDAGraph()
-        with torch.no_grad(), torch.cuda.graph(self.graph):
-            self._body(network)
+        # The mean the policy graph leaves in its memory pool stays referenced,
+        # so the record graph can read it at a stable address.
+        self.noise_graph = torch.cuda.CUDAGraph()
+        with torch.no_grad(), torch.cuda.graph(self.noise_graph):
+            self._draw_noise()
+        self.policy_graph = torch.cuda.CUDAGraph()
+        with torch.no_grad(), torch.cuda.graph(self.policy_graph):
+            self._policy(network)
+        self.record_graph = torch.cuda.CUDAGraph()
+        with torch.no_grad(), torch.cuda.graph(self.record_graph):
+            self._record()
         self.index.zero_()
 
-    def _body(self, network):
-        std = self.actor.distribution.std
-        mean = network(self.observation)
-        noise = torch.randn_like(mean)
-        action = torch.addcmul(mean, noise, std)
-        log_prob = (noise.square().sum(1) * -0.5) - std.log().sum() - self.log_normalizer
+    def _draw_noise(self):
+        # randn_like() is normal_() on a fresh tensor; drawing in place
+        # consumes the generator identically.
+        self.noise.normal_()
 
-        index = self.index.remainder(self.storage.num_transitions_per_env)
+    def _policy(self, network):
+        # The host transfers are graph nodes too, so the policy is one launch.
+        self.observation.copy_(self.observation_host, non_blocking=True)
+        self.mean = network(self.observation)
+        torch.addcmul(self.mean, self.noise, self.actor.distribution.std, out=self.action)
+        self.action_host.copy_(self.action, non_blocking=True)
+
+    def _record(self):
+        log_prob = (self.noise.square().sum(1) * -0.5) - self.log_std_sum - self.log_normalizer
+
+        # act() bounds the index to the rollout length.
+        index = self.index
         self.storage.actor_obs_tc.index_copy_(0, index, self.observation.unsqueeze(0))
-        self.storage.actions_tc.index_copy_(0, index, action.unsqueeze(0))
-        self.storage.mu_tc.index_copy_(0, index, mean.unsqueeze(0))
+        self.storage.actions_tc.index_copy_(0, index, self.action.unsqueeze(0))
+        self.storage.mu_tc.index_copy_(0, index, self.mean.unsqueeze(0))
         self.storage.actions_log_prob_tc.index_copy_(0, index, log_prob.view(1, -1, 1))
-        self.action.copy_(action)
         self.index.add_(1)
 
     def act(self, actor_obs):
+        if self.storage.step >= self.storage.num_transitions_per_env:
+            raise AssertionError("Rollout buffer overflow")
         if self.storage.step == 0:
             self.index.zero_()
             # The action standard deviation is a policy parameter, so it is
             # constant for the whole rollout. Broadcasting it once beats writing
-            # an identical row on every one of the captured steps.
-            self.storage.sigma_tc.copy_(self.actor.distribution.std.detach().view(1, 1, -1))
+            # an identical row on every one of the captured steps, and the same
+            # holds for the log-probability term it contributes.
+            std = self.actor.distribution.std.detach()
+            self.storage.sigma_tc.copy_(std.view(1, 1, -1))
+            self.log_std_sum.copy_(std.log().sum())
+            self.noise_graph.replay()
 
         np.copyto(self.observation_np, actor_obs)
-        self.observation.copy_(self.observation_host, non_blocking=True)
-        self.graph.replay()
-        self.action_host.copy_(self.action, non_blocking=True)
+        self.policy_graph.replay()
         self.done.record()
+        self.record_graph.replay()
+        # Draw the next step's noise now, but never past the end of the
+        # rollout, so no draw moves across the update.
+        if self.storage.step + 1 < self.storage.num_transitions_per_env:
+            self.noise_graph.replay()
         self.done.synchronize()
         return self.action_np
+
+
+class CudaGraphUpdate:
+    """Replay the minibatch loop of a PPO update as a single captured CUDA graph.
+
+    The update is launch bound: sixteen minibatches issue about 5,000 kernels
+    that keep the GPU busy for 8 ms, while issuing them from Python takes 20 ms.
+    The graph replays exactly the kernels the eager loop launches, so the update
+    stays bit-for-bit identical.
+
+    A graph bakes in the address of every tensor it touches. It is captured after
+    one eager update has created the optimizer state and warmed up the capture
+    stream, and captured again if any of those tensors is rebound, e.g. by
+    optimizer.load_state_dict().
+    """
+
+    def __init__(self, ppo):
+        self.ppo = ppo
+        self.graph = None
+        self.key = None
+        self.warmed_up = False
+        self.enabled = True
+        self.stream = torch.cuda.Stream()
+        num_updates = ppo.num_learning_epochs * ppo.num_mini_batches
+        self.losses = torch.zeros(num_updates, 2, device=ppo.device)
+
+    def _key(self):
+        """Identify the storage and constants the captured update depends on."""
+        ppo = self.ppo
+        optimizer = ppo.optimizer
+        tensors = list(ppo.trainable_parameters)
+        for parameter in ppo.trainable_parameters:
+            state = optimizer.state.get(parameter)
+            if not state:
+                return None
+            tensors.extend(value for _, value in sorted(state.items()) if torch.is_tensor(value))
+        storage = ppo.storage
+        tensors += [storage.actor_obs_tc, storage.critic_obs_tc, storage.actions_tc,
+                    storage.sigma_tc, storage.mu_tc, storage.values_tc, storage.advantages_tc,
+                    storage.returns_tc, storage.actions_log_prob_tc]
+        hyperparameters = [
+            (group['lr'] if not torch.is_tensor(group['lr']) else group['lr'].data_ptr(),
+             group['betas'], group['eps'], group['weight_decay'], group['amsgrad'])
+            for group in optimizer.param_groups]
+        if ppo.lr_tensor is not None:
+            tensors.append(ppo.lr_tensor)
+        return (tuple(tensor.data_ptr() for tensor in tensors), tuple(hyperparameters),
+                ppo.clip_param, ppo.value_loss_coef, ppo.entropy_coef, ppo.max_grad_norm,
+                ppo.use_clipped_value_loss, ppo.desired_kl, ppo.schedule,
+                ppo.num_learning_epochs, ppo.num_mini_batches)
+
+    def _run(self):
+        for index, batch in enumerate(self.ppo._minibatches()):
+            value_loss, surrogate_loss = self.ppo._minibatch_step(*batch)
+            self.losses[index, 0].copy_(value_loss)
+            self.losses[index, 1].copy_(surrogate_loss)
+
+    def _capture(self):
+        # Fused Adam ignores the capturable flag; it only has to pass the
+        # optimizer's capture check, and is restored so checkpoints are unchanged.
+        groups = self.ppo.optimizer.param_groups
+        capturable = [group['capturable'] for group in groups]
+        for group in groups:
+            group['capturable'] = True
+        try:
+            graph = torch.cuda.CUDAGraph()
+            with torch.cuda.graph(graph, stream=self.stream):
+                self._run()
+        finally:
+            for group, flag in zip(groups, capturable):
+                group['capturable'] = flag
+        return graph
+
+    def train(self):
+        """Run every minibatch step; returns the per-minibatch losses on the device."""
+        key = self._key() if self.warmed_up and self.enabled else None
+        if key is not None:
+            try:
+                if key != self.key:
+                    self.graph = None
+                    self.graph = self._capture()
+                    self.key = key
+            except Exception as error:
+                print(f'[RAISIM_GYM] CUDA graph capture of the update failed; updating eagerly: {error}')
+                self.enabled = False
+                self.graph = None
+            else:
+                self.graph.replay()
+                return self.losses
+
+        # The optimizer creates its state lazily in the first step, which must
+        # run eagerly. Running it on the capture stream also performs the
+        # side-stream warm-up that capture requires.
+        self.stream.wait_stream(torch.cuda.current_stream())
+        with torch.cuda.stream(self.stream):
+            self._run()
+        torch.cuda.current_stream().wait_stream(self.stream)
+        self.warmed_up = True
+        return self.losses
 
 
 class PPO:
@@ -117,7 +253,8 @@ class PPO:
                  shared_observations=False,
                  returns_calculator=None,
                  compile_networks=False,
-                 cuda_graph_rollout=True):
+                 cuda_graph_rollout=True,
+                 cuda_graph_update=True):
 
         # PPO components
         self.actor = actor
@@ -206,6 +343,17 @@ class PPO:
             except Exception as error:
                 print(f'[RAISIM_GYM] CUDA graph capture failed; using the eager rollout: {error}')
                 self.graph_rollout = None
+
+        # Capture needs fixed minibatch slices, a learning-rate schedule that
+        # never reads the device from the host, and the fused optimizer: the
+        # other Adam implementations take different arithmetic when capturable.
+        self.graph_update = None
+        if (cuda_graph_update and self.device_type == 'cuda' and not self.is_recurrent
+                and not shuffle_batch and not compile_networks
+                and all(group['fused'] for group in self.optimizer.param_groups)
+                and (self.desired_kl is None or self.schedule != 'adaptive'
+                     or self.lr_tensor is not None)):
+            self.graph_update = CudaGraphUpdate(self)
 
     def _compile_networks(self):
         """Compile the networks used by the PPO update.
@@ -317,73 +465,87 @@ class PPO:
         self.writer.add_scalar('PPO/mean_noise_std', mean_std.item(), variables['it'])
         self.writer.add_scalar('PPO/learning_rate', self.current_learning_rate(), variables['it'])
 
+    def _minibatches(self):
+        for epoch in range(self.num_learning_epochs):
+            yield from self.batch_sampler(self.num_mini_batches)
+
+    def _minibatch_step(self, actor_obs_batch, critic_obs_batch, actions_batch, old_sigma_batch, old_mu_batch,
+                        current_values_batch, advantages_batch, returns_batch, old_actions_log_prob_batch):
+        """One gradient step; shared by the eager loop and the captured graph."""
+        actions_log_prob_batch, entropy_batch = self.actor.evaluate(actor_obs_batch, actions_batch)
+        value_batch = self.critic.evaluate(critic_obs_batch)
+
+        # Adjusting the learning rate using KL divergence
+        mu_batch = self.actor.action_mean
+        sigma_batch = self.actor.distribution.std
+
+        # KL
+        if self.desired_kl != None and self.schedule == 'adaptive':
+            with torch.no_grad():
+                kl = torch.sum(
+                    torch.log(sigma_batch / old_sigma_batch + 1.e-5) + (torch.square(old_sigma_batch) + torch.square(old_mu_batch - mu_batch)) / (2.0 * torch.square(sigma_batch)) - 0.5, axis=-1)
+                kl_mean = torch.mean(kl)
+
+                if self.lr_tensor is not None:
+                    # Same schedule, applied on the device. Branching on
+                    # kl_mean here instead would synchronize the host
+                    # with the accelerator once per minibatch.
+                    scale = torch.where(
+                        kl_mean > self.desired_kl * 2.0,
+                        self.lr_decay,
+                        torch.where((kl_mean < self.desired_kl / 2.0) & (kl_mean > 0.0),
+                                    self.lr_growth, self.lr_hold))
+                    self.lr_tensor.mul_(scale).clamp_(1e-5, 1e-2)
+                else:
+                    if kl_mean > self.desired_kl * 2.0:
+                        self.learning_rate = max(1e-5, self.learning_rate / 1.2)
+                    elif kl_mean < self.desired_kl / 2.0 and kl_mean > 0.0:
+                        self.learning_rate = min(1e-2, self.learning_rate * 1.2)
+
+                    for param_group in self.optimizer.param_groups:
+                        param_group['lr'] = self.learning_rate
+
+        # Surrogate loss
+        ratio = torch.exp(actions_log_prob_batch - torch.squeeze(old_actions_log_prob_batch))
+        surrogate = -torch.squeeze(advantages_batch) * ratio
+        surrogate_clipped = -torch.squeeze(advantages_batch) * torch.clamp(ratio, 1.0 - self.clip_param,
+                                                                           1.0 + self.clip_param)
+        surrogate_loss = torch.max(surrogate, surrogate_clipped).mean()
+
+        # Value function loss
+        if self.use_clipped_value_loss:
+            value_clipped = current_values_batch + (value_batch - current_values_batch).clamp(-self.clip_param,
+                                                                                            self.clip_param)
+            value_losses = (value_batch - returns_batch).pow(2)
+            value_losses_clipped = (value_clipped - returns_batch).pow(2)
+            value_loss = torch.max(value_losses, value_losses_clipped).mean()
+        else:
+            value_loss = (returns_batch - value_batch).pow(2).mean()
+
+        loss = surrogate_loss + self.value_loss_coef * value_loss
+        if self.entropy_coef:
+            loss = loss - self.entropy_coef * entropy_batch.mean()
+
+        # Gradient step
+        self.optimizer.zero_grad()
+        loss.backward()
+        nn.utils.clip_grad_norm_(self.trainable_parameters, self.max_grad_norm)
+        self.optimizer.step()
+        return value_loss, surrogate_loss
+
     def _train_step(self, log_this_iteration):
         mean_value_loss = 0
         mean_surrogate_loss = 0
-        for epoch in range(self.num_learning_epochs):
-            for actor_obs_batch, critic_obs_batch, actions_batch, old_sigma_batch, old_mu_batch, current_values_batch, advantages_batch, returns_batch, old_actions_log_prob_batch \
-                    in self.batch_sampler(self.num_mini_batches):
-
-                actions_log_prob_batch, entropy_batch = self.actor.evaluate(actor_obs_batch, actions_batch)
-                value_batch = self.critic.evaluate(critic_obs_batch)
-
-                # Adjusting the learning rate using KL divergence
-                mu_batch = self.actor.action_mean
-                sigma_batch = self.actor.distribution.std
-
-                # KL
-                if self.desired_kl != None and self.schedule == 'adaptive':
-                    with torch.no_grad():
-                        kl = torch.sum(
-                            torch.log(sigma_batch / old_sigma_batch + 1.e-5) + (torch.square(old_sigma_batch) + torch.square(old_mu_batch - mu_batch)) / (2.0 * torch.square(sigma_batch)) - 0.5, axis=-1)
-                        kl_mean = torch.mean(kl)
-
-                        if self.lr_tensor is not None:
-                            # Same schedule, applied on the device. Branching on
-                            # kl_mean here instead would synchronize the host
-                            # with the accelerator once per minibatch.
-                            scale = torch.where(
-                                kl_mean > self.desired_kl * 2.0,
-                                self.lr_decay,
-                                torch.where((kl_mean < self.desired_kl / 2.0) & (kl_mean > 0.0),
-                                            self.lr_growth, self.lr_hold))
-                            self.lr_tensor.mul_(scale).clamp_(1e-5, 1e-2)
-                        else:
-                            if kl_mean > self.desired_kl * 2.0:
-                                self.learning_rate = max(1e-5, self.learning_rate / 1.2)
-                            elif kl_mean < self.desired_kl / 2.0 and kl_mean > 0.0:
-                                self.learning_rate = min(1e-2, self.learning_rate * 1.2)
-
-                            for param_group in self.optimizer.param_groups:
-                                param_group['lr'] = self.learning_rate
-
-                # Surrogate loss
-                ratio = torch.exp(actions_log_prob_batch - torch.squeeze(old_actions_log_prob_batch))
-                surrogate = -torch.squeeze(advantages_batch) * ratio
-                surrogate_clipped = -torch.squeeze(advantages_batch) * torch.clamp(ratio, 1.0 - self.clip_param,
-                                                                                   1.0 + self.clip_param)
-                surrogate_loss = torch.max(surrogate, surrogate_clipped).mean()
-
-                # Value function loss
-                if self.use_clipped_value_loss:
-                    value_clipped = current_values_batch + (value_batch - current_values_batch).clamp(-self.clip_param,
-                                                                                                    self.clip_param)
-                    value_losses = (value_batch - returns_batch).pow(2)
-                    value_losses_clipped = (value_clipped - returns_batch).pow(2)
-                    value_loss = torch.max(value_losses, value_losses_clipped).mean()
-                else:
-                    value_loss = (returns_batch - value_batch).pow(2).mean()
-
-                loss = surrogate_loss + self.value_loss_coef * value_loss
-                if self.entropy_coef:
-                    loss = loss - self.entropy_coef * entropy_batch.mean()
-
-                # Gradient step
-                self.optimizer.zero_grad()
-                loss.backward()
-                nn.utils.clip_grad_norm_(self.trainable_parameters, self.max_grad_norm)
-                self.optimizer.step()
-
+        if self.graph_update is not None:
+            losses = self.graph_update.train()
+            if log_this_iteration:
+                # Accumulated in the same order as the eager .item() calls.
+                for value_loss, surrogate_loss in losses.tolist():
+                    mean_value_loss += value_loss
+                    mean_surrogate_loss += surrogate_loss
+        else:
+            for batch in self._minibatches():
+                value_loss, surrogate_loss = self._minibatch_step(*batch)
                 if log_this_iteration:
                     mean_value_loss += value_loss.item()
                     mean_surrogate_loss += surrogate_loss.item()

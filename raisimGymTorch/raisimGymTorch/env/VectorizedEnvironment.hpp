@@ -320,15 +320,12 @@ class VectorizedEnvironment {
       obCount_ = totCount;
     }
 
-    if constexpr (StaticSchedule) {
-#pragma omp parallel for schedule(static)
-      for(int i=0; i<num_envs_; i++)
-        ob.row(i) = (ob.row(i) - obMean_.transpose()).template cwiseQuotient<>((obVar_ + epsilon).cwiseSqrt().transpose());
-    } else {
-#pragma omp parallel for schedule(auto)
-      for(int i=0; i<num_envs_; i++)
-        ob.row(i) = (ob.row(i) - obMean_.transpose()).template cwiseQuotient<>((obVar_ + epsilon).cwiseSqrt().transpose());
-    }
+    /// A few thousand flops: waking the worker team costs more than the work.
+    /// Keep the square root inside the row expression. Eigen's vectorized
+    /// square root is approximate, and each row's alignment decides which of
+    /// its elements take that path, so hoisting it would change the result.
+    for(int i=0; i<num_envs_; i++)
+      ob.row(i) = (ob.row(i) - obMean_.transpose()).template cwiseQuotient<>((obVar_ + epsilon).cwiseSqrt().transpose());
   }
 
   inline void perAgentStep(int agentId,

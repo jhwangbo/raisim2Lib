@@ -4,10 +4,10 @@ Python and C++ bindings for training RaiSim environments with PyTorch.
 
 ### Requirements
 
-- Python 3.9 or newer
+- Python 3.9 or newer, with development headers (e.g. `python3.X-dev` on Ubuntu)
 - CMake 3.10 or newer
 - A C++20 compiler
-- OpenMP
+- OpenMP (included with GCC; with Clang, install `libomp-dev`)
 
 RaiSim, rayrai, Eigen, and nanobind are included in the parent repository.
 
@@ -19,11 +19,13 @@ From this directory:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python setup.py build_ext --inplace
+pip install -e . --no-build-isolation
 ```
 
-This creates an optimized Release build and uses the PyTorch installation from
-the active environment. Additional compiler flags are not required.
+This creates an optimized Release build and installs the package in editable
+mode. `--no-build-isolation` makes the build use the PyTorch installation from
+the active environment. Additional compiler flags are not required. After
+changing C++ code, run the same `pip install` command again to rebuild.
 
 ### Train ANYmal
 
