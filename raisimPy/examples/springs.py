@@ -13,8 +13,10 @@ chain_urdf_file = os.path.dirname(os.path.abspath(__file__)) + "/../../rsc/sprin
 server = raisim.RaisimServer(world)
 world.addGround()
 
-rev_and_pris_spring_and_damper = world.addArticulatedSystem(cartpole_urdf_file)
-ball_spring_and_damper = world.addArticulatedSystem(chain_urdf_file)
+options = raisim.ArticulatedSystemOption()
+options.convexify_collision_meshes = True
+rev_and_pris_spring_and_damper = world.addArticulatedSystem(cartpole_urdf_file, options=options)
+ball_spring_and_damper = world.addArticulatedSystem(chain_urdf_file, options=options)
 
 rev_and_pris_spring_and_damper.setName("rev_pris_joint")
 ball_spring_and_damper.setName("ball_joint")

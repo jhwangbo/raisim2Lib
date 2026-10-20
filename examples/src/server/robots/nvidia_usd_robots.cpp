@@ -32,9 +32,11 @@ int main(int argc, char* argv[]) {
   raisim::World world;
   world.setTimeStep(1.0 / 500.0);
 
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
   raisim::ArticulatedSystem* firstRobot = nullptr;
   for (const auto& robotAsset : robotAssets) {
-    auto* robot = world.addUsdArticulatedSystem(exampleRscPath(argv[0], robotAsset.path));
+    auto* robot = world.addUsdArticulatedSystem(exampleRscPath(argv[0], robotAsset.path), raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
     if (robot == nullptr) {
       throw std::runtime_error(std::string("Failed to import ") + robotAsset.name + " from " + robotAsset.path);
     }

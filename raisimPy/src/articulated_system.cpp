@@ -333,7 +333,9 @@ void init_articulated_system(py::module_ &m) { // py::module &main_module) {
     /* ArticulatedSystemOption */
     /***************************/
     py::class_<raisim::ArticulatedSystemOption>(m, "ArticulatedSystemOption", "Raisim Articulated System Option.")
-        .def_rw("do_not_collide_with_parent", &raisim::ArticulatedSystemOption::doNotCollideWithParent);
+        .def(py::init<>())
+        .def_rw("do_not_collide_with_parent", &raisim::ArticulatedSystemOption::doNotCollideWithParent)
+        .def_rw("convexify_collision_meshes", &raisim::ArticulatedSystemOption::convexifyCollisionMeshes);
 
 
     /*********************/

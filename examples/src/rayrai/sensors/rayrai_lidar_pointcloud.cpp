@@ -24,7 +24,9 @@ int main(int argc, char* argv[]) {
   const std::string sep = raisim::Path::separator();
   const std::string go1Dir = exampleRscPath(argv[0], "go1");
   std::vector<std::string> modules = {"livox_lidar"};
-  auto go1 = world->addArticulatedSystem(go1Dir + sep + "go1.urdf", modules, go1Dir);
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto go1 = world->addArticulatedSystem(go1Dir + sep + "go1.urdf", modules, go1Dir, {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   go1->setGeneralizedCoordinate({0, 0, 0.32, 1.0, 0.0, 0.0, 0.0, 0, 0.67, -1.3, 0, 0.67, -1.3, 0, 0.67, -1.3, 0, 0.67, -1.3});
 
   auto lidar = go1->getSensorSet("livox_lidar_0")->getSensor<raisim::SpinningLidar>("lidar");

@@ -25,7 +25,9 @@ namespace {
 constexpr double kRobotX = -36.0, kRobotY = -1.6, kRobotYaw = 2.6;
 
 raisim::ArticulatedSystem* addStandingAnymal(raisim::World& world, const std::string& urdf) {
-  auto* anymal = world.addArticulatedSystem(urdf);
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto* anymal = world.addArticulatedSystem(urdf, "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   anymal->setName("anymal");
   Eigen::VectorXd gc(anymal->getGeneralizedCoordinateDim()), gv(anymal->getDOF());
   gc << kRobotX, kRobotY, 0.56, std::cos(kRobotYaw / 2), 0, 0, std::sin(kRobotYaw / 2), 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;

@@ -29,10 +29,12 @@ int main(int argc, char* argv[]) {
   jointDgain.tail(12).setConstant(10.0);
 
   const size_t N = 1;
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
 
   for (size_t i = 0; i < N; i++) {
     for (size_t j = 0; j < N; j++) {
-      anymals.push_back(world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf")));
+      anymals.push_back(world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options));
       anymals.back()->setGeneralizedCoordinate({double(2 * i), double(j), 0.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8});
       anymals.back()->setGeneralizedForce(Eigen::VectorXd::Zero(anymals.back()->getDOF()));
       anymals.back()->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);

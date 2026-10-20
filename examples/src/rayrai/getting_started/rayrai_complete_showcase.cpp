@@ -111,7 +111,9 @@ int main(int argc, char* argv[]) {
 
   const std::string sep = raisim::Path::separator();
   const std::string anymalUrdf = exampleRscPath(argv[0], "anymal_c/urdf/anymal_sensored.urdf");
-  auto anymal = world->addArticulatedSystem(anymalUrdf);
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto anymal = world->addArticulatedSystem(anymalUrdf, "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
 
   Eigen::VectorXd jointNominalConfig(anymal->getGeneralizedCoordinateDim());
   Eigen::VectorXd jointVelocityTarget(anymal->getDOF());
@@ -190,7 +192,7 @@ int main(int argc, char* argv[]) {
     double yPos = yStart + (i * yIncrement);  // Calculate y-position
 
     std::string fullPath = basePath + filenames[i];
-    auto obj = world->addArticulatedSystem(fullPath);
+    auto obj = world->addArticulatedSystem(fullPath, "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
     obj->setBasePos({-3, yPos, 0.1});
   }
 

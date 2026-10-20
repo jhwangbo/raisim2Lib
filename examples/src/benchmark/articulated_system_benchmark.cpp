@@ -41,7 +41,9 @@ int main(int argc, char* argv[]) {
   jointConfig << 0, 0, 0.54, 1, 0, 0, 0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
   jointVel.setZero();
 
-  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   anymal->setState(jointConfig, jointVel);
   anymal->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
   anymal->setPdGains(jointPgain, jointDgain);
@@ -77,7 +79,7 @@ int main(int argc, char* argv[]) {
 
   /// create objects
   auto* ground2 = world2.addGround();
-  auto atlas = world2.addArticulatedSystem(exampleRscPath(argv[0], "atlas/robot.urdf"));
+  auto atlas = world2.addArticulatedSystem(exampleRscPath(argv[0], "atlas/robot.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   atlas->setGeneralizedCoordinate(
       {0, 0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   atlas->setGeneralizedForce(Eigen::VectorXd::Zero(atlas->getDOF()));
@@ -115,7 +117,7 @@ int main(int argc, char* argv[]) {
   loopN = 100000;
 
   /// create objects
-  world3.addArticulatedSystem(exampleRscPath(argv[0], "chain/robot_springed_10.urdf"));
+  world3.addArticulatedSystem(exampleRscPath(argv[0], "chain/robot_springed_10.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
 
   begin = std::chrono::steady_clock::now();
 
@@ -131,7 +133,7 @@ int main(int argc, char* argv[]) {
   loopN = 100000;
 
   /// create objects
-  world4.addArticulatedSystem(exampleRscPath(argv[0], "chain/robot_springed_20.urdf"));
+  world4.addArticulatedSystem(exampleRscPath(argv[0], "chain/robot_springed_20.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
 
   begin = std::chrono::steady_clock::now();
 

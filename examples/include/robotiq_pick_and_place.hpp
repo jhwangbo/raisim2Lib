@@ -143,7 +143,9 @@ inline Scene::Scene(const std::string& model) {
     marker->setAppearance(position[1] < 0.0 ? "0.15,0.55,0.90,1" : "0.25,0.75,0.35,1");
   }
 
-  robot_ = world_.addArticulatedSystem(model);
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  robot_ = world_.addArticulatedSystem(model, "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   robot_->setName("kinova_robotiq");
   if (robot_->getDOF() != 12 || robot_->getGeneralizedCoordinateDim() != 12) {
     throw std::runtime_error("The fixed-base Kinova/Robotiq model must have twelve joints");

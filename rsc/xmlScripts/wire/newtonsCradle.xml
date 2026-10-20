@@ -53,10 +53,10 @@
             <state pos="0.9 0 4.2"/>
         </box>
 
-        <articulated_system name="anymalB" res_dir="[THIS_DIR]/../../anymal" urdf_path="[THIS_DIR]/../../anymal/urdf/anymal.urdf">
+        <articulated_system name="anymalB" res_dir="[THIS_DIR]/../../anymal" urdf_path="[THIS_DIR]/../../anymal/urdf/anymal.urdf" convexify_meshes="1">
             <state qpos="-4, 0, 4.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8"/>
         </articulated_system>
-        <articulated_system name="anymalC" res_dir="[THIS_DIR]/../../anymal_c" urdf_path="[THIS_DIR]/../../anymal_c/urdf/anymal.urdf">
+        <articulated_system name="anymalC" res_dir="[THIS_DIR]/../../anymal_c" urdf_path="[THIS_DIR]/../../anymal_c/urdf/anymal.urdf" convexify_meshes="1">
             <state qpos="-3, 0, 4.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8"/>
         </articulated_system>
 

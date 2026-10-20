@@ -37,7 +37,9 @@ struct Drive {
 };
 inline void addPulleyStation(World& world, double x, double y, bool divided, const std::string& name, std::vector<Drive>& drives) {
   support(world, x + 0.15, y, 2.3);
-  auto* robot = world.addArticulatedSystem(pulleyModel(name, divided, x, y), ".");
+  ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto* robot = world.addArticulatedSystem(pulleyModel(name, divided, x, y), ".", {}, CollisionGroup(1), CollisionGroup(-1), options);
   robot->setName(name);
   const size_t leftBody = robot->getBodyIdx(name + "_left_body"), rightBody = robot->getBodyIdx(name + "_right_body");
   SingleBodyObject* guide = divided ? static_cast<SingleBodyObject*>(world.addSphere(0.48, 1.)) : static_cast<SingleBodyObject*>(world.addCylinder(0.48, 0.22, 1.));
@@ -72,7 +74,9 @@ inline void addPulleyStation(World& world, double x, double y, bool divided, con
 }
 inline void addJointStation(World& world, double x, double y, const std::string& name, std::vector<Drive>& drives) {
   support(world, x, y, 2.3);
-  auto* robot = world.addArticulatedSystem(jointModel(name, x, y), ".");
+  ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto* robot = world.addArticulatedSystem(jointModel(name, x, y), ".", {}, CollisionGroup(1), CollisionGroup(-1), options);
   robot->setName(name);
   Tendon::Properties p;
   p.armature = 0.06;

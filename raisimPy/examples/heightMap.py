@@ -22,7 +22,9 @@ hm = world.addHeightMap(0.0, 0.0, terrainProperties)
 
 # robot
 anymal_urdf_file = os.path.dirname(os.path.abspath(__file__)) + "/../../rsc/anymal/urdf/anymal.urdf"
-anymal = world.addArticulatedSystem(anymal_urdf_file)
+options = raisim.ArticulatedSystemOption()
+options.convexify_collision_meshes = True
+anymal = world.addArticulatedSystem(anymal_urdf_file, options=options)
 
 # ANYmal joint PD controller
 anymal_nominal_joint_config = np.array([0, -1.5, 2.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8,

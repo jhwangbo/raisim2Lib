@@ -23,7 +23,9 @@ terrainProperties.fractalGain = 0.25
 
 hm = world.addHeightMap(0.0, 0.0, terrainProperties)
 hm.setAppearance("soil1")
-robot = world.addArticulatedSystem(os.path.dirname(os.path.abspath(__file__)) + "/../../rsc/husky/husky.urdf")
+options = raisim.ArticulatedSystemOption()
+options.convexify_collision_meshes = True
+robot = world.addArticulatedSystem(os.path.dirname(os.path.abspath(__file__)) + "/../../rsc/husky/husky.urdf", options=options)
 robot.setName("smb")
 robot.setGeneralizedCoordinate(np.array([0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]))
 robot.setGeneralizedVelocity(np.zeros(10))

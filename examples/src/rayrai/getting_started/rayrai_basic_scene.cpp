@@ -15,7 +15,9 @@ int main(int argc, char* argv[]) {
   world->addGround();
 
   const std::string urdfPath = exampleRscPath(argv[0], "go1/go1.urdf");
-  auto robot = world->addArticulatedSystem(urdfPath);
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto robot = world->addArticulatedSystem(urdfPath, "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   if (robot) {
     robot->setGeneralizedCoordinate({0, 0, 0.32, 1.0, 0.0, 0.0, 0.0, 0, 0.67, -1.3, 0, 0.67, -1.3, 0, 0.67, -1.3, 0, 0.67, -1.3});
   }

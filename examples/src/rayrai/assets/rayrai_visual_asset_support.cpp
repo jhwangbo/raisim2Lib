@@ -26,7 +26,9 @@ int main(int argc, char* argv[]) {
   auto* ground = world->addGround();
   ground->setName("ground");
 
-  auto* robot = world->addArticulatedSystem(anymalUrdf.string());
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto* robot = world->addArticulatedSystem(anymalUrdf.string(), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   robot->setName("anymal_c_textured_urdf");
 
   Eigen::VectorXd q0(robot->getGeneralizedCoordinateDim());
@@ -52,7 +54,7 @@ int main(int argc, char* argv[]) {
       {0.72, 0.30, 0.08},
   };
   for (size_t i = 0; i < ycbUrdfs.size(); ++i) {
-    auto* object = world->addArticulatedSystem((ycbDir / ycbUrdfs[i]).string());
+    auto* object = world->addArticulatedSystem((ycbDir / ycbUrdfs[i]).string(), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
     object->setName("textured_ycb_" + std::to_string(i));
     object->setBasePos(ycbPositions[i]);
     object->setGeneralizedVelocity(Eigen::VectorXd::Zero(object->getDOF()));

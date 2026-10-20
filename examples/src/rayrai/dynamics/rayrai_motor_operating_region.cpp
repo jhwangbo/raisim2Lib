@@ -149,7 +149,7 @@ struct MotorStatistics {
 // RaiSim setup, actuator commands, integration, and measurement. No viewer or ImGui calls.
 class MotorOperatingRegionSimulation {
  public:
-  explicit MotorOperatingRegionSimulation(const std::string& modelPath) : world_(createWorld()), robot_(world_->addArticulatedSystem(modelPath)), actuator_(robot_) {
+  explicit MotorOperatingRegionSimulation(const std::string& modelPath) : world_(createWorld()), robot_(world_->addArticulatedSystem(modelPath, "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), robotOptions())), actuator_(robot_) {
     const auto& names = robot_->getActuatorNames();
     const auto& actuators = robot_->getActuators();
     motors_.reserve(actuators.size());
@@ -211,6 +211,12 @@ class MotorOperatingRegionSimulation {
     world->setTimeStep(0.001);
     world->addGround(0., "ground");
     return world;
+  }
+
+  static raisim::ArticulatedSystemOption robotOptions() {
+    raisim::ArticulatedSystemOption options;
+    options.convexifyCollisionMeshes = true;
+    return options;
   }
 
   void step() {

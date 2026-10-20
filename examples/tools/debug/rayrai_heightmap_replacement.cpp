@@ -118,7 +118,9 @@ int main(int argc, char* argv[]) {
   world->setTimeStep(0.002);
 
   const std::string anymalUrdf = exampleRscPath(argv[0], "anymal_c/urdf/anymal_sensored.urdf");
-  auto* anymal = world->addArticulatedSystem(anymalUrdf);
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto* anymal = world->addArticulatedSystem(anymalUrdf, "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
 
   Eigen::VectorXd jointTarget(anymal->getGeneralizedCoordinateDim());
   Eigen::VectorXd velocityTarget(anymal->getDOF());

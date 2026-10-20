@@ -10,7 +10,9 @@ int main(int argc, char* argv[]) {
   raisim::World world;
   world.setTimeStep(0.001);
 
-  auto ANYmal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal_c/urdf/anymal_c_nolimit.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto ANYmal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal_c/urdf/anymal_c_nolimit.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   auto ground = world.addGround();
 
   /// anymalC joint PD controller

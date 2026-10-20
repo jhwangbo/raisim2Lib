@@ -17,7 +17,9 @@ world.setTimeStep(0.001)
 server = raisim.RaisimServer(world)
 ground = world.addGround()
 
-anymal = world.addArticulatedSystem(anymal_urdf_file)
+options = raisim.ArticulatedSystemOption()
+options.convexify_collision_meshes = True
+anymal = world.addArticulatedSystem(anymal_urdf_file, options=options)
 anymal.setName("anymal")
 anymal_nominal_joint_config = np.array([0, -1.5, 0.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8,
                                         -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8])
@@ -25,7 +27,7 @@ anymal.setGeneralizedCoordinate(anymal_nominal_joint_config)
 anymal.setPdGains(200*np.ones([18]), np.ones([18]))
 anymal.setPdTarget(anymal_nominal_joint_config, np.zeros([18]))
 
-laikago = world.addArticulatedSystem(laikago_urdf_file)
+laikago = world.addArticulatedSystem(laikago_urdf_file, options=options)
 laikago.setName("laikago")
 laikago_nominal_joint_config = np.array([0, 1.5, 0.48, 1, 0.0, 0.0, 0.0, 0.0, 0.5, -1, 0, 0.5, -1,
                                          0.00, 0.5, -1, 0, 0.5, -0.7])
@@ -33,7 +35,7 @@ laikago.setGeneralizedCoordinate(laikago_nominal_joint_config)
 laikago.setPdGains(200*np.ones([18]), np.ones([18]))
 laikago.setPdTarget(laikago_nominal_joint_config, np.zeros([18]))
 
-atlas = world.addArticulatedSystem(atlas_urdf_file)
+atlas = world.addArticulatedSystem(atlas_urdf_file, options=options)
 atlas.setName("atlas")
 atlas_nominal_joint_config = np.zeros(atlas.getGeneralizedCoordinateDim())
 atlas_nominal_joint_config[2] = 1.5

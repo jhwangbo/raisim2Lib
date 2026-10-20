@@ -14,7 +14,9 @@ int main(int argc, char* argv[]) {
   auto ground = world.addGround();
   ground->setAppearance("0.55,0.55,0.55,1.0");
 
-  auto robot = world.addArticulatedSystem(exampleRscPath(argv[0], "megabot/smb.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto robot = world.addArticulatedSystem(exampleRscPath(argv[0], "megabot/smb.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
 
   robot->setName("smb");
   Eigen::VectorXd gc(robot->getGeneralizedCoordinateDim()), gv(robot->getDOF());

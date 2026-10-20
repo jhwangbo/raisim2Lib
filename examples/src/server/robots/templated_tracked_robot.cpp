@@ -35,7 +35,9 @@ int main(int argc, char* argv[]) {
   params.push_back({"flipper_radius", "0.16"});
   params.push_back({"track_thickness", "0.015"});
 
-  auto robot = world.addArticulatedSystem(exampleRscPath(argv[0], "templatedTrackedRobot/trackedTemplate.urdf"), params);
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto robot = world.addArticulatedSystem(exampleRscPath(argv[0], "templatedTrackedRobot/trackedTemplate.urdf"), params, "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   robot->setName("tracked");
   robot->setBasePos({0, 0, 0.25});
 

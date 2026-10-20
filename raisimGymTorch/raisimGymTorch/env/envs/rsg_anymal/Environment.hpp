@@ -26,7 +26,9 @@ class ENVIRONMENT : public RaisimGymEnv {
     world_->setSleepingEnabled(false);
 
     /// add objects
-    anymal_ = world_->addArticulatedSystem(resourceDir_+"/anymal/urdf/anymal.urdf");
+    raisim::ArticulatedSystemOption options;
+    options.convexifyCollisionMeshes = true;
+    anymal_ = world_->addArticulatedSystem(resourceDir_+"/anymal/urdf/anymal.urdf", "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
     anymal_->setName("anymal");
     anymal_->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
     world_->addGround();

@@ -84,7 +84,9 @@ class Buggy {
   static constexpr double kSteeringRate = 7.0;       // [rad/s] of the steering wheel
 
   Buggy(raisim::World& world, const std::string& urdf) : world_(world) {
-    system_ = world.addArticulatedSystem(urdf);
+    raisim::ArticulatedSystemOption options;
+    options.convexifyCollisionMeshes = true;
+    system_ = world.addArticulatedSystem(urdf, "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
     system_->setName("offroad_buggy");
     dof_ = system_->getDOF();
     for (size_t i = 0; i < system_->getMass().size(); ++i) mass_ += system_->getMass()[i];

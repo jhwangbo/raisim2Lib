@@ -47,8 +47,10 @@ pin7.setBodyType(raisim.BodyType.STATIC)
 anymalB_urdf_file = os.path.dirname(os.path.abspath(__file__)) + "/../../rsc/anymal/urdf/anymal.urdf"
 anymalC_urdf_file = os.path.dirname(os.path.abspath(__file__)) + "/../../rsc/anymal_c/urdf/anymal.urdf"
 
-anymalC = world.addArticulatedSystem(anymalC_urdf_file)
-anymalB = world.addArticulatedSystem(anymalB_urdf_file)
+options = raisim.ArticulatedSystemOption()
+options.convexify_collision_meshes = True
+anymalC = world.addArticulatedSystem(anymalC_urdf_file, options=options)
+anymalB = world.addArticulatedSystem(anymalB_urdf_file, options=options)
 
 jointNominalConfig = np.array([-3, 0, 4.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8])
 jointVelocityTarget = np.zeros([anymalC.getDOF()])

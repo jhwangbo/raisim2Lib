@@ -23,7 +23,9 @@ int main(int argc, char* argv[]) {
   world.setSleepingEnabled(false);
   world.addGround(0., "ground")->setAppearance("checkerboard");
 
-  auto* beest = world.addArticulatedSystem(exampleRscPath(argv[0], "strandbeest/strandbeest.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto* beest = world.addArticulatedSystem(exampleRscPath(argv[0], "strandbeest/strandbeest.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   beest->setName("strandbeest");
 
   // count the loop constraints: each appears as one eliminated row of the contact problem

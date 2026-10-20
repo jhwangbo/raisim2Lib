@@ -15,7 +15,9 @@ int main(int argc, char* argv[]) {
 
   /// create objects
   world.addGround();
-  auto kinova = world.addArticulatedSystem(exampleRscPath(argv[0], "kinova/urdf/kinova.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto kinova = world.addArticulatedSystem(exampleRscPath(argv[0], "kinova/urdf/kinova.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
 
   /// kinova joint PD controller
   Eigen::VectorXd jointNominalConfig(kinova->getGeneralizedCoordinateDim()), jointVelocityTarget(kinova->getDOF());

@@ -51,8 +51,10 @@ int main(int argc, char** argv) {
   pin7->setPosition(-4., 0.0, 7.0);
   pin7->setBodyType(raisim::BodyType::STATIC);
 
-  auto anymalC = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal_c/urdf/anymal.urdf"));
-  auto anymalB = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto anymalC = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal_c/urdf/anymal.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
+  auto anymalB = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
 
   /// anymalC joint PD controller
   Eigen::VectorXd jointNominalConfig(anymalC->getGeneralizedCoordinateDim()), jointVelocityTarget(anymalC->getDOF());

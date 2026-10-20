@@ -8,7 +8,7 @@
     </params>
 
     <objects>
-        <articulatedSystem name="laikago0" resDir="[THIS_DIR]/../../laikago" urdfPath="[THIS_DIR]/../../laikago/laikago.urdf">
+        <articulatedSystem name="laikago0" resDir="[THIS_DIR]/../../laikago" urdfPath="[THIS_DIR]/../../laikago/laikago.urdf" convexify_meshes="1">
             <state qpos="@@laikago_start_x, @@laikago_start_y, 0.48, 1.0, 0.0, 0.0, 0.0, 0.0, 0.5, -1.0, 0.0, 0.5, -1.0, 0.0, 0.5, -1.0, 0.0, 0.5, -0.7"
                    qvel="0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0" />
         </articulatedSystem>

@@ -23,7 +23,9 @@ int main(int argc, char* argv[]) {
   terrainProperties.fractalGain = 0.25;
 
   auto hm = world.addHeightMap(0.0, 0.0, terrainProperties);
-  auto robot = world.addArticulatedSystem(exampleRscPath(argv[0], "husky/husky.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto robot = world.addArticulatedSystem(exampleRscPath(argv[0], "husky/husky.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   robot->setName("smb");
   hm->setAppearance("soil2");
   Eigen::VectorXd gc(robot->getGeneralizedCoordinateDim()), gv(robot->getDOF()), damping(robot->getDOF());

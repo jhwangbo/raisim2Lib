@@ -24,7 +24,9 @@ int main(int argc, char* argv[]) {
   world.addGround();
 
   // A simple PD-controlled ANYmal so CR_SET_GC has something interesting to drive.
-  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   Eigen::VectorXd nominal(anymal->getGeneralizedCoordinateDim()), target(anymal->getDOF());
   nominal << 0, 0, 0.54, 1, 0, 0, 0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
   target.setZero();

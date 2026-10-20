@@ -15,7 +15,9 @@ int main(int argc, char* argv[]) {
 
   /// create objects
   world.addGround();
-  auto minitaur = world.addArticulatedSystem(exampleRscPath(argv[0], "minitaur/minitaur.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto minitaur = world.addArticulatedSystem(exampleRscPath(argv[0], "minitaur/minitaur.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   minitaur->setName("minitaur");
 
   /// anymalC joint PD controller

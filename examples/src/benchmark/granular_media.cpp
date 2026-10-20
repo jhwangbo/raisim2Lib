@@ -302,7 +302,9 @@ int run_granular_media_example(int argc, char** argv) {
     world.integrate();
   }
 
-  auto* anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto* anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   Eigen::VectorXd gc, gv, pgain, dgain, velTarget;
   buildAnymalDefaults(anymal, gc, gv, pgain, dgain, velTarget);
   const double bedSurface = computeTopSurface(grains);

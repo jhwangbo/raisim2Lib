@@ -29,7 +29,9 @@ int main(int argc, char** argv) {
   jointConfig << 0, 0, 0.54, 1, 0, 0, 0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
   jointVel << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
 
-  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal_c/urdf/anymal_sensored.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal_c/urdf/anymal_sensored.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   anymal->setState(jointConfig, jointVel);
   anymal->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
   anymal->setPdGains(jointPgain, jointDgain);

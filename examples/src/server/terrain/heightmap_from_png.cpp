@@ -14,7 +14,9 @@ int main(int argc, char* argv[]) {
 
   /// create objects
   auto heightMap = world.addHeightMap(exampleRscPath(argv[0], "xmlScripts/heightMaps/zurichHeightMap.png"), 0, 0, 500, 500, 0.005, -10);
-  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   anymal->setGeneralizedCoordinate({0, 0, 10.8, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8});
   anymal->setName("anymal");
   heightMap->setAppearance("soil1");

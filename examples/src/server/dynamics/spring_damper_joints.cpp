@@ -13,8 +13,10 @@ int main(int argc, char* argv[]) {
 
   /// create objects
   world.addGround();
-  auto revAndPrisSpringAndDamper = world.addArticulatedSystem(exampleRscPath(argv[0], "springDamper/cartpole.urdf"));
-  auto ballSpringAndDamper = world.addArticulatedSystem(exampleRscPath(argv[0], "springDamper/chainSpringed.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto revAndPrisSpringAndDamper = world.addArticulatedSystem(exampleRscPath(argv[0], "springDamper/cartpole.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
+  auto ballSpringAndDamper = world.addArticulatedSystem(exampleRscPath(argv[0], "springDamper/chainSpringed.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
 
   revAndPrisSpringAndDamper->setName("rev_pris_joint");
   ballSpringAndDamper->setName("ball_joint");

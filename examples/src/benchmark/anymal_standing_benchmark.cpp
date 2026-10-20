@@ -101,7 +101,9 @@ int main(int argc, char* argv[]) {
   world.setTimeStep(0.002);
   world.addGround();
 
-  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto anymal = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
   Eigen::VectorXd jointConfig, jointVel, jointPgain, jointDgain, jointVelocityTarget;
   buildAnymalDefaults(anymal, jointConfig, jointVel, jointPgain, jointDgain, jointVelocityTarget);
   anymal->setState(jointConfig, jointVel);

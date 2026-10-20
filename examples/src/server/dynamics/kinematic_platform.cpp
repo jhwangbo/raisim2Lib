@@ -15,7 +15,9 @@ int main(int argc, char* argv[]) {
   movingGround->setBodyType(raisim::BodyType::KINEMATIC);  // kinematic objects have infinite mass
   movingGround->setPosition(0, 0, -0.5);
   movingGround->setAppearance("red");
-  auto anymalB = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"));
+  raisim::ArticulatedSystemOption options;
+  options.convexifyCollisionMeshes = true;
+  auto anymalB = world.addArticulatedSystem(exampleRscPath(argv[0], "anymal/urdf/anymal.urdf"), "", {}, raisim::CollisionGroup(1), raisim::CollisionGroup(-1), options);
 
   /// anymalC joint PD controller
   Eigen::VectorXd jointNominalConfig(anymalB->getGeneralizedCoordinateDim()), jointVelocityTarget(anymalB->getDOF());
