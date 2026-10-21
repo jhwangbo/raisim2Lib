@@ -82,26 +82,26 @@ inline bool beginSceneOverlay(const char* name, int paneId, const ImVec2& origin
  * The TCP viewer loads mesh files synchronously, so a streamed body is drawn with its mesh in the
  * frame it appears. Applying a scene that way stalls the pane until every mesh is ready (seconds
  * for a large scene) with nothing drawn. update() applies the scene with asynchronous loading
- * instead and finishes the meshes that are ready for up to kFrameBudget per frame. Between its
- * calls, meshes requested by anything else still load synchronously
- * (RayraiWindow::SynchronousMeshLoadingScope) while the scene's keep loading in the background.
- * Once none is pending, the viewer is back to plain synchronous loading.
+ * instead, and the viewer's own per-frame poll (RayraiWindow::update()) finishes the meshes that
+ * are ready within that frame's budget. Between update() calls, meshes requested by anything else
+ * load synchronously (RayraiWindow::SynchronousMeshLoadingScope) while the scene's keep loading in
+ * the background. Once none is pending, the viewer is back to plain synchronous loading.
+ *
+ * update() itself does not poll: a second budget made every frame of the load longer, and
+ * polling for it spun for the whole budget whenever every load waited for a worker.
  *
  * Inline, so code that compiles the viewer's frame loop against a prebuilt rayrai gets it too.
  */
 class SceneMeshLoading {
  public:
-  /// Time spent per frame finishing ready meshes while a scene's meshes load.
-  static constexpr std::chrono::milliseconds kFrameBudget{8};
-
   SceneMeshLoading() = default;
   SceneMeshLoading(const SceneMeshLoading&) = delete;
   SceneMeshLoading& operator=(const SceneMeshLoading&) = delete;
 
   /**
-   * Call once per frame, with @p applyScene applying the scene when it is ready
-   * (ViewerSceneFiles::update()): runs it with asynchronous mesh loading, then finishes ready
-   * meshes for up to kFrameBudget.
+   * Call once per frame before the viewer's update(), with @p applyScene applying the scene when
+   * it is ready (ViewerSceneFiles::update()): runs it with asynchronous mesh loading, then tracks
+   * the meshes that the viewer's frames finish.
    * @return What applyScene returned: true in the frame the scene was applied.
    */
   template <class ApplyScene>
@@ -115,12 +115,7 @@ class SceneMeshLoading {
       progress_ = 0.0f;
       start_ = Clock::now();
     }
-    const auto frameStart = Clock::now();
     pending_ = viewer.pendingAsyncMeshLoadCount();
-    while (pending_ > 0 && Clock::now() - frameStart < kFrameBudget) {
-      viewer.pollAsyncMeshLoads(1);
-      pending_ = viewer.pendingAsyncMeshLoadCount();
-    }
     if (pending_ == 0) {
       viewer.setAsyncMeshLoadingEnabled(false);
       shown_ = false;
