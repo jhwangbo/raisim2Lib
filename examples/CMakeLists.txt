@@ -295,6 +295,7 @@ create_rayrai_executable(rayrai_swept_ccd src/rayrai/collision/rayrai_swept_ccd.
 # Tools.
 create_rayrai_executable(rayrai_tcp_viewer src/rayrai/tools/rayrai_tcp_viewer.cpp)
 target_sources(rayrai_tcp_viewer PRIVATE
+    src/rayrai/tools/TcpViewerInspectorLoad.cpp
     src/rayrai/tools/TcpViewerSceneFiles.cpp
     src/rayrai/tools/TcpViewerActuators.cpp
     src/rayrai/tools/TcpViewerVideo.cpp

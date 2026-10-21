@@ -70,15 +70,18 @@ DroppedSceneKind classifyDroppedScene(const fs::path& path, std::string& error) 
   error.clear();
   std::error_code ec;
   if (!fs::is_regular_file(path, ec)) { error = "File not found: " + path.string(); return DroppedSceneKind::Invalid; }
-  raisim::TiXmlDocument doc(path.string().c_str());
-  if (!doc.LoadFile() || !doc.RootElement()) {
-    error = "Cannot read scene XML: " + path.string(); return DroppedSceneKind::Invalid;
-  }
-  const std::string root = doc.RootElement()->Value();
+  const std::string root = xmlRootElement(path);
+  if (root.empty()) { error = "Cannot read scene XML: " + path.string(); return DroppedSceneKind::Invalid; }
   if (root == "raisim") return DroppedSceneKind::World;
   if (root == "robot" || root == "mujoco") return DroppedSceneKind::Robot;
   error = "Expected a RaiSim world, URDF robot, or MJCF model";
   return DroppedSceneKind::Invalid;
+}
+
+std::string xmlRootElement(const fs::path& path) {
+  raisim::TiXmlDocument doc(path.string().c_str());
+  if (!doc.LoadFile() || !doc.RootElement()) return {};
+  return doc.RootElement()->Value();
 }
 
 struct LocalSimulation::Impl {

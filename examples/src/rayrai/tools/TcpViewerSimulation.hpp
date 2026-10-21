@@ -7,6 +7,9 @@
 namespace raisin::tcp_viewer {
 enum class DroppedSceneKind { World, Robot, Invalid };
 DroppedSceneKind classifyDroppedScene(const std::filesystem::path& path, std::string& error);
+// The name of an XML file's root element ("raisim", "robot", "mujoco"), or empty
+// when the file is not readable XML.
+std::string xmlRootElement(const std::filesystem::path& path);
 
 // Owns only the process launched for a dropped world. Poll from the UI thread;
 // loading and physics run in the child, without blocking the viewer's event loop.

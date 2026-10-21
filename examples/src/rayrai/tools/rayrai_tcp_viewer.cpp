@@ -67,6 +67,7 @@
 #include "TcpViewerSignals.hpp"
 #include "TcpViewerVideo.hpp"
 #include "TcpViewerSimulation.hpp"
+#include "TcpViewerInspectorLoad.hpp"
 #include "TcpViewerConnection.hpp"
 
 #include "rayrai/RayraiWindow.hpp"
@@ -421,48 +422,6 @@ struct InspectorState {
   // True while the user is actively dragging a slider; suppresses auto-connect attempts.
   bool dragging = false;
 };
-
-// Identify MJCF vs URDF by scanning the file for the first non-comment, non-declaration
-// root element. The 1 KB short-read used to misclassify files like
-// half_cheetah.xml whose <mujoco> tag lives after a long license/header comment
-// (the comment + whitespace pushed it past byte 1024). We now read up to 64 KB —
-// big enough for any realistic preamble — and skip past <?xml...?> declarations and
-// <!-- ... --> comments before sniffing the root tag.
-inline bool looksLikeMjcf(const std::string& path) {
-  std::ifstream fs(path, std::ios::binary);
-  if (!fs) return false;
-  std::string buf(65536, '\0');
-  fs.read(buf.data(), static_cast<std::streamsize>(buf.size()));
-  buf.resize(static_cast<size_t>(fs.gcount()));
-  size_t i = 0;
-  const size_t n = buf.size();
-  while (i < n) {
-    while (i < n && std::isspace(static_cast<unsigned char>(buf[i]))) ++i;
-    if (i + 1 < n && buf[i] == '<' && buf[i + 1] == '?') {
-      const auto end = buf.find("?>", i + 2);
-      if (end == std::string::npos) return false;
-      i = end + 2;
-      continue;
-    }
-    if (i + 3 < n && buf.compare(i, 4, "<!--") == 0) {
-      const auto end = buf.find("-->", i + 4);
-      if (end == std::string::npos) return false;
-      i = end + 3;
-      continue;
-    }
-    if (i + 8 < n && buf.compare(i, 9, "<!DOCTYPE") == 0) {
-      const auto end = buf.find('>', i + 9);
-      if (end == std::string::npos) return false;
-      i = end + 1;
-      continue;
-    }
-    if (i < n && buf[i] == '<') {
-      return buf.compare(i, 7, "<mujoco") == 0;
-    }
-    ++i;
-  }
-  return false;
-}
 
 struct MotionEstimate {
   bool hasPrevious = false;
@@ -2884,19 +2843,9 @@ int main(int argc, char* argv[]) {
     closeInspector();
 
     const auto tStart = std::chrono::steady_clock::now();
-    const bool isMjcf = looksLikeMjcf(path);
-
-    // Snapshot the object list so we can attribute any new objects to this load.
-    std::vector<raisim::Object*> before(world->getObjList().begin(), world->getObjList().end());
-
-    raisim::ArticulatedSystem* as = nullptr;
+    raisin::tcp_viewer::InspectorModel model;
     try {
-      if (isMjcf) {
-        // loadMjcfFile populates the world; we pick the first ArticulatedSystem it added.
-        world->loadMjcfFile(path);
-      } else {
-        as = world->addArticulatedSystem(path);
-      }
+      model = raisin::tcp_viewer::loadInspectorModel(*world, path);
     } catch (const std::exception& e) {
       inspector.lastError = std::string("load failed: ") + e.what();
       return false;
@@ -2904,39 +2853,17 @@ int main(int argc, char* argv[]) {
       inspector.lastError = "load failed (unknown exception)";
       return false;
     }
-
-    // Diff before/after to collect the new objects.
-    std::vector<raisim::Object*> newObjects;
-    {
-      std::unordered_set<raisim::Object*> beforeSet(before.begin(), before.end());
-      for (raisim::Object* ob : world->getObjList()) {
-        if (beforeSet.find(ob) == beforeSet.end()) newObjects.push_back(ob);
-      }
-    }
-    if (isMjcf) {
-      for (raisim::Object* ob : newObjects) {
-        if (!as && ob->getObjectType() == raisim::ObjectType::ARTICULATED_SYSTEM) {
-          as = dynamic_cast<raisim::ArticulatedSystem*>(ob);
-        }
-      }
-    }
-    if (!as) {
-      // No AS produced — tear down whatever was added so the world stays clean.
-      for (raisim::Object* ob : newObjects) {
-        if (ob) world->removeObject(ob);
-      }
-      inspector.lastError = isMjcf ? "MJCF contained no articulated system"
-                                   : "URDF parse failed (see console)";
+    if (!model.system) {
+      inspector.lastError = model.mjcf ? "MJCF contained no articulated system"
+                                       : "URDF parse failed (see console)";
       return false;
     }
 
     inspector = InspectorState{};
     inspector.active = true;
     inspector.sourceFile = path;
-    inspector.as = as;
-    for (raisim::Object* ob : newObjects) {
-      if (ob != as) inspector.sideObjects.push_back(ob);
-    }
+    inspector.as = model.system;
+    inspector.sideObjects = std::move(model.sideObjects);
     inspector.as->setName("inspector_" + fs::path(path).stem().string());
 
     const int gcDim = inspector.as->getGeneralizedCoordinateDim();
