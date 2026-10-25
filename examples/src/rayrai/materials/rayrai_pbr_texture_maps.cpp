@@ -247,22 +247,21 @@ int main(int argc, char* argv[]) {
   // emissive, metallic-roughness, roughness-only, and occlusion texture import.
   // Scales normalize each asset's longest authored glTF extent to roughly the
   // same preview size; localCenter keeps offset mesh origins centered in slots.
+  // Only CC0 models: renders of this scene appear in the documentation and
+  // videos, and DamagedHelmet (CC BY-NC) and AntiqueCamera (UX3D trademark)
+  // are not licensed for that.
   const std::vector<PbrAsset> assets = {
       {"flight_helmet", "rayrai/pbr/FlightHelmet/glTF/FlightHelmet.gltf", 1.75, 0.10, {-0.0203510f, 0.3579895f, 0.0142417f}},
-      {"damaged_helmet", "rayrai/pbr/DamagedHelmet/glTF/DamagedHelmet.gltf", 0.63, 1.55, {-0.0024816f, 0.0000105f, -0.1871549f}},
       {"sci_fi_helmet", "rayrai/pbr/SciFiHelmet/glTF/SciFiHelmet.gltf", 0.43, 3.24, {0.0000000f, 0.0000001f, -0.0000005f}},
-      {"antique_camera", "rayrai/pbr/AntiqueCamera/glTF/AntiqueCamera.gltf", 0.17, -0.15, {-0.3272680f, 3.6036221f, -0.1976599f}},
       {"lantern", "rayrai/pbr/Lantern/glTF/Lantern.gltf", 0.049, 0.12, {3.8231542f, 13.0160300f, 0.0000000f}},
       {"boombox", "rayrai/pbr/BoomBox/glTF/BoomBox.gltf", 62.0, 3.04, {0.0000000f, 0.0000000f, 0.0000000f}},
       {"avocado", "rayrai/pbr/Avocado/glTF/Avocado.gltf", 19.9, 0.05, {0.0000000f, 0.0314002f, -0.0000000f}},
       {"water_bottle", "rayrai/pbr/WaterBottle/glTF/WaterBottle.gltf", 4.8, -0.06, {0.0000000f, 0.0000000f, 0.0000000f}},
   };
 
-  const std::array<glm::vec3, 8> previewCenters = {{
-      {-2.85f, 0.02f, 2.10f},
+  const std::array<glm::vec3, 6> previewCenters = {{
       {-0.95f, 0.02f, 2.10f},
       {0.95f, 0.02f, 2.10f},
-      {2.85f, 0.02f, 2.10f},
       {-2.85f, -0.02f, 0.70f},
       {-0.95f, -0.02f, 0.70f},
       {0.95f, -0.02f, 0.70f},

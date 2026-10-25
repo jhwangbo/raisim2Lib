@@ -25,8 +25,6 @@ if(DEFINED CACHE{RAISIM_VERSION} AND NOT "${RAISIM_VERSION}" VERSION_EQUAL "${_r
 endif()
 set(RAISIM_VERSION 2.10.2 CACHE STRING "Raisim release version to download.")
 project(raisim VERSION ${RAISIM_VERSION} LANGUAGES CXX)
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
-
 # Include CMake helper modules
 include(GNUInstallDirs)
 

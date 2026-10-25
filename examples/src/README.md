@@ -215,7 +215,7 @@ them against the updated rayrai package containing `rayrai/PhysicsSnapshot.hpp`.
 
 Manual diagnostic programs live under `examples/tools/debug` and are built with
 `-DRAISIM_DEBUG_TOOLS=ON` when building the examples project. The option is off
-by default. See the [debug tools guide](../../docs/sections/DebugTools.rst) for
+by default. See the [debug tools guide](../../docs/sections/DebugTools.md) for
 build and run instructions.
 
 - `object_lifecycle_stress`: repeatedly create, simulate, and remove primitives

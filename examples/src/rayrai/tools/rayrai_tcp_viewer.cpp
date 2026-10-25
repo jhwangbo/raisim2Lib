@@ -1270,6 +1270,8 @@ ImVec4 tcpViewerIconTint(TcpViewerIconKind kind, bool hovered, bool active) {
     case TcpViewerIconKind::ObjectCompound: color = ImVec4(0.48f, 0.82f, 0.96f, 1.0f); break;
     case TcpViewerIconKind::ObjectDeformable: color = ImVec4(0.96f, 0.58f, 0.78f, 1.0f); break;
     case TcpViewerIconKind::ObjectGranular: color = ImVec4(0.94f, 0.68f, 0.40f, 1.0f); break;
+    // Panel chrome, not an action on the scene: the same neutral as the Help tab.
+    case TcpViewerIconKind::Collapse: color = ImVec4(0.86f, 0.88f, 0.94f, 1.0f); break;
     case TcpViewerIconKind::Count: color = ImVec4(0.92f, 0.94f, 0.98f, 1.0f); break;
   }
   const float boost = active ? 1.18f : (hovered ? 1.08f : 1.0f);
@@ -1383,27 +1385,56 @@ int iconTabLabelSpaceCount(float fontSize, float spaceWidth) {
   return static_cast<int>(std::ceil(needed));
 }
 
+/// A panel row that a button at its right end shares (drawIconOnlyButtonAtRowEnd()).
+struct PanelRow {
+  /// Top-left corner of the row.
+  ImVec2 min{0.0f, 0.0f};
+  float height = 0.0f;
+  /// Right edge of the row's last item.
+  float itemsRight = 0.0f;
+  /// Size of the row's tabs, which a button at its end matches; zero for a row of frame-height controls.
+  ImVec2 tabSize{0.0f, 0.0f};
+  /// Right edge of everything the panel drew this frame. Last frame's window edge would hold an
+  /// auto-resizing panel at its widest: the button would keep it that wide.
+  float contentRight = 0.0f;
+};
+
 /**
  * @brief Open a tab bar sized for icon tabs.
  *
  * Pairs with endIconTabBar(). The extra frame padding has to be in style before
  * the first tab is submitted, which is why it lives here rather than in
- * beginIconTabItem().
+ * beginIconTabItem(). With row, records the row the bar takes, and the bar and
+ * everything up to endIconTabBar(row) form one group whose right edge that call
+ * records; pass the same row to every beginIconTabItem() of the bar.
  */
-bool beginIconTabBar(const char* id) {
+bool beginIconTabBar(const char* id, PanelRow* row = nullptr) {
   const ImGuiStyle& style = ImGui::GetStyle();
   ImVec2 padding = style.FramePadding;
   padding.y = iconTabFramePaddingY(ImGui::GetFontSize(), padding.y);
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, padding);
+  if (row) {
+    row->min = ImGui::GetCursorScreenPos();
+    row->height = ImGui::GetFontSize() + padding.y * 2.0f;
+    row->itemsRight = row->min.x;
+    ImGui::BeginGroup();
+  }
   if (ImGui::BeginTabBar(id)) {
     return true;
+  }
+  if (row) {
+    ImGui::EndGroup();
   }
   ImGui::PopStyleVar();
   return false;
 }
 
-void endIconTabBar() {
+void endIconTabBar(PanelRow* row = nullptr) {
   ImGui::EndTabBar();
+  if (row) {
+    ImGui::EndGroup();
+    row->contentRight = ImGui::GetItemRectMax().x;
+  }
   ImGui::PopStyleVar();
 }
 
@@ -1447,11 +1478,13 @@ void drawIconChip(ImDrawList* drawList, ImTextureID textureId, const ImVec2& ico
  * @return True when the tab is selected; the caller must then call EndTabItem().
  */
 bool beginIconTabItem(const TcpViewerIcons& icons, TcpViewerIconKind kind, const char* tooltip,
-                      const char* id) {
+                      const char* id, PanelRow* row = nullptr) {
   const TcpViewerIcon* icon = icons.get(kind);
   if (!icon) {
     // No texture: fall back to the text label rather than an unclickable blank.
-    return ImGui::BeginTabItem(tooltip ? tooltip : id);
+    const bool selected = ImGui::BeginTabItem(tooltip ? tooltip : id);
+    if (row) row->itemsRight = std::max(row->itemsRight, ImGui::GetItemRectMax().x);
+    return selected;
   }
 
   const int spaceCount = iconTabLabelSpaceCount(ImGui::GetFontSize(), ImGui::CalcTextSize(" ").x);
@@ -1465,6 +1498,10 @@ bool beginIconTabItem(const TcpViewerIcons& icons, TcpViewerIconKind kind, const
   const bool hovered = ImGui::IsItemHovered();
   const ImVec2 itemMin = ImGui::GetItemRectMin();
   const ImVec2 itemMax = ImGui::GetItemRectMax();
+  if (row) {
+    row->itemsRight = std::max(row->itemsRight, itemMax.x);
+    if (itemMax.x - itemMin.x >= 2.0f) row->tabSize = ImVec2(itemMax.x - itemMin.x, itemMax.y - itemMin.y);
+  }
   if (hovered && tooltip && tooltip[0] != '\0') {
     ImGui::SetTooltip("%s", tooltip);
   }
@@ -1640,6 +1677,65 @@ bool drawIconOnlyButton(const TcpViewerIcons& icons, TcpViewerIconKind kind,
   drawList->PopClipRect();
   ImGui::PopID();
   return pressed;
+}
+
+/**
+ * @brief An icon button shaped and sized like the icon tabs, for a tab bar's row.
+ *
+ * The tab background and its top-rounded corners, and the glyph at the tabs' size,
+ * so it reads as part of the tab row rather than a smaller control beside it.
+ */
+bool drawIconTabLikeButton(const TcpViewerIcons& icons, TcpViewerIconKind kind, const char* tooltip,
+                           const char* id, const ImVec2& size) {
+  const TcpViewerIcon* icon = icons.get(kind);
+  ImGui::PushID(id ? id : tooltip);
+  if (!icon) {
+    const bool pressed = ImGui::Button(tooltip ? tooltip : "?", size);
+    ImGui::PopID();
+    return pressed;
+  }
+  const bool pressed = ImGui::InvisibleButton("##icon_tab_button", size);
+  const bool hovered = ImGui::IsItemHovered();
+  const bool active = ImGui::IsItemActive();
+  if (hovered && tooltip && tooltip[0] != '\0') {
+    ImGui::SetTooltip("%s", tooltip);
+  }
+  const ImVec2 itemMin = ImGui::GetItemRectMin();
+  const ImVec2 itemMax = ImGui::GetItemRectMax();
+  ImDrawList* drawList = ImGui::GetWindowDrawList();
+  const ImGuiCol background = active ? ImGuiCol_TabActive : (hovered ? ImGuiCol_TabHovered : ImGuiCol_Tab);
+  drawList->AddRectFilled(itemMin, itemMax, ImGui::GetColorU32(background), ImGui::GetStyle().TabRounding,
+                          ImDrawFlags_RoundCornersTop);
+  // the glyph as beginIconTabItem() sizes it
+  const float iconSize = std::max(1.0f, std::min(size.x, size.y) * kTabIconFillFactor);
+  const ImVec2 centre((itemMin.x + itemMax.x) * 0.5f, (itemMin.y + itemMax.y) * 0.5f);
+  const ImVec2 iconMin(std::round(centre.x - iconSize * 0.5f), std::round(centre.y - iconSize * 0.5f));
+  drawIconGlyph(drawList, (ImTextureID)(intptr_t)icon->texture, iconMin,
+                ImVec2(iconMin.x + iconSize, iconMin.y + iconSize), tcpViewerIconTint(kind, hovered, active));
+  ImGui::PopID();
+  return pressed;
+}
+
+/**
+ * @brief An icon-only button at the right end of a panel row.
+ *
+ * Call after the panel's content, as the window's last item: at the right edge of
+ * that content, or just past the row's items when the content is narrower than
+ * them and the button. On a tab row it is the size and shape of the tabs
+ * (drawIconTabLikeButton()); on a row of controls, drawIconOnlyButton(). A tab
+ * bar takes its whole row, and a trailing tab button would follow the last tab
+ * rather than the edge, so the button is placed over the row.
+ */
+bool drawIconOnlyButtonAtRowEnd(const TcpViewerIcons& icons, TcpViewerIconKind kind, const char* tooltip,
+                                const char* id, const PanelRow& row) {
+  const bool tabRow = row.tabSize.x > 0.0f;
+  const ImVec2 size = tabRow ? row.tabSize : ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight());
+  // whole pixels, so the glyph is not resampled at a fractional UI scale
+  const float left =
+      std::round(std::max(row.contentRight - size.x, row.itemsRight + ImGui::GetStyle().ItemSpacing.x));
+  ImGui::SetCursorScreenPos(ImVec2(left, row.min.y + std::round((row.height - size.y) * 0.5f)));
+  return tabRow ? drawIconTabLikeButton(icons, kind, tooltip, id, size)
+                : drawIconOnlyButton(icons, kind, tooltip, id);
 }
 
 /**
@@ -1844,6 +1940,48 @@ bool drawSpawnForm(const TcpViewerIcons& icons, SpawnFormState& form, bool canSp
   request = std::move(candidate);
   status = std::string("spawn queued: ") + shape.label;
   return true;
+}
+
+/**
+ * @brief Opens a collapsed left panel the pointer has just arrived over.
+ *
+ * Call right after the panel's window begins. The pointer has to arrive: one that
+ * was already over the panel when it collapsed has to leave and come back.
+ *
+ * @param hoveredWhileMinimized What finishLeftPanelFrame() returned last frame.
+ * @return True when the panel opened.
+ */
+bool openLeftPanelOnHover(bool& minimized, bool hovered, bool hoveredWhileMinimized) {
+  if (!minimized || !hovered || hoveredWhileMinimized) {
+    return false;
+  }
+  minimized = false;
+  return true;
+}
+
+/**
+ * @brief The left panel's state at the end of a frame.
+ *
+ * An open panel collapses after kOverlayAutoCollapseDelay without the pointer or an
+ * interaction, never with keepOpen. A click on its collapse button (collapseClicked)
+ * leaves the pointer over the panel, but the window was not reported hovered that
+ * frame (the button was the active item when it began), and it keeps its expanded
+ * size one more frame, which would read as the pointer arriving and open it again.
+ *
+ * @return Whether the pointer counts as over the collapsed panel, for the next
+ *         frame's openLeftPanelOnHover().
+ */
+bool finishLeftPanelFrame(bool& minimized, std::chrono::steady_clock::time_point& lastInteraction,
+                          std::chrono::steady_clock::time_point now, bool hovered, bool interacting,
+                          bool keepOpen, bool collapseClicked) {
+  if (!minimized) {
+    if (hovered || interacting || keepOpen) {
+      lastInteraction = now;
+    } else if (now - lastInteraction >= kOverlayAutoCollapseDelay) {
+      minimized = true;
+    }
+  }
+  return minimized && (hovered || collapseClicked);
 }
 
 void drawCollapsedLeftPanelLogo(const TcpViewerImageTexture& logo) {
@@ -5316,6 +5454,7 @@ int main(int argc, char* argv[]) {
     // active so the user isn't tempted to interact with mutually-exclusive state.
     const bool overlayVisible = !inspector.active;
     bool overlayHovered = false;
+    bool overlayCollapseClicked = false;
     if (overlayVisible) {
     // The collapsed logo sits on a light chip because the wordmark is dark ink;
     // that chip is fully opaque so no scene colour bleeds through the logo.
@@ -5338,11 +5477,8 @@ int main(int argc, char* argv[]) {
     if (ImGui::Begin(overlayWindowName.c_str(), nullptr, kOverlayPanelWindowFlags)) {
       overlayHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
       overlayRightEdge = ImGui::GetWindowPos().x + ImGui::GetWindowSize().x;
-      const bool overlayHoverShouldOpen = overlayMinimized && overlayHovered &&
-                                          !overlayCollapsedHoveredLastFrame;
       const ImGuiStyle& style = ImGui::GetStyle();
-      if (overlayHoverShouldOpen) {
-        overlayMinimized = false;
+      if (openLeftPanelOnHover(overlayMinimized, overlayHovered, overlayCollapsedHoveredLastFrame)) {
         overlayLastInteractionTime = now;
       }
 
@@ -5353,7 +5489,11 @@ int main(int argc, char* argv[]) {
 
       // The Connection tab's contents, which are also drawn on their own when
       // there is no session and the tab bar would hold a single tab.
+      // The connect prompt's first row, which ends with the collapse button when there is no session.
+      PanelRow connectRow;
       const auto drawConnectionTab = [&]() {
+        connectRow.min = ImGui::GetCursorScreenPos();
+        connectRow.height = ImGui::GetFrameHeight();
         ImGui::PushStyleColor(ImGuiCol_TextDisabled,
           raionrobotics_imgui_secondary_text_color());
         ConnectionEntry current;
@@ -5496,6 +5636,7 @@ int main(int argc, char* argv[]) {
           ImGui::SameLine();
           ImGui::TextDisabled("(inspector active — close to connect)");
         }
+        connectRow.itemsRight = ImGui::GetItemRectMax().x;
 
         // Disconnected: the endpoint row above, then the live server list. It is
         // a child rather than a combo so the servers are on screen without a
@@ -5869,19 +6010,29 @@ int main(int argc, char* argv[]) {
         ImGui::PopStyleColor();
       };
 
+      PanelRow leftTabRow;
       if (overlayMinimized) {
         drawCollapsedLeftPanelLogo(collapsedLogoVisible ? raisimLogo : TcpViewerImageTexture{});
       } else if (!sessionActive) {
         // A tab bar holding a single tab is just a title with extra steps, so the
-        // connect prompt is drawn on its own.
+        // connect prompt is drawn on its own, and the collapse button ends its first row.
+        ImGui::BeginGroup();
         drawConnectionTab();
-      } else if (beginIconTabBar("##LeftTabs")) {
-        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Connect, "Connection", "tab_connection")) {
+        ImGui::EndGroup();
+        connectRow.contentRight = ImGui::GetItemRectMax().x;
+        if (drawIconOnlyButtonAtRowEnd(uiIcons, TcpViewerIconKind::Collapse, "Collapse panel",
+                                       "collapse_left_panel", connectRow)) {
+          overlayMinimized = true;
+          overlayCollapseClicked = true;
+        }
+      } else if (beginIconTabBar("##LeftTabs", &leftTabRow)) {
+        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Connect, "Connection", "tab_connection",
+                             &leftTabRow)) {
           drawConnectionTab();
           ImGui::EndTabItem();
         }
 
-        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Options, "Options", "tab_options")) {
+        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Options, "Options", "tab_options", &leftTabRow)) {
           drawViewOptions();
           ImGui::EndTabItem();
         }
@@ -5889,7 +6040,7 @@ int main(int argc, char* argv[]) {
         // Everything that writes a file lives here rather than sharing the
         // Options tab: screenshots, video, the PNG frame sequence, the session
         // replay log, and the replay transport.
-        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Video, "Record", "tab_record")) {
+        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Video, "Record", "tab_record", &leftTabRow)) {
           ImGui::PushStyleColor(ImGuiCol_TextDisabled,
             raionrobotics_imgui_secondary_text_color());
           drawCaptureOptions();
@@ -5897,12 +6048,12 @@ int main(int argc, char* argv[]) {
           ImGui::EndTabItem();
         }
 
-        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Render, "Render", "tab_render")) {
+        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Render, "Render", "tab_render", &leftTabRow)) {
           drawRenderingOptions();
           ImGui::EndTabItem();
         }
 
-        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Objects, "Objects", "tab_objects")) {
+        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Objects, "Objects", "tab_objects", &leftTabRow)) {
           uint32_t selectedTag = 0;
           int selectedIndex = 0;
           const VisualEntry* selectedEntry = nullptr;
@@ -6407,7 +6558,8 @@ int main(int argc, char* argv[]) {
 
           ImGui::EndTabItem();
         }
-        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Diagnostics, "Diagnostics", "tab_diagnostics")) {
+        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Diagnostics, "Diagnostics", "tab_diagnostics",
+                             &leftTabRow)) {
           constexpr const char* packetColumnNames[] = {"t", "bytes", "src", "ok", "obj", "vis", "sens", "miss"};
           constexpr float packetColumnWidths[] = {62.0f, 62.0f, 46.0f, 34.0f, 44.0f, 44.0f, 44.0f, 44.0f};
           float packetTableWidth = ImGui::GetStyle().ScrollbarSize + ImGui::GetStyle().CellPadding.x * 16.0f;
@@ -6553,7 +6705,7 @@ int main(int argc, char* argv[]) {
           }
           ImGui::EndTabItem();
         }
-        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Help, "Help", "tab_help")) {
+        if (beginIconTabItem(uiIcons, TcpViewerIconKind::Help, "Help", "tab_help", &leftTabRow)) {
           ImGui::PushStyleColor(ImGuiCol_TextDisabled,
             raionrobotics_imgui_secondary_text_color());
           ImGui::SeparatorText("Keyboard and mouse");
@@ -6561,7 +6713,14 @@ int main(int argc, char* argv[]) {
           ImGui::PopStyleColor();
           ImGui::EndTabItem();
         }
-        endIconTabBar();
+        endIconTabBar(&leftTabRow);
+        // Collapses the panel now rather than after kOverlayAutoCollapseDelay
+        // without the pointer.
+        if (drawIconOnlyButtonAtRowEnd(uiIcons, TcpViewerIconKind::Collapse, "Collapse panel",
+                                       "collapse_left_panel", leftTabRow)) {
+          overlayMinimized = true;
+          overlayCollapseClicked = true;
+        }
       }
     }
     ImGui::End();
@@ -6571,14 +6730,8 @@ int main(int argc, char* argv[]) {
     ImGui::PopStyleVar(2);
     const bool overlayInteractionActive = ImGui::IsAnyItemActive() ||
                                           ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
-    if (!overlayMinimized) {
-      if (overlayHovered || overlayInteractionActive || options.keepOverlayOpen) {
-        overlayLastInteractionTime = now;
-      } else if (now - overlayLastInteractionTime >= kOverlayAutoCollapseDelay) {
-        overlayMinimized = true;
-      }
-    }
-    overlayCollapsedHoveredLastFrame = overlayMinimized && overlayHovered;
+    overlayCollapsedHoveredLastFrame = finishLeftPanelFrame(overlayMinimized, overlayLastInteractionTime, now,
+      overlayHovered, overlayInteractionActive, options.keepOverlayOpen, overlayCollapseClicked);
     } // end if (overlayVisible)
     // Scene-file prompt, download and mesh progress, below the menu bar, clear of the overlay.
     sceneFiles.drawOverlay(ImVec2(paneOrigin.x, paneOrigin.y + menuBarHeight),

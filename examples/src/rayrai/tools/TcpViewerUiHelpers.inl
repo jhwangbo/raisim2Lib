@@ -3240,6 +3240,7 @@ enum class TcpViewerIconKind {
   ObjectCompound,
   ObjectDeformable,
   ObjectGranular,
+  Collapse,
   Count
 };
 
@@ -3329,6 +3330,7 @@ const char* tcpViewerIconFileName(TcpViewerIconKind kind) {
     case TcpViewerIconKind::ObjectCompound: return "compound_uicons_sr_cubes.png";
     case TcpViewerIconKind::ObjectDeformable: return "deformable_uicons_sr_wave_square.png";
     case TcpViewerIconKind::ObjectGranular: return "granular_uicons_sr_braille.png";
+    case TcpViewerIconKind::Collapse: return "collapse_uicons_sr_angle_double_small_left.png";
     case TcpViewerIconKind::Count: break;
   }
   return "";

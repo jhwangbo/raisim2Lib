@@ -55,3 +55,12 @@ imgui.ini
 *.rimp.tmp.*
 *.rmpc
 *.rmpc.tmp.*
+
+# VitePress documentation site (docs/scripts/generate_api_docs.py writes docs/api)
+docs/node_modules/
+docs/.vitepress/cache/
+docs/.vitepress/.temp/
+docs/.vitepress/dist/
+docs/api/
+# Temporary siblings that generate_api_docs.py renames into place
+docs/.api.*/
