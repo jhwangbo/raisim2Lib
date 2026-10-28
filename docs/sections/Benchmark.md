@@ -8,7 +8,7 @@ backend. For tuning guidance, see [Performance](./Performance.md).
 
 **Median wall-clock seconds; lower is better.** The smaller range below each median is
 the minimum–maximum of three runs. Speedup is MuJoCo's median divided by RaiSim's median.
-All rows include scene construction and the benchmark loop; rendering is disabled.
+All rows run on a single thread and include scene construction and the benchmark loop; rendering is disabled.
 
 <!--@include: ./_benchmark_results.md-->
 

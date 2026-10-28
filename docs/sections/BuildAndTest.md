@@ -72,6 +72,11 @@ only one variant, every consumer configuration maps to that available variant;
 building a downstream project in Debug does not manufacture RaiSim debug
 assertions when only the Release library is installed.
 
+The packaged libraries contain no debug information. The Debug libraries keep
+RaiSim's `RSDEBUG` checks and their symbols, so error messages and backtraces
+name RaiSim's functions, but a debugger cannot show RaiSim's source lines or
+variables. Debug your own code as usual.
+
 ## Timing examples
 
 `raisim2Lib` includes standalone timing-oriented example executables. The

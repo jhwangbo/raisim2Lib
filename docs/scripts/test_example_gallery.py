@@ -51,6 +51,13 @@ class ExampleGalleryTest(unittest.TestCase):
         self.assertEqual(sorted(pages - stubs - NOT_EXAMPLES - set(self.listed)), [], "pages missing from gallery.json")
         self.assertEqual(sorted(set(self.listed) - pages), [], "gallery.json lists pages that do not exist")
 
+    def test_deformable_examples_have_their_own_category(self):
+        categories = {category["id"]: category for category in self.gallery["categories"]}
+        sources = DOCS.parent / "examples" / "src" / "server" / "deformable"
+        expected = {f"server/{source.stem}" for source in sources.glob("*.cpp")}
+        self.assertEqual(set(categories["deformable"]["examples"]), expected)
+        self.assertIn("rayrai/rayrai_deformable_terrain", categories["terrain"]["examples"])
+
     def test_console_examples_are_listed(self):
         self.assertEqual(sorted(set(self.gallery["console"]) - set(self.listed)), [])
 

@@ -9,8 +9,6 @@ function speedup(id: string): number {
 }
 
 const realTime = benchmark.realTime
-// Wall-clock minutes for one simulated day of the real-time workload.
-const minutesPerDay = (24 * 60) / realTime.factor
 
 const stats = [
   {
@@ -22,11 +20,12 @@ const stats = [
     note: 'A walking quadruped trained from scratch with raisimGymTorch and PPO',
   },
   {
-    value: realTime.factor,
+    // Server throughput reported by the user (2026-10-28).
+    value: 10,
     decimals: 0,
-    unit: '×',
+    unit: 'k×',
     label: 'faster than real time',
-    note: `A full day of ANYmal walking on rough terrain, simulated in ${minutesPerDay.toFixed(1)} minutes`,
+    note: `Multithreaded server throughput; ${realTime.factor.toFixed(0)}× in the single-thread ANYmal benchmark`,
   },
   {
     value: speedup('heightmap_lidar'),

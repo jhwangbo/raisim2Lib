@@ -252,6 +252,14 @@ size, and elastic response. Defaults are shown in parentheses:
 - `collisionRadius` (0.01 m): radius of each internal particle collision
   proxy.
 - `iterations` (6): number of constraint projection iterations per substep.
+  Within each iteration, a run of distance constraints that continue each other
+  in a nearly straight line (a row, column or diagonal of a grid cloth, a rope;
+  each edge turns by less than 60° from the previous one) is solved as a whole,
+  so a stiff cloth or rope holds its rest lengths and a pull reaches its far end
+  within one step: a 0.2 kg cloth of 33 × 33 particles on the ground pulled at
+  one edge with 20 N stretches by less than 0.01 % at the default 6 iterations.
+  Where the edges of a mesh turn more sharply, the stiffness spreads by one edge
+  per iteration, and such a mesh needs more iterations for the same stretch.
 - `substeps` (1): number of deformable substeps per RaiSim world step.
   Deformables whose particles touch step together with the largest value
   among them.
@@ -482,6 +490,109 @@ few, the cloth stretches far beyond its compliance under the load, and a stretch
 large enough to open the gaps between the particle spheres lets the object
 through.
 
+### Solving deformables together with the bodies
+
+By default the elastic constraints of the deformables are solved together with
+every contact, joint limit and pin of the world
+(`World::setMonolithicDeformables(true)`). With
+`World::setMonolithicDeformables(false)`, the coupling of v2.10 and before, a
+deformable meets its contacts with moving bodies after the world has solved the
+contacts and joints of those bodies, so the impulses a deformable hands to a
+body arrive after the body's own support was settled for the step. Three things
+follow:
+
+- A body that carries a deformable is pushed into its own support every step: a
+  5 kg cloth on a 1 kg box presses the box 19 mm into the ground, and a joint
+  that holds a soft load overshoots its limit by an amount proportional to the
+  load.
+- A heavy body resting on a deformable presses its particles into whatever lies
+  under them: a 10 kg ball on a 0.2 kg cloth pushes particles 12 mm into the
+  ground and spreads the cloth to several times its size.
+- The ground holds each particle of a cloth with the friction of the particle's
+  own weight only, so a box on a cloth on a gentle slope slides down together
+  with the cloth.
+
+Solved together, the weight of a deformable reaches the ground through the
+bodies under it within the step, and a particle pressed by a body passes the
+load on to what it rests on: the ground, a static or kinematic object, another moving body, or the
+particles of another deformable that rest on one of these. A heavy body on a
+cloth, or on several layers of cloth, rests on what supports the cloth, and the
+cloth under it is held with the friction of the body's weight. A body sliding
+over a cloth meets the friction of whichever contact grips less: over a cloth
+that the ground holds it slides with the friction between body and cloth, and
+on slippery ground it carries the cloth along and slides with the ground's
+friction. A body on a cloth on a slope steeper than the friction angle slides
+down with the Coulomb acceleration, also with the same friction above and below
+the cloth (1.7 times as fast with `setMonolithicDeformables(false)`):
+
+| Scene | `setMonolithicDeformables(false)` | Default |
+|---|---|---|
+| 10 kg ball on a cloth on the ground: particles in the ground | 12.3 mm, 1.19 ms/step | < 0.001 mm, 0.99 ms/step |
+| 5 kg cloth on a 1 kg box: box in the ground | 19.4 mm, 0.83 ms/step | 0.04 mm, 2.13 ms/step |
+| 1 kg ball on a cloth on a 5 kg box: particles in the box | 2.9 mm, 0.88 ms/step | < 0.001 mm, 1.03 ms/step |
+| 5 kg box on two stacked cloths: upper cloth pressed into the lower one | 10.0 mm, 5.51 ms/step | 0.41 mm, 0.99 ms/step |
+| 1 kg box on a cloth on a slope of 0.45 (μ = 0.5): sliding speed | 213 mm/s, 0.77 ms/step | < 0.001 mm/s, 0.75 ms/step |
+| 1 kg box on a cloth sliding down a slope of 0.6 (μ = 0.5 above and below the cloth): error of the distance the box travels in a second | 17.7 %, 0.77 ms/step | 0.15 %, 1.70 ms/step |
+| Cloth pulled out from under a 1 kg box with 20 N (μ = 0.5): error of the box's acceleration while the cloth slides under it | 2.2 %, 1.35 ms/step | < 0.01 %, 2.93 ms/step |
+| The same cloth: largest stretch of an edge beside the box | 3.9 %, 1.39 ms/step | 3.1 %, 3.13 ms/step |
+| 0.2 kg cloth on the ground pulled at one edge with 20 N: largest stretch of an edge | 0.009 %, 1.15 ms/step | 0.009 %, 1.26 ms/step |
+| Two-finger gripper holding a hanging cloth: fingers in the particles | 0.10 mm, 0.59 ms/step | 0.04 mm, 0.73 ms/step |
+| Lever holding a soft cube at its joint limit: overshoot | 17.6 mrad, 0.29 ms/step | 0.02 mrad, 0.29 ms/step |
+| 1 kg box pushed with 3 N on a cloth on ground with μ = 0.1: error of the distance both travel | 12.9 %, 0.77 ms/step | 0.35 %, 1.24 ms/step |
+| 5 kg box sliding at 1 m/s over a cloth that the ground holds (μ = 0.5 above the cloth, 0.8 below): error of the deceleration | 24.4 %, 1.90 ms/step | 0.001 %, 1.94 ms/step |
+| 5 kg box sliding at 1 m/s over a cloth on ground with μ = 0.3, carrying it: deceleration over μ g | 18.6 % off, 1.84 ms/step | 4.5 % more, 4.03 ms/step (the cloth outside the box drags; fully converged 3.5 % more) |
+
+(the `deformable_rigid_coupling` benchmark, single thread, Ryzen 9 3950X).
+
+In the joint solve `iterations` counts the sweeps in which the elastic
+constraints are projected; the contacts keep converging after them. A
+deformable with `substeps` greater than one makes the whole world step in that
+many substeps, also while it sleeps (an impact that wakes it is taken in its
+substeps), and the forces set for the step act in each of them. A cloth that
+touches only static objects costs up to a tenth more per step than with
+`setMonolithicDeformables(false)`: the joint solve also holds it with static
+friction and meets its self contacts and contacts once more at the end of the
+step. A scene where bodies press or carry a deformable costs up to a third more,
+some up to 2.6 times as much (see the table).
+
+With `setMonolithicDeformables(false)`, a body on a cloth that is pulled out
+from under it at slip speeds of metres per second receives up to three times the
+Coulomb friction: the particles that pass under its edges kick it up and along.
+The joint solve takes such a particle's contact where the particle will be at
+the end of the step, so it meets the face of the body rather than its edge, and
+the body receives the Coulomb friction at any slip speed.
+
+Known limitations of the joint solve:
+
+- A cloth pinched between two parts of one body, such as the two pads of a
+  gripper, is held by the pads' friction more firmly than its own tension can
+  pull it: the edges at the pinch stretch by up to 20 % while the gripper moves
+  it at the default `iterations`. (A cloth pressed by a body onto a support, by
+  contrast, stays within 3 %.)
+- Under a heavy body, the particles of a cloth layer that settle into the gaps
+  between those of the layer below are still pressed down by several
+  millimetres (a 5 kg box on two layers offset by half the particle spacing:
+  7 mm), and the step costs about ten times as much.
+- A body sliding with high friction over a particle that a stiff edge ties to a
+  pinned or held part of the cloth is braked less than by its Coulomb friction
+  within a step; the edge holds, and the following steps keep braking the body
+  (μ = 30: a 1 kg box sliding at 1 m/s is slowed by 0.13 m/s in its first step
+  instead of 0.29 m/s).
+- A particle pressed onto a support from which one of its edges rises steeply
+  (a cloth pressed at the foot of a box it is draped over) can start the next
+  step still moving towards the support, slowly (1.3 mm/s after a push of 1 m/s
+  along the support with the edge at 45°); the support stops it then.
+- A stiff strip of cloth jammed between a body that drags one end of it and an
+  obstacle at the other end (a wall, another part of the cloth) does not stop
+  the body: the strip is crushed (a 10 kg box dragging a particle at 2 m/s
+  towards a wall along a rigid 2 cm edge shrinks the edge to a third), and
+  when the body lets go the strip springs back, which can push the far particle
+  into the obstacle (1.6 mm for particles of 5 mm radius).
+- Where a body drives a stiff edge of a cloth folded more than twice into the
+  stack, the layers beyond the second can end the step overlapping by a fraction
+  of a millimetre (a third of a millimetre for particles of 5 mm radius pushed
+  at 2 m/s); the next step separates them.
+
 ## Sleeping
 
 With sleeping enabled, a deformable object sleeps only when every particle has
@@ -597,6 +708,10 @@ changes such as tearing or cutting.
 Granular systems do not collide with deformable objects. A rigid edge or corner
 can still pass between particle spheres when `collisionRadius` is small
 compared with the particle spacing.
+A long rope or cloth with many very shallow wrinkles (bends under 1°) that are
+all pushed flat within one step lengthens all at once, and its free end leaves
+faster than the push alone would make it: a 3 m rope of 300 particles with
+wrinkles of 0.9° gains about as much energy again as the push gave it.
 
 ## API Reference
 

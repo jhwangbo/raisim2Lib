@@ -386,7 +386,9 @@ Heat haze (`heatHazeEnabled`) perturbs UVs with a sinusoidal ripple below
 so the sky above stays sharp, simulating hot-air shimmer. Underwater
 (`underwaterEnabled`, `underwaterTint`, `underwaterCausticStrength`,
 `underwaterCausticScale`, `underwaterDepthExtinction`) tints the image,
-adds animated caustic patterns, and attenuates by depth.
+adds animated caustic patterns, and attenuates by depth. It is a screen effect
+that knows nothing about the scene; for water with a surface, refraction and a physically based
+view from below it, add a water body instead (see [Water](./Water.md)).
 
 ```cpp
 auto q = viewer.getRenderQualitySettings();

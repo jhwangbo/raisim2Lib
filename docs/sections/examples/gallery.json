@@ -8,6 +8,8 @@
         "rayrai/rayrai_offroad_buggy",
         "rayrai/rayrai_city",
         "rayrai/rayrai_forest",
+        "rayrai/rayrai_water_pond",
+        "rayrai/rayrai_water_stream",
         "rayrai/rayrai_warehouse",
         "rayrai/rayrai_city_from_xml",
         "rayrai/rayrai_forest_from_rscene",
@@ -23,6 +25,7 @@
         "server/mjcf_gymnasium_humanoid",
         "server/nvidia_usd_robots",
         "server/minitaur_pd",
+        "rayrai/rayrai_inverse_kinematics",
         "worlds/kinova_arm",
         "server/shadow_hand_usd_cube",
         "server/templated_tracked_robot",
@@ -85,13 +88,25 @@
     {
       "id": "terrain",
       "title": "Terrain",
-      "description": "Height maps, granular media and deformable bodies.",
+      "description": "Deformable soil, height maps and granular media.",
       "examples": [
+        "rayrai/rayrai_deformable_terrain",
         "server/granular_media",
-        "server/deformable_objects",
         "server/dynamic_heightmap",
         "server/procedural_heightmap",
         "server/heightmap_from_png"
+      ]
+    },
+    {
+      "id": "deformable",
+      "title": "Deformable",
+      "description": "Cloth, soft bodies, folding and contact with rigid objects.",
+      "examples": [
+        "server/deformable_objects",
+        "server/robotiq_cloth_fold",
+        "server/heavy_objects_on_cloth",
+        "server/cloth_on_slope",
+        "server/tablecloth_pull"
       ]
     },
     {

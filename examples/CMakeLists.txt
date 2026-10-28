@@ -211,6 +211,13 @@ endif()
 # Performance and deformables.
 create_executable(island_sleep_benchmark src/server/performance/island_sleep_benchmark.cpp)
 create_executable(deformable_objects src/server/deformable/deformable_objects.cpp)
+create_executable(robotiq_cloth_fold src/server/deformable/robotiq_cloth_fold.cpp)
+set_target_properties(robotiq_cloth_fold PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON)
+create_executable(heavy_objects_on_cloth src/server/deformable/heavy_objects_on_cloth.cpp)
+create_executable(cloth_on_slope src/server/deformable/cloth_on_slope.cpp)
+create_executable(tablecloth_pull src/server/deformable/tablecloth_pull.cpp)
 
 # benchmark examples
 create_executable(articulated_system_benchmark src/benchmark/articulated_system_benchmark.cpp)
@@ -265,6 +272,12 @@ create_sensor_noise_example()
 create_rayrai_executable(rayrai_deformable_terrain src/rayrai/physics/rayrai_deformable_terrain.cpp)
 create_rayrai_executable(rayrai_lidar_pointcloud src/rayrai/sensors/rayrai_lidar_pointcloud.cpp)
 create_rayrai_executable(rayrai_aruco_marker src/rayrai/sensors/rayrai_aruco_marker.cpp)
+
+# Robots.
+create_rayrai_executable(rayrai_inverse_kinematics src/rayrai/robots/rayrai_inverse_kinematics.cpp)
+set_target_properties(rayrai_inverse_kinematics PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON)
 
 # Visual-only overlays and GPU visual primitives.
 create_rayrai_executable(rayrai_custom_visuals src/rayrai/visuals/rayrai_custom_visuals.cpp)
@@ -378,6 +391,12 @@ endforeach()
 # constraints) driven with the arrow keys over an eroded meadow with a dirt track.
 create_rayrai_executable(rayrai_offroad_buggy src/rayrai/worlds/rayrai_offroad_buggy.cpp)
 target_compile_features(rayrai_offroad_buggy PRIVATE cxx_std_20)
+# A pond in a meadow: rayrai water with grass and trees on its banks and the sun reflected on it.
+create_rayrai_executable(rayrai_water_pond src/rayrai/worlds/rayrai_water_pond.cpp)
+target_compile_features(rayrai_water_pond PRIVATE cxx_std_20)
+# A creek running into a pool: rayrai's shallow-water simulation with balls floating on the current.
+create_rayrai_executable(rayrai_water_stream src/rayrai/worlds/rayrai_water_stream.cpp)
+target_compile_features(rayrai_water_stream PRIVATE cxx_std_20)
 
 # Keep the URDF and its meshes together in the resource copy selected at runtime.
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ExampleResources.cmake")

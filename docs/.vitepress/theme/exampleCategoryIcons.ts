@@ -19,6 +19,8 @@ export const exampleCategoryIcons: Record<string, string[]> = {
   contact: ['M3 20h18', 'M6 14h6v6H6z', 'M13.5 14h5v6h-5z', 'M9 8h6v6H9z'],
   // Contour lines of a height map.
   terrain: ['M3 9.5C6 6.5 8.5 10.5 12 7.5S17.5 5.5 21 7.5', 'M3 14.5C6.5 11.5 9 15.5 12.5 12.5S18 10.5 21 12.5', 'M3 19.5C7 16.5 9.5 20.5 13 17.5S18.5 15.5 21 17.5'],
+  // A cloth draped between its corners.
+  deformable: ['M4 5c4 4 12 4 16 0l-2 13c-4 3-8 3-12 0L4 5z', 'M9 8l1 12', 'M15 8l-1 12', 'M5 12c4 3 10 3 14 0'],
   // A four-bar linkage, a closed loop.
   joints: ['M5 18L8.5 7.5 17.5 9.5 19.5 18', 'M3 20.5h18', circle(5, 18, 1.6), circle(8.5, 7.5, 1.6), circle(17.5, 9.5, 1.6), circle(19.5, 18, 1.6)],
   // A terminal window.

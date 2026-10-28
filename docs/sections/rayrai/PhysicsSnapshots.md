@@ -287,7 +287,7 @@ clears the snapshot.
 
 ## Examples and measurement
 
-The snapshot workflow is used by 14 of the 28 rayrai demos, including
+The snapshot workflow is used by 15 of the 31 rayrai demos, including
 [Rayrai Example: Basic Scene](../examples/rayrai/rayrai_basic_scene.md),
 [Rayrai Example: RGB Camera](../examples/rayrai/rayrai_rgb_camera.md),
 [Rayrai Example: Depth Camera](../examples/rayrai/rayrai_depth_camera.md), and

@@ -143,7 +143,7 @@ onBeforeUnmount(() => {
       </h1>
       <p class="rs-hero__lead">
         <strong class="rs-hero__claim">Quadrupedal locomotion, learned in 10 seconds.</strong>
-        Contact-rich robot physics hundreds of times faster than real time, with photoreal cameras and LiDAR.
+        Contact-rich robot physics at 10,000× real time on a multithreaded server, with photoreal cameras and LiDAR.
       </p>
       <div class="rs-hero__actions">
         <a class="rs-btn rs-btn--primary" :href="withBase('/sections/QuickStart.html')">
